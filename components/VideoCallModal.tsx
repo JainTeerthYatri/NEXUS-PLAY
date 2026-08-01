@@ -22,6 +22,7 @@ export default function VideoCallModal({ currentUser, targetFriend, isCaller, on
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
+  const iceCandidateQueue = useRef<RTCIceCandidateInit[]>([]);
   
   const supabase = createClient();
   const channelRef = useRef<any>(null);
@@ -50,6 +51,19 @@ export default function VideoCallModal({ currentUser, targetFriend, isCaller, on
 
         if (payload.sdp) {
           await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+          
+          // Process queued ICE candidates once remote description is set
+          while (iceCandidateQueue.current.length > 0) {
+            const candidate = iceCandidateQueue.current.shift();
+            try {
+              if (candidate) {
+                await pc.addIceCandidate(new RTCIceCandidate(candidate));
+              }
+            } catch (e) {
+              console.error("Error adding queued ICE candidate", e);
+            }
+          }
+
           if (payload.sdp.type === "offer") {
             const answer = await pc.createAnswer();
             await pc.setLocalDescription(answer);
@@ -57,7 +71,11 @@ export default function VideoCallModal({ currentUser, targetFriend, isCaller, on
           }
         } else if (payload.iceCandidate) {
           try {
-            await pc.addIceCandidate(new RTCIceCandidate(payload.iceCandidate));
+            if (pc.remoteDescription && pc.remoteDescription.type) {
+              await pc.addIceCandidate(new RTCIceCandidate(payload.iceCandidate));
+            } else {
+              iceCandidateQueue.current.push(payload.iceCandidate);
+            }
           } catch (e) {
             console.error("Error adding received ICE candidate", e);
           }
@@ -68,7 +86,7 @@ export default function VideoCallModal({ currentUser, targetFriend, isCaller, on
       })
       .subscribe(async (status) => {
         if (status === "SUBSCRIBED") {
-          setupWebRTC();
+          await setupWebRTC();
           if (isCaller) {
             startCall();
           }
@@ -211,9 +229,11 @@ export default function VideoCallModal({ currentUser, targetFriend, isCaller, on
     }
     if (peerConnectionRef.current) {
       peerConnectionRef.current.close();
+      peerConnectionRef.current = null;
     }
     if (channelRef.current) {
       supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
     }
     onClose();
   };
