@@ -4,7 +4,7 @@ import CodeRain from "../components/CodeRain";
 import Footer from "../components/Footer";
 
 export const metadata: Metadata = {
-  title: "NEXUSPLAY // Gaming Telemetry & Squad Network",
+  title: "ASTEROID GAMING-CLOUD // Gaming Telemetry & Squad Network",
   description: "Professional gaming matchmaking, squad directory, and highlight vault.",
 };
 
