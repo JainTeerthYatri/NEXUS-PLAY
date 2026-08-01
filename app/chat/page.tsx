@@ -2,7 +2,7 @@
 import { useEffect, useState, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import Navbar from "@/components/Navbar";
-import { Send, Sparkles, MessageSquare, Globe, UserPlus, Check, Trash2, ShieldCheck, Reply, X, Search } from "lucide-react";
+import { Send, Sparkles, MessageSquare, Globe, UserPlus, Check, Trash2, ShieldCheck, Reply, X, Search, ShieldAlert } from "lucide-react";
 
 export default function AsteroidChatPage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -15,6 +15,7 @@ export default function AsteroidChatPage() {
   const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [profileUsername, setProfileUsername] = useState("");
+  const [isModerator, setIsModerator] = useState(false);
   
   const [replyingTo, setReplyingTo] = useState<any>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; msg: any } | null>(null);
@@ -60,8 +61,13 @@ export default function AsteroidChatPage() {
       const { data: { user } } = await supabase.auth.getUser();
       setCurrentUser(user);
       if (user) {
-        const { data: prof } = await supabase.from("profiles").select("username").eq("id", user.id).single();
-        if (prof) setProfileUsername(prof.username);
+        const { data: prof } = await supabase.from("profiles").select("username, role").eq("id", user.id).single();
+        if (prof) {
+          setProfileUsername(prof.username);
+          if (prof.role === "moderator" || prof.role === "admin") {
+            setIsModerator(true);
+          }
+        }
         fetchFriendsAndRequests(user.id);
       }
     }
@@ -157,6 +163,19 @@ export default function AsteroidChatPage() {
     }
   };
 
+  const handlePurgeGlobalChat = async () => {
+    if (!isModerator) return;
+    if (!confirm("WARNING: Are you sure you want to purge the entire global network chat? This cannot be undone.")) return;
+
+    const { error } = await supabase.from("global_chat").delete().gte("created_at", "1970-01-01");
+    if (!error) {
+      setMessages([]);
+      alert("Global network chat has been completely purged by moderator.");
+    } else {
+      alert("Failed to purge global chat.");
+    }
+  };
+
   useEffect(() => {
     if (!currentUser) return;
 
@@ -234,7 +253,12 @@ export default function AsteroidChatPage() {
         "postgres_changes",
         { event: "DELETE", schema: "public", table: activeTab === "global" ? "global_chat" : "direct_messages" },
         (payload) => {
-          setMessages((prev) => prev.filter((m) => m.id !== payload.old.id));
+          // If a single message is deleted or if table is purged
+          if (payload.old?.id) {
+            setMessages((prev) => prev.filter((m) => m.id !== payload.old.id));
+          } else {
+            setMessages([]);
+          }
         }
       )
       .subscribe();
@@ -292,7 +316,7 @@ export default function AsteroidChatPage() {
     const nowTime = new Date().getTime();
     const diffMinutes = (nowTime - sentTime) / (1000 * 60);
 
-    if (diffMinutes > 5) {
+    if (!isModerator && diffMinutes > 5) {
       alert("Transmission can only be deleted within 5 minutes of dispatch!");
       return;
     }
@@ -328,9 +352,16 @@ export default function AsteroidChatPage() {
             <Sparkles className="w-5 h-5 text-emerald-400 animate-pulse" />
             <h1 className="text-lg font-black text-white tracking-tight">ASTEROID GAMING-CLOUD // SECURE COMMS</h1>
           </div>
-          <span className="text-xs font-mono text-emerald-400 bg-emerald-950/60 px-3 py-1 rounded border border-emerald-500/40">
-            ENCRYPTED
-          </span>
+          <div className="flex items-center gap-2">
+            {isModerator && (
+              <span className="text-[10px] font-mono text-red-400 bg-red-950/60 px-2 py-0.5 rounded border border-red-500/40 font-bold uppercase animate-pulse">
+                Moderator Access
+              </span>
+            )}
+            <span className="text-xs font-mono text-emerald-400 bg-emerald-950/60 px-3 py-1 rounded border border-emerald-500/40">
+              ENCRYPTED
+            </span>
+          </div>
         </div>
 
         <div className="flex flex-col md:flex-row h-[520px] rounded-xl bg-[#061408] border border-emerald-500/40 shadow-xl overflow-hidden relative">
@@ -434,9 +465,19 @@ export default function AsteroidChatPage() {
                   {activeTab === "global" ? "global-network" : `@${activeFriendObj?.username || "operator"}`}
                 </span>
               </div>
-              <span className="text-[10px] text-emerald-400 font-mono bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-500/30">
-                Type @username to ping
-              </span>
+              <div className="flex items-center gap-2">
+                {activeTab === "global" && isModerator && (
+                  <button
+                    onClick={handlePurgeGlobalChat}
+                    className="flex items-center gap-1 bg-red-600 hover:bg-red-500 text-white px-2.5 py-1 rounded text-[11px] font-extrabold cursor-pointer transition-transform active:scale-95 shadow-lg"
+                  >
+                    <ShieldAlert className="w-3.5 h-3.5" /> Purge Chat
+                  </button>
+                )}
+                <span className="text-[10px] text-emerald-400 font-mono bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-500/30">
+                  Type @username to ping
+                </span>
+              </div>
             </div>
 
             {/* Messages Scroll Area */}
@@ -555,7 +596,7 @@ export default function AsteroidChatPage() {
             <Reply className="w-3.5 h-3.5" /> Reply
           </button>
           
-          {currentUser && (contextMenu.msg.user_id === currentUser.id || contextMenu.msg.sender_id === currentUser.id) && (
+          {currentUser && ((contextMenu.msg.user_id === currentUser.id || contextMenu.msg.sender_id === currentUser.id) || isModerator) && (
             <button
               onClick={() => {
                 handleDeleteMessage(contextMenu.msg.id, contextMenu.msg.created_at);
@@ -563,7 +604,7 @@ export default function AsteroidChatPage() {
               }}
               className="w-full text-left px-3 py-2 hover:bg-red-500/20 flex items-center gap-2 text-red-400 font-bold cursor-pointer border-t border-emerald-500/20"
             >
-              <Trash2 className="w-3.5 h-3.5" /> Delete (5m)
+              <Trash2 className="w-3.5 h-3.5" /> {isModerator ? "Delete (Mod)" : "Delete (5m)"}
             </button>
           )}
         </div>
