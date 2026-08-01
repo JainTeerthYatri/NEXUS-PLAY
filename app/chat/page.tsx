@@ -2,7 +2,7 @@
 import { useEffect, useState, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import Navbar from "@/components/Navbar";
-import { Send, Sparkles, MessageSquare, Globe, UserPlus, Check, Trash2, ShieldCheck, Zap, Reply, X } from "lucide-react";
+import { Send, Sparkles, MessageSquare, Globe, UserPlus, Check, Trash2, ShieldCheck, Reply, X } from "lucide-react";
 
 export default function AsteroidChatPage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -22,7 +22,14 @@ export default function AsteroidChatPage() {
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const supabase = createClient();
 
-  const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
+    messagesEndRef.current?.scrollIntoView({ behavior });
+  };
+
+  // Automatically scroll to latest message whenever messages change or page reloads
+  useEffect(() => {
+    scrollToBottom("auto");
+  }, [messages]);
 
   useEffect(() => {
     const handleClickOutside = () => setContextMenu(null);
@@ -39,12 +46,12 @@ export default function AsteroidChatPage() {
       const gain = ctx.createGain();
       osc.type = "sine";
       osc.frequency.setValueAtTime(880, ctx.currentTime);
-      gain.gain.setValueAtTime(0.1, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+      gain.gain.setValueAtTime(0.15, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
       osc.connect(gain);
       gain.connect(ctx.destination);
       osc.start();
-      osc.stop(ctx.currentTime + 0.3);
+      osc.stop(ctx.currentTime + 0.4);
     } catch (e) {}
   };
 
@@ -175,7 +182,6 @@ export default function AsteroidChatPage() {
 
         if (data) setMessages(data);
       }
-      scrollToBottom();
     }
     loadMessages();
 
@@ -194,7 +200,10 @@ export default function AsteroidChatPage() {
             });
             const { data: p } = await supabase.from("profiles").select("username").eq("id", msg.user_id).single();
             setMessages((prev) => prev.map((m) => (m.id === msg.id ? { ...m, profiles: p } : m)));
-            if (msg.user_id !== currentUser.id) playNotificationSound();
+            
+            if (msg.user_id !== currentUser.id) {
+              playNotificationSound();
+            }
           } else {
             if (
               (msg.sender_id === currentUser.id && msg.receiver_id === activeTab) ||
@@ -209,7 +218,12 @@ export default function AsteroidChatPage() {
               }
             }
           }
-          scrollToBottom();
+
+          if (profileUsername && msg.message?.toLowerCase().includes(`@${profileUsername.toLowerCase()}`)) {
+            if ((msg.user_id || msg.sender_id) !== currentUser.id) {
+              playNotificationSound();
+            }
+          }
         }
       )
       .on(
@@ -224,7 +238,7 @@ export default function AsteroidChatPage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [activeTab, currentUser]);
+  }, [activeTab, currentUser, profileUsername]);
 
   const sendChatMessage = async (textToSend: string) => {
     if (!textToSend.trim() || !currentUser) return;
@@ -245,7 +259,6 @@ export default function AsteroidChatPage() {
       if (!error && data) {
         setMessages((prev) => [...prev, { ...data, profiles: { username: profileUsername } }]);
         setReplyingTo(null);
-        scrollToBottom();
       }
     } else {
       const { data, error } = await supabase.from("direct_messages").insert({
@@ -259,7 +272,6 @@ export default function AsteroidChatPage() {
       if (!error && data) {
         setMessages((prev) => [...prev, data]);
         setReplyingTo(null);
-        scrollToBottom();
       }
     }
   };
@@ -269,13 +281,6 @@ export default function AsteroidChatPage() {
     const text = newMessage.trim();
     setNewMessage("");
     await sendChatMessage(text);
-  };
-
-  const handleQuickPing = async () => {
-    if (activeTab === "global" || !currentUser) return;
-    const friendObj = friends.find((f) => f.id === activeTab);
-    const pingText = `⚡ URGENT PING FOR @${friendObj?.username || "operator"}! Wake up!`;
-    await sendChatMessage(pingText);
   };
 
   const handleDeleteMessage = async (msgId: string, createdAt: string) => {
@@ -400,14 +405,9 @@ export default function AsteroidChatPage() {
                   {activeTab === "global" ? "global-network" : `@${activeFriendObj?.username || "operator"}`}
                 </span>
               </div>
-              {activeTab !== "global" && (
-                <button
-                  onClick={handleQuickPing}
-                  className="flex items-center gap-1 bg-emerald-500 hover:bg-emerald-400 text-black px-2.5 py-1 rounded text-[11px] font-extrabold cursor-pointer transition-transform active:scale-95"
-                >
-                  <Zap className="w-3 h-3 fill-current" /> Ping Alert
-                </button>
-              )}
+              <span className="text-[10px] text-emerald-400 font-mono bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-500/30">
+                Type @username to ping
+              </span>
             </div>
 
             {/* Messages Scroll Area */}
@@ -419,13 +419,14 @@ export default function AsteroidChatPage() {
             >
               {messages.length === 0 ? (
                 <div className="text-center py-16 text-emerald-200/40 font-mono text-xs">
-                  No transmissions found in this channel. (Right-click or right-swipe any message to reply)
+                  No transmissions found in this channel. (Type @username to ping, right-click or right-swipe to reply)
                 </div>
               ) : (
                 messages.map((msg) => {
                   const isMe = currentUser && (msg.user_id === currentUser.id || msg.sender_id === currentUser.id);
                   const name = activeTab === "global" ? (msg.profiles?.username || profileUsername) : (isMe ? "You" : activeFriendObj?.username);
                   
+                  const isPingMention = profileUsername && msg.message?.toLowerCase().includes(`@${profileUsername.toLowerCase()}`);
                   let touchStartX = 0;
 
                   return (
@@ -449,7 +450,9 @@ export default function AsteroidChatPage() {
                       <div className="flex items-center gap-2 max-w-[75%]">
                         <div
                           className={`px-3 py-2 text-xs font-medium break-words rounded-lg shadow cursor-pointer ${
-                            isMe
+                            isPingMention && !isMe
+                              ? "bg-emerald-600 text-white font-bold border-2 border-emerald-300 animate-pulse shadow-emerald-500/50 shadow-lg"
+                              : isMe
                               ? "bg-emerald-500 text-black rounded-tr-none"
                               : "bg-[#081f0b] border border-emerald-500/30 text-white rounded-tl-none"
                           }`}
@@ -491,7 +494,7 @@ export default function AsteroidChatPage() {
                 type="text"
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
-                placeholder={activeTab === "global" ? "Broadcast to global network..." : `Message @${activeFriendObj?.username}...`}
+                placeholder={activeTab === "global" ? "Type message or @username to ping..." : `Message @${activeFriendObj?.username} (type @username to ping)...`}
                 className="flex-1 px-3 py-2 rounded bg-[#020803] border border-emerald-500/30 text-white text-xs focus:border-emerald-400 outline-none"
               />
               <button
