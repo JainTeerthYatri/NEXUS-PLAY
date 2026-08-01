@@ -27,8 +27,8 @@ export async function handleSignupAction(formData: FormData) {
   const acceptTerms = formData.get("acceptTerms") === "on";
   const acceptCookies = formData.get("acceptCookies") === "on";
 
-  if (!acceptTerms) {
-    return { error: "You must accept the Terms and Conditions to register." };
+  if (!acceptTerms || !acceptCookies) {
+    return { error: "You must accept both the Terms & Conditions and Cookies Policy to register." };
   }
 
   const supabase = await createClient();
