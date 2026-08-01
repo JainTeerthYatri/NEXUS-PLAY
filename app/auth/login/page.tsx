@@ -40,7 +40,7 @@ export default function LoginPage() {
             <Lock className="w-6 h-6" />
           </div>
           <h1 className="text-2xl font-black text-white tracking-tight">Operator Login</h1>
-          <p className="text-xs font-mono text-slate-400 mt-1">Authenticate to access NEXUSPLAY mainframe</p>
+          <p className="text-xs font-mono text-slate-400 mt-1">Authenticate to access ASTEROID GAMING-CLOUD mainframe</p>
         </div>
 
         {errorMsg && (
@@ -58,7 +58,7 @@ export default function LoginPage() {
                 type="email" 
                 name="email"
                 required
-                placeholder="operator@nexusplay.com"
+                placeholder="operator@asteroidcloud.com"
                 className="w-full pl-10 pr-3 py-2 rounded bg-black/40 border border-white/10 text-white text-sm focus:border-red-500 outline-none transition-colors [&:-webkit-autofill]:!bg-black [&:-webkit-autofill]:!text-white [&:-webkit-autofill]:[-webkit-box-shadow:0_0_0_1000px_#121216_inset]"
               />
             </div>
