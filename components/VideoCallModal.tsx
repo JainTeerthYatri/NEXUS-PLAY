@@ -174,11 +174,17 @@ export default function VideoCallModal({ currentUser, targetFriend, isCaller, on
 
   const toggleScreenShare = async () => {
     try {
+      // Check if browser supports screen sharing (Mobile browsers don't support getDisplayMedia)
+      if (!navigator.mediaDevices || !(navigator.mediaDevices as any).getDisplayMedia) {
+        alert("Screen sharing is not supported on mobile browsers. Please use a desktop browser.");
+        return;
+      }
+
       const pc = peerConnectionRef.current;
       if (!pc) return;
 
       if (!isScreenSharing) {
-        const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+        const screenStream = await (navigator.mediaDevices as any).getDisplayMedia({ video: true, audio: true });
         const screenTrack = screenStream.getVideoTracks()[0];
 
         const sender = pc.getSenders().find((s) => s.track && s.track.kind === "video");
@@ -231,6 +237,7 @@ export default function VideoCallModal({ currentUser, targetFriend, isCaller, on
 
   const cleanupAndClose = () => {
     if (localStream) {
+      localStream.getTracks().exports?.forEach((track: any) => track.stop());
       localStream.getTracks().forEach((track) => track.stop());
     }
     if (peerConnectionRef.current) {
