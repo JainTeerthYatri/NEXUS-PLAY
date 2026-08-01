@@ -2,13 +2,14 @@
 import { useEffect, useState, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import Navbar from "@/components/Navbar";
-import { Send, Sparkles, MessageSquare, Globe, UserPlus, Check, Trash2, ShieldCheck, Reply, X } from "lucide-react";
+import { Send, Sparkles, MessageSquare, Globe, UserPlus, Check, Trash2, ShieldCheck, Reply, X, Search } from "lucide-react";
 
 export default function AsteroidChatPage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [friends, setFriends] = useState<any[]>([]);
   const [pendingRequests, setPendingRequests] = useState<any[]>([]);
   const [friendUsernameInput, setFriendUsernameInput] = useState("");
+  const [searchResults, setSearchResults] = useState<any[]>([]);
   
   const [activeTab, setActiveTab] = useState<string>("global");
   const [messages, setMessages] = useState<any[]>([]);
@@ -26,7 +27,6 @@ export default function AsteroidChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior });
   };
 
-  // Automatically scroll to latest message whenever messages change or page reloads
   useEffect(() => {
     scrollToBottom("auto");
   }, [messages]);
@@ -98,7 +98,7 @@ export default function AsteroidChatPage() {
       const senderIds = pendings.map((p) => p.user_id);
       const { data: sendersProfiles } = await supabase
         .from("profiles")
-        .select("id, username")
+        .select("id, username, display_name")
         .in("id", senderIds);
       setPendingRequests(sendersProfiles || []);
     } else {
@@ -106,29 +106,32 @@ export default function AsteroidChatPage() {
     }
   }
 
-  const handleSendFriendRequest = async (e: React.FormEvent) => {
+  const handleSearchProfiles = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!friendUsernameInput.trim() || !currentUser) return;
+    const query = friendUsernameInput.trim().replace("@", "");
+    if (!query || !currentUser) return;
 
-    const { data: targetUser, error: err } = await supabase
+    const { data, error } = await supabase
       .from("profiles")
-      .select("id")
-      .eq("username", friendUsernameInput.trim().replace("@", ""))
-      .single();
+      .select("id, username, display_name")
+      .or(`username.ilike.%${query}%,display_name.ilike.%${query}%`)
+      .neq("id", currentUser.id)
+      .limit(10);
 
-    if (err || !targetUser) {
-      alert("Operator username not found!");
-      return;
+    if (error || !data || data.length === 0) {
+      setSearchResults([]);
+      alert("No operators found matching that name.");
+    } else {
+      setSearchResults(data);
     }
+  };
 
-    if (targetUser.id === currentUser.id) {
-      alert("You cannot add yourself as a friend!");
-      return;
-    }
+  const handleSendFriendRequestToUser = async (targetUserId: string) => {
+    if (!currentUser) return;
 
     const { error } = await supabase.from("friendships").insert({
       user_id: currentUser.id,
-      friend_id: targetUser.id,
+      friend_id: targetUserId,
       status: "pending",
     });
 
@@ -136,6 +139,7 @@ export default function AsteroidChatPage() {
       alert("Request already sent or error occurred.");
     } else {
       alert("Secure friend request transmitted!");
+      setSearchResults([]);
       setFriendUsernameInput("");
     }
   };
@@ -332,20 +336,45 @@ export default function AsteroidChatPage() {
         <div className="flex flex-col md:flex-row h-[520px] rounded-xl bg-[#061408] border border-emerald-500/40 shadow-xl overflow-hidden relative">
           
           {/* Left Sidebar */}
-          <div className="w-full md:w-64 bg-[#030d04] border-r border-emerald-500/30 flex flex-col shrink-0 h-44 md:h-full">
+          <div className="w-full md:w-64 bg-[#030d04] border-r border-emerald-500/30 flex flex-col shrink-0 h-56 md:h-full">
             
-            <form onSubmit={handleSendFriendRequest} className="p-2 border-b border-emerald-500/20 flex gap-1">
+            <form onSubmit={handleSearchProfiles} className="p-2 border-b border-emerald-500/20 flex gap-1">
               <input
                 type="text"
-                placeholder="Add friend (@username)"
+                placeholder="Search name / username..."
                 value={friendUsernameInput}
                 onChange={(e) => setFriendUsernameInput(e.target.value)}
                 className="w-full px-2 py-1.5 rounded bg-[#020803] border border-emerald-500/30 text-xs text-white focus:outline-none focus:border-emerald-400"
               />
-              <button type="submit" className="p-1.5 bg-emerald-500 hover:bg-emerald-400 text-black rounded cursor-pointer">
-                <UserPlus className="w-4 h-4" />
+              <button type="submit" className="p-1.5 bg-emerald-500 hover:bg-emerald-400 text-black rounded cursor-pointer" title="Search operators">
+                <Search className="w-4 h-4" />
               </button>
             </form>
+
+            {/* Search Results Dropdown/List */}
+            {searchResults.length > 0 && (
+              <div className="p-2 bg-[#020a04] border-b border-emerald-500/30 max-h-36 overflow-y-auto">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] font-mono text-emerald-300 font-bold uppercase">Search Results</span>
+                  <button onClick={() => setSearchResults([])} className="text-[10px] text-slate-400 hover:text-white">Close</button>
+                </div>
+                {searchResults.map((user) => (
+                  <div key={user.id} className="flex items-center justify-between bg-emerald-950/60 p-1.5 rounded mb-1 border border-emerald-500/30 text-xs">
+                    <div className="truncate pr-1">
+                      <span className="text-emerald-200 font-bold block truncate">@{user.username}</span>
+                      {user.display_name && <span className="text-[10px] text-slate-400 block truncate">{user.display_name}</span>}
+                    </div>
+                    <button
+                      onClick={() => handleSendFriendRequestToUser(user.id)}
+                      className="p-1 bg-emerald-500 hover:bg-emerald-400 text-black rounded cursor-pointer shrink-0"
+                      title="Add friend"
+                    >
+                      <UserPlus className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
 
             <div className="p-2">
               <button
