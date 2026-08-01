@@ -10,7 +10,7 @@ export default function AsteroidChatPage() {
   const [pendingRequests, setPendingRequests] = useState<any[]>([]);
   const [friendUsernameInput, setFriendUsernameInput] = useState("");
   
-  const [activeTab, setActiveTab] = useState<string>("global"); // "global" or friend_id
+  const [activeTab, setActiveTab] = useState<string>("global");
   const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState("");
   
@@ -153,7 +153,8 @@ export default function AsteroidChatPage() {
     }
     loadMessages();
 
-    const channelName = activeTab === "global" ? "public:global_chat" : `dm:${currentUser.id}-${activeTab}`;
+    // Setup Realtime Channel Listener
+    const channelName = activeTab === "global" ? "public:global_chat" : `dm-${Math.random()}`;
     const channel = supabase
       .channel(channelName)
       .on(
@@ -162,14 +163,23 @@ export default function AsteroidChatPage() {
         async (payload) => {
           const msg = payload.new;
           if (activeTab === "global") {
+            // Avoid duplicate if we already pushed locally
+            setMessages((prev) => {
+              if (prev.some((m) => m.id === msg.id)) return prev;
+              return [...prev, msg];
+            });
+            // Fetch profile for the incoming message if missing
             const { data: p } = await supabase.from("profiles").select("username").eq("id", msg.user_id).single();
-            setMessages((prev) => [...prev, { ...msg, profiles: p }]);
+            setMessages((prev) => prev.map((m) => (m.id === msg.id ? { ...m, profiles: p } : m)));
           } else {
             if (
               (msg.sender_id === currentUser.id && msg.receiver_id === activeTab) ||
               (msg.sender_id === activeTab && msg.receiver_id === currentUser.id)
             ) {
-              setMessages((prev) => [...prev, msg]);
+              setMessages((prev) => {
+                if (prev.some((m) => m.id === msg.id)) return prev;
+                return [...prev, msg];
+              });
             }
           }
           scrollToBottom();
@@ -189,32 +199,40 @@ export default function AsteroidChatPage() {
     };
   }, [activeTab, currentUser]);
 
-  // 5. Send Message (TypeScript Type Fixed)
+  // 5. Send Message with Instant Local Update
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !currentUser) return;
 
-    let error = null;
+    const text = newMessage.trim();
+    setNewMessage("");
 
     if (activeTab === "global") {
-      const res = await supabase.from("global_chat").insert({
-        message: newMessage.trim(),
+      const { data, error } = await supabase.from("global_chat").insert({
+        message: text,
         user_id: currentUser.id,
-      });
-      error = res.error;
+      }).select("id, message, created_at, user_id").single();
+
+      if (error) {
+        alert("Error: " + error.message);
+      } else if (data) {
+        const { data: p } = await supabase.from("profiles").select("username").eq("id", currentUser.id).single();
+        setMessages((prev) => [...prev, { ...data, profiles: p }]);
+        scrollToBottom();
+      }
     } else {
-      const res = await supabase.from("direct_messages").insert({
-        message: newMessage.trim(),
+      const { data, error } = await supabase.from("direct_messages").insert({
+        message: text,
         sender_id: currentUser.id,
         receiver_id: activeTab,
-      });
-      error = res.error;
-    }
+      }).select().single();
 
-    if (error) {
-      alert("Error: " + error.message);
-    } else {
-      setNewMessage("");
+      if (error) {
+        alert("Error: " + error.message);
+      } else if (data) {
+        setMessages((prev) => [...prev, data]);
+        scrollToBottom();
+      }
     }
   };
 
@@ -237,7 +255,6 @@ export default function AsteroidChatPage() {
     }
   };
 
-  // Keyboard navigation for PC
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (!chatContainerRef.current) return;
     if (e.key === "ArrowUp") {
@@ -256,7 +273,6 @@ export default function AsteroidChatPage() {
       <Navbar />
       <main className="flex-1 max-w-6xl mx-auto px-4 py-4 w-full flex flex-col">
         
-        {/* Header */}
         <div className="mb-4 pb-3 border-b border-amber-500/30 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-yellow-400 animate-pulse" />
@@ -267,10 +283,8 @@ export default function AsteroidChatPage() {
           </span>
         </div>
 
-        {/* Main Box Container (Compact h-[520px]) */}
         <div className="flex flex-col md:flex-row h-[520px] rounded-xl bg-[#140e04] border border-amber-500/40 shadow-xl overflow-hidden">
           
-          {/* Left Sidebar: Channels & Friends */}
           <div className="w-full md:w-64 bg-[#0d0902] border-r border-amber-500/30 flex flex-col shrink-0 h-44 md:h-full">
             
             <form onSubmit={handleSendFriendRequest} className="p-2 border-b border-amber-500/20 flex gap-1">
@@ -335,7 +349,6 @@ export default function AsteroidChatPage() {
             </div>
           </div>
 
-          {/* Right Chat Area */}
           <div className="flex-1 flex flex-col min-w-0 bg-[#140e04] h-full">
             <div className="px-4 py-2.5 bg-[#0f0a02] border-b border-amber-500/30 flex items-center gap-2 shrink-0">
               <MessageSquare className="w-4 h-4 text-amber-400" />
@@ -357,7 +370,7 @@ export default function AsteroidChatPage() {
               ) : (
                 messages.map((msg) => {
                   const isMe = currentUser && (msg.user_id === currentUser.id || msg.sender_id === currentUser.id);
-                  const name = activeTab === "global" ? msg.profiles?.username : (isMe ? "You" : activeFriendObj?.username);
+                  const name = activeTab === "global" ? (msg.profiles?.username || currentUser?.email?.split('@')[0]) : (isMe ? "You" : activeFriendObj?.username);
                   
                   const sentTime = new Date(msg.created_at).getTime();
                   const canDelete = isMe && (new Date().getTime() - sentTime) <= (5 * 60 * 1000);
