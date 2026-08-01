@@ -118,7 +118,8 @@ export default function AsteroidChatPage() {
         const { data: prof } = await supabase.from("profiles").select("username, role").eq("id", user.id).single();
         if (prof) {
           setProfileUsername(prof.username);
-          if (prof.role === "moderator" || prof.role === "admin") {
+          // Only owner and moderator roles are checked now
+          if (prof.role === "owner" || prof.role === "moderator") {
             setIsModerator(true);
           }
         }
@@ -224,7 +225,7 @@ export default function AsteroidChatPage() {
     const { error } = await supabase.from("global_chat").delete().gte("created_at", "1970-01-01");
     if (!error) {
       setMessages([]);
-      alert("Global network chat has been completely purged by moderator.");
+      alert("Global network chat has been completely purged.");
     } else {
       alert("Failed to purge global chat.");
     }
@@ -440,8 +441,8 @@ export default function AsteroidChatPage() {
           </div>
           <div className="flex items-center gap-2">
             {isModerator && (
-              <span className="text-[10px] font-mono text-red-400 bg-red-950/60 px-2 py-0.5 rounded border border-red-500/40 font-bold uppercase animate-pulse">
-                Moderator Access
+              <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-500/40 font-bold uppercase animate-pulse">
+                Control Access
               </span>
             )}
             <span className="text-xs font-mono text-emerald-400 bg-emerald-950/60 px-3 py-1 rounded border border-emerald-500/40 flex items-center gap-1">
