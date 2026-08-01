@@ -43,7 +43,7 @@ export default function TermsPage() {
             </h2>
             <div className="pl-5 space-y-2 text-slate-400">
               <p>
-                NexusPlay is provided to users completely free of charge as a community-driven ecosystem. By accessing the platform, you confirm that you satisfy all statutory age restrictions applicable in your region.
+                ASTEROID GAMING-CLOUD is provided to users completely free of charge as a community-driven ecosystem. By accessing the platform, you confirm that you satisfy all statutory age restrictions applicable in your region.
               </p>
             </div>
           </section>
@@ -79,7 +79,7 @@ export default function TermsPage() {
               <div>
                 <strong className="text-slate-200 block mb-1">Ownership:</strong>
                 <p>
-                  You retain ownership of content you upload (such as avatar images in the <code className="text-red-400 font-mono text-xs">avatars</code> storage bucket, highlight videos in the <code className="text-red-400 font-mono text-xs">clips</code> storage bucket, squad details, and real-time chat payloads), granting NexusPlay a non-exclusive license to display them within the platform ecosystem.
+                  You retain ownership of content you upload (such as avatar images in the <code className="text-red-400 font-mono text-xs">avatars</code> storage bucket, highlight videos in the <code className="text-red-400 font-mono text-xs">clips</code> storage bucket, squad details, and real-time chat payloads), granting ASTEROID GAMING-CLOUD a non-exclusive license to display them within the platform ecosystem.
                 </p>
               </div>
               <div>
@@ -126,7 +126,7 @@ export default function TermsPage() {
                 ASTEROID GAMING-CLOUD is provided on an <strong className="text-slate-200">&quot;as-is&quot;</strong> and <strong className="text-slate-200">&quot;as-available&quot;</strong> basis. We provide no warranties regarding absolute server uptime, real-time message delivery speed, video transcoding performance, or permanent data retention.
               </p>
               <p>
-                <strong className="text-red-400">Data Breach & Leak Disclaimer:</strong> While we implement standard enterprise security measures (such as Row Level Security and encrypted auth tokens via Supabase), <strong className="text-slate-200">NexusPlay and its creators are NOT responsible or liable for any data leaks, security breaches, unauthorized database access, or compromise of user information</strong> resulting from malicious cyber-attacks, zero-day vulnerabilities, third-party cloud infrastructure failures (such as Supabase or Vercel), or user negligence in managing credentials.
+                <strong className="text-red-400">Data Breach & Leak Disclaimer:</strong> While we implement standard enterprise security measures (such as Row Level Security and encrypted auth tokens via Supabase), <strong className="text-slate-200">ASTEROID GAMING-CLOUD and its creators are NOT responsible or liable for any data leaks, security breaches, unauthorized database access, or compromise of user information</strong> resulting from malicious cyber-attacks, zero-day vulnerabilities, third-party cloud infrastructure failures (such as Supabase or Vercel), or user negligence in managing credentials.
               </p>
             </div>
           </section>
