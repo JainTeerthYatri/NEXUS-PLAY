@@ -168,7 +168,7 @@ export default function AsteroidChatPage() {
 
         const userSignalChannel = supabase.channel(`user_signal_${user.id}`);
         userSignalChannel
-          .on("broadcast", { event: "call-signal" }, async ({ payload }) => {
+          .on("broadcast", { event: "call-signal" }, async ({ payload }: { payload: any }) => {
             if (payload.action === "offer") {
               setIncomingCall({ callerId: payload.callerId, callerName: payload.callerName, type: payload.type });
             } else if (payload.action === "hangup") {
@@ -249,7 +249,7 @@ export default function AsteroidChatPage() {
         }
       });
 
-      signalingChannelRef.current.on("broadcast", { event: "rtc-signal" }, async ({ payload }) => {
+      signalingChannelRef.current.on("broadcast", { event: "rtc-signal" }, async ({ payload }: { payload: any }) => {
         if (payload.answer) {
           await pc.setRemoteDescription(new RTCSessionDescription(payload.answer));
         } else if (payload.candidate) {
@@ -282,7 +282,7 @@ export default function AsteroidChatPage() {
       stream.getTracks().forEach((track) => pc.addTrack(track, stream));
 
       signalingChannelRef.current = supabase.channel(`call_${targetUserId}_${currentUser.id}`);
-      signalingChannelRef.current.on("broadcast", { event: "rtc-signal" }, async ({ payload }) => {
+      signalingChannelRef.current.on("broadcast", { event: "rtc-signal" }, async ({ payload }: { payload: any }) => {
         if (payload.offer) {
           await pc.setRemoteDescription(new RTCSessionDescription(payload.offer));
           const answer = await pc.createAnswer();
