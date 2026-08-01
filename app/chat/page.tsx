@@ -2,7 +2,7 @@
 import { useEffect, useState, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import Navbar from "@/components/Navbar";
-import { Send, Sparkles, MessageSquare, Globe, UserPlus, Check, Trash2, ShieldCheck, Zap } from "lucide-react";
+import { Send, Sparkles, MessageSquare, Globe, UserPlus, Check, Trash2, ShieldCheck, Zap, Reply, X } from "lucide-react";
 
 export default function AsteroidChatPage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -15,13 +15,23 @@ export default function AsteroidChatPage() {
   const [newMessage, setNewMessage] = useState("");
   const [profileUsername, setProfileUsername] = useState("");
   
+  const [replyingTo, setReplyingTo] = useState<any>(null);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; msg: any } | null>(null);
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const supabase = createClient();
 
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
 
-  // Play futuristic audio notification beep
+  // Close context menu on click outside
+  useEffect(() => {
+    const handleClickOutside = () => setContextMenu(null);
+    window.addEventListener("click", handleClickOutside);
+    return () => window.removeEventListener("click", handleClickOutside);
+  }, []);
+
+  // Play audio notification beep
   const playNotificationSound = () => {
     try {
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
@@ -30,19 +40,17 @@ export default function AsteroidChatPage() {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = "sine";
-      osc.frequency.setValueAtTime(880, ctx.currentTime); // A5 note
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
       gain.gain.setValueAtTime(0.1, ctx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
       osc.connect(gain);
       gain.connect(ctx.destination);
       osc.start();
       osc.stop(ctx.currentTime + 0.3);
-    } catch (e) {
-      // Audio context policy catch
-    }
+    } catch (e) {}
   };
 
-  // 1. Initialize User, Profile & Friends Data
+  // 1. Initialize User & Profile Data
   useEffect(() => {
     async function init() {
       const { data: { user } } = await supabase.auth.getUser();
@@ -129,7 +137,6 @@ export default function AsteroidChatPage() {
     }
   };
 
-  // 3. Accept Friend Request
   const handleAcceptRequest = async (senderId: string) => {
     const { error } = await supabase
       .from("friendships")
@@ -143,7 +150,7 @@ export default function AsteroidChatPage() {
     }
   };
 
-  // 4. Load Messages & Realtime Sync with Audio Alert
+  // 3. Load Messages & Realtime Sync
   useEffect(() => {
     if (!currentUser) return;
 
@@ -151,7 +158,7 @@ export default function AsteroidChatPage() {
       if (activeTab === "global") {
         const { data } = await supabase
           .from("global_chat")
-          .select("id, message, created_at, user_id")
+          .select("*")
           .order("created_at", { ascending: true })
           .limit(100);
 
@@ -224,18 +231,26 @@ export default function AsteroidChatPage() {
     };
   }, [activeTab, currentUser]);
 
-  // 5. Send Message (Supports custom text or ping text)
+  // 4. Send Message with Reply Support
   const sendChatMessage = async (textToSend: string) => {
     if (!textToSend.trim() || !currentUser) return;
+
+    const activeFriendObj = friends.find((f) => f.id === activeTab);
+    const replySenderName = replyingTo
+      ? (replyingTo.user_id === currentUser.id || replyingTo.sender_id === currentUser.id ? "You" : (activeTab === "global" ? replyingTo.profiles?.username : activeFriendObj?.username))
+      : null;
 
     if (activeTab === "global") {
       const { data, error } = await supabase.from("global_chat").insert({
         message: textToSend,
         user_id: currentUser.id,
-      }).select("id, message, created_at, user_id").single();
+        reply_message: replyingTo ? replyingTo.message : null,
+        reply_sender: replySenderName,
+      }).select().single();
 
       if (!error && data) {
         setMessages((prev) => [...prev, { ...data, profiles: { username: profileUsername } }]);
+        setReplyingTo(null);
         scrollToBottom();
       }
     } else {
@@ -243,10 +258,13 @@ export default function AsteroidChatPage() {
         message: textToSend,
         sender_id: currentUser.id,
         receiver_id: activeTab,
+        reply_message: replyingTo ? replyingTo.message : null,
+        reply_sender: replySenderName,
       }).select().single();
 
       if (!error && data) {
         setMessages((prev) => [...prev, data]);
+        setReplyingTo(null);
         scrollToBottom();
       }
     }
@@ -259,7 +277,6 @@ export default function AsteroidChatPage() {
     await sendChatMessage(text);
   };
 
-  // Quick Ping Action Button Trigger
   const handleQuickPing = async () => {
     if (activeTab === "global" || !currentUser) return;
     const friendObj = friends.find((f) => f.id === activeTab);
@@ -267,7 +284,6 @@ export default function AsteroidChatPage() {
     await sendChatMessage(pingText);
   };
 
-  // 6. Delete Message (Within 5 minutes check)
   const handleDeleteMessage = async (msgId: string, createdAt: string) => {
     const sentTime = new Date(createdAt).getTime();
     const nowTime = new Date().getTime();
@@ -314,8 +330,9 @@ export default function AsteroidChatPage() {
           </span>
         </div>
 
-        <div className="flex flex-col md:flex-row h-[520px] rounded-xl bg-[#140e04] border border-amber-500/40 shadow-xl overflow-hidden">
+        <div className="flex flex-col md:flex-row h-[520px] rounded-xl bg-[#140e04] border border-amber-500/40 shadow-xl overflow-hidden relative">
           
+          {/* Left Sidebar */}
           <div className="w-full md:w-64 bg-[#0d0902] border-r border-amber-500/30 flex flex-col shrink-0 h-44 md:h-full">
             
             <form onSubmit={handleSendFriendRequest} className="p-2 border-b border-amber-500/20 flex gap-1">
@@ -380,6 +397,7 @@ export default function AsteroidChatPage() {
             </div>
           </div>
 
+          {/* Right Chat Area */}
           <div className="flex-1 flex flex-col min-w-0 bg-[#140e04] h-full">
             <div className="px-4 py-2.5 bg-[#0f0a02] border-b border-amber-500/30 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2">
@@ -398,6 +416,7 @@ export default function AsteroidChatPage() {
               )}
             </div>
 
+            {/* Messages Scroll Area with Touch Swipe & Right-Click Context Menu */}
             <div
               ref={chatContainerRef}
               tabIndex={0}
@@ -406,41 +425,48 @@ export default function AsteroidChatPage() {
             >
               {messages.length === 0 ? (
                 <div className="text-center py-16 text-amber-200/40 font-mono text-xs">
-                  No transmissions found in this channel.
+                  No transmissions found in this channel. (Right-click or right-swipe any message to reply)
                 </div>
               ) : (
                 messages.map((msg) => {
                   const isMe = currentUser && (msg.user_id === currentUser.id || msg.sender_id === currentUser.id);
                   const name = activeTab === "global" ? (msg.profiles?.username || profileUsername) : (isMe ? "You" : activeFriendObj?.username);
                   
-                  const sentTime = new Date(msg.created_at).getTime();
-                  const canDelete = isMe && (new Date().getTime() - sentTime) <= (5 * 60 * 1000);
-                  const isPing = msg.message?.includes("⚡ URGENT PING");
+                  let touchStartX = 0;
 
                   return (
-                    <div key={msg.id} className={`flex flex-col group ${isMe ? "items-end" : "items-start"}`}>
+                    <div
+                      key={msg.id}
+                      onTouchStart={(e) => { touchStartX = e.touches[0].clientX; }}
+                      onTouchEnd={(e) => {
+                        const diff = e.changedTouches[0].clientX - touchStartX;
+                        if (diff > 50) setReplyingTo(msg);
+                      }}
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        setContextMenu({ x: e.clientX, y: e.clientY, msg });
+                      }}
+                      className={`flex flex-col group relative ${isMe ? "items-end" : "items-start"}`}
+                    >
                       <span className="text-[10px] font-mono text-amber-200/60 mb-0.5 px-1">
                         @{name || "operator"}
                       </span>
+                      
                       <div className="flex items-center gap-2 max-w-[75%]">
-                        {canDelete && (
-                          <button
-                            onClick={() => handleDeleteMessage(msg.id, msg.created_at)}
-                            title="Delete within 5 mins"
-                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-red-400 hover:text-red-300 cursor-pointer"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
                         <div
-                          className={`px-3 py-2 text-xs font-medium break-words ${
-                            isPing
-                              ? "bg-red-600 text-white font-bold border-2 border-yellow-300 animate-pulse rounded-lg"
-                              : isMe
-                              ? "bg-amber-500 text-black rounded-l-lg rounded-br-lg rounded-tr-none"
-                              : "bg-[#1f1606] border border-amber-500/30 text-white rounded-r-lg rounded-bl-lg rounded-tl-none"
+                          className={`px-3 py-2 text-xs font-medium break-words rounded-lg shadow cursor-pointer ${
+                            isMe
+                              ? "bg-amber-500 text-black rounded-tr-none"
+                              : "bg-[#1f1606] border border-amber-500/30 text-white rounded-tl-none"
                           }`}
                         >
+                          {/* Quoted Reply Preview Inside Message if Replied */}
+                          {msg.reply_message && (
+                            <div className="mb-1.5 p-1.5 rounded bg-black/20 border-l-2 border-amber-300 text-[10px] opacity-90">
+                              <span className="font-bold block text-amber-300">@{msg.reply_sender || "operator"}</span>
+                              <span className="truncate block">{msg.reply_message}</span>
+                            </div>
+                          )}
                           {msg.message}
                         </div>
                       </div>
@@ -451,6 +477,22 @@ export default function AsteroidChatPage() {
               <div ref={messagesEndRef} />
             </div>
 
+            {/* Replying Banner Above Input */}
+            {replyingTo && (
+              <div className="px-3 py-1.5 bg-[#1a1205] border-t border-amber-500/30 flex items-center justify-between text-xs text-amber-200 shrink-0">
+                <div className="flex items-center gap-2 truncate">
+                  <Reply className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  <span className="truncate">
+                    Replying to <strong className="text-amber-400">@{replyingTo.user_id === currentUser?.id || replyingTo.sender_id === currentUser?.id ? "You" : (activeTab === "global" ? replyingTo.profiles?.username : activeFriendObj?.username)}</strong>: {replyingTo.message}
+                  </span>
+                </div>
+                <button onClick={() => setReplyingTo(null)} className="p-1 hover:text-white cursor-pointer">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+
+            {/* Input Form */}
             <form onSubmit={handleSendMessage} className="p-2.5 bg-[#0d0902] border-t border-amber-500/30 flex gap-2 shrink-0">
               <input
                 type="text"
@@ -471,6 +513,36 @@ export default function AsteroidChatPage() {
         </div>
 
       </main>
+
+      {/* Right-Click Context Menu Popup */}
+      {contextMenu && (
+        <div
+          style={{ top: contextMenu.y, left: contextMenu.x }}
+          className="fixed z-50 bg-[#1f1606] border border-amber-500/50 rounded-lg shadow-2xl py-1 w-36 text-xs text-slate-200"
+        >
+          <button
+            onClick={() => {
+              setReplyingTo(contextMenu.msg);
+              setContextMenu(null);
+            }}
+            className="w-full text-left px-3 py-2 hover:bg-amber-500/20 flex items-center gap-2 text-amber-300 font-bold cursor-pointer"
+          >
+            <Reply className="w-3.5 h-3.5" /> Reply
+          </button>
+          
+          {currentUser && (contextMenu.msg.user_id === currentUser.id || contextMenu.msg.sender_id === currentUser.id) && (
+            <button
+              onClick={() => {
+                handleDeleteMessage(contextMenu.msg.id, contextMenu.msg.created_at);
+                setContextMenu(null);
+              }}
+              className="w-full text-left px-3 py-2 hover:bg-red-500/20 flex items-center gap-2 text-red-400 font-bold cursor-pointer border-t border-amber-500/20"
+            >
+              <Trash2 className="w-3.5 h-3.5" /> Delete (5m)
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
