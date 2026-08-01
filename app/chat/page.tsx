@@ -92,7 +92,7 @@ export default function AsteroidChatPage() {
 
   // --- WebRTC Call & Screen Share States ---
   const [isInCall, setIsInCall] = useState(false);
-  const [incomingCall, setIncomingCall] = useState<{ callerId: string; callerName: string; type: 'audio' | 'video' } | null>(null);
+  const [incomingCall, setIncomingCall] = useState<{ callerId: string; callerName: string; type: 'audio' | 'video'; offer?: any } | null>(null);
   const [callType, setCallType] = useState<'audio' | 'video'>('audio');
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
@@ -170,7 +170,7 @@ export default function AsteroidChatPage() {
         userSignalChannel
           .on("broadcast", { event: "call-signal" }, async ({ payload }: { payload: any }) => {
             if (payload.action === "offer") {
-              setIncomingCall({ callerId: payload.callerId, callerName: payload.callerName, type: payload.type });
+              setIncomingCall({ callerId: payload.callerId, callerName: payload.callerName, type: payload.type, offer: payload.offer });
             } else if (payload.action === "hangup") {
               endCallCleanup();
             }
@@ -220,97 +220,14 @@ export default function AsteroidChatPage() {
   }
 
   // --- WebRTC Call & Screen Share Handlers ---
-  const startCall = async (type: 'audio' | 'video') => {
-    if (activeTab === "global" || !currentUser) return;
-    setCallType(type);
-    setIsInCall(true);
-
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: type === 'video' });
-      localStreamRef.current = stream;
-      if (localVideoRef.current) localVideoRef.current.srcObject = stream;
-
-      const pc = createPeerConnection(activeTab);
-      peerConnectionRef.current = pc;
-
-      stream.getTracks().forEach((track) => pc.addTrack(track, stream));
-
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-
-      signalingChannelRef.current = supabase.channel(`call_${currentUser.id}_${activeTab}`);
-      signalingChannelRef.current.subscribe(async (status: string) => {
-        if (status === "SUBSCRIBED") {
-          await supabase.channel(`user_signal_${activeTab}`).send({
-            type: "broadcast",
-            event: "call-signal",
-            payload: { action: "offer", callerId: currentUser.id, callerName: profileUsername, type, offer }
-          });
-        }
-      });
-
-      signalingChannelRef.current.on("broadcast", { event: "rtc-signal" }, async ({ payload }: { payload: any }) => {
-        if (payload.answer) {
-          await pc.setRemoteDescription(new RTCSessionDescription(payload.answer));
-        } else if (payload.candidate) {
-          await pc.addIceCandidate(new RTCIceCandidate(payload.candidate));
-        }
-      });
-
-    } catch (e) {
-      console.error("Error starting call:", e);
-      alert("Microphone/Camera access denied or unavailable.");
-      endCallCleanup();
-    }
-  };
-
-  const answerCall = async () => {
-    if (!incomingCall || !currentUser) return;
-    const targetUserId = incomingCall.callerId;
-    setCallType(incomingCall.type);
-    setIsInCall(true);
-    setIncomingCall(null);
-
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: incomingCall.type === 'video' });
-      localStreamRef.current = stream;
-      if (localVideoRef.current) localVideoRef.current.srcObject = stream;
-
-      const pc = createPeerConnection(targetUserId);
-      peerConnectionRef.current = pc;
-
-      stream.getTracks().forEach((track) => pc.addTrack(track, stream));
-
-      signalingChannelRef.current = supabase.channel(`call_${targetUserId}_${currentUser.id}`);
-      signalingChannelRef.current.on("broadcast", { event: "rtc-signal" }, async ({ payload }: { payload: any }) => {
-        if (payload.offer) {
-          await pc.setRemoteDescription(new RTCSessionDescription(payload.offer));
-          const answer = await pc.createAnswer();
-          await pc.setLocalDescription(answer);
-          signalingChannelRef.current.send({
-            type: "broadcast",
-            event: "rtc-signal",
-            payload: { answer }
-          });
-        } else if (payload.candidate) {
-          await pc.addIceCandidate(new RTCIceCandidate(payload.candidate));
-        }
-      }).subscribe();
-
-    } catch (e) {
-      console.error("Error answering call:", e);
-      endCallCleanup();
-    }
-  };
-
-  const createPeerConnection = (remoteUserId: string) => {
+  const createPeerConnection = (channel: any) => {
     const pc = new RTCPeerConnection({
       iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
     });
 
     pc.onicecandidate = (event) => {
-      if (event.candidate && signalingChannelRef.current) {
-        signalingChannelRef.current.send({
+      if (event.candidate && channel) {
+        channel.send({
           type: "broadcast",
           event: "rtc-signal",
           payload: { candidate: event.candidate }
@@ -326,6 +243,118 @@ export default function AsteroidChatPage() {
     };
 
     return pc;
+  };
+
+  const startCall = async (type: 'audio' | 'video') => {
+    if (activeTab === "global" || !currentUser) return;
+    setCallType(type);
+    setIsInCall(true);
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: type === 'video' });
+      localStreamRef.current = stream;
+      if (localVideoRef.current) localVideoRef.current.srcObject = stream;
+
+      const roomId = [currentUser.id, activeTab].sort().join('_');
+      const channel = supabase.channel(`call_room_${roomId}`);
+      signalingChannelRef.current = channel;
+
+      const pc = createPeerConnection(channel);
+      peerConnectionRef.current = pc;
+
+      stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+
+      // Register listener BEFORE subscribing
+      channel.on("broadcast", { event: "rtc-signal" }, async ({ payload }: { payload: any }) => {
+        if (payload.answer) {
+          if (!pc.remoteDescription) {
+            await pc.setRemoteDescription(new RTCSessionDescription(payload.answer));
+          }
+        } else if (payload.candidate) {
+          try {
+            if (pc.remoteDescription) {
+              await pc.addIceCandidate(new RTCIceCandidate(payload.candidate));
+            }
+          } catch (e) {
+            console.error("Error adding ice candidate:", e);
+          }
+        }
+      });
+
+      channel.subscribe(async (status: string) => {
+        if (status === "SUBSCRIBED") {
+          const offer = await pc.createOffer();
+          await pc.setLocalDescription(offer);
+
+          // Notify remote user to open modal and pass the offer
+          await supabase.channel(`user_signal_${activeTab}`).send({
+            type: "broadcast",
+            event: "call-signal",
+            payload: { action: "offer", callerId: currentUser.id, callerName: profileUsername, type, offer }
+          });
+        }
+      });
+
+    } catch (e) {
+      console.error("Error starting call:", e);
+      alert("Microphone/Camera access denied or unavailable.");
+      endCallCleanup();
+    }
+  };
+
+  const answerCall = async () => {
+    if (!incomingCall || !currentUser) return;
+    const callerId = incomingCall.callerId;
+    setCallType(incomingCall.type);
+    setIsInCall(true);
+    const incomingOffer = incomingCall.offer;
+    setIncomingCall(null);
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: incomingCall.type === 'video' });
+      localStreamRef.current = stream;
+      if (localVideoRef.current) localVideoRef.current.srcObject = stream;
+
+      const roomId = [currentUser.id, callerId].sort().join('_');
+      const channel = supabase.channel(`call_room_${roomId}`);
+      signalingChannelRef.current = channel;
+
+      const pc = createPeerConnection(channel);
+      peerConnectionRef.current = pc;
+
+      stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+
+      // Register listener BEFORE subscribing
+      channel.on("broadcast", { event: "rtc-signal" }, async ({ payload }: { payload: any }) => {
+        if (payload.candidate) {
+          try {
+            if (pc.remoteDescription) {
+              await pc.addIceCandidate(new RTCIceCandidate(payload.candidate));
+            }
+          } catch (e) {
+            console.error("Error adding ice candidate:", e);
+          }
+        }
+      });
+
+      channel.subscribe(async (status: string) => {
+        if (status === "SUBSCRIBED" && incomingOffer) {
+          await pc.setRemoteDescription(new RTCSessionDescription(incomingOffer));
+          const answer = await pc.createAnswer();
+          await pc.setLocalDescription(answer);
+
+          channel.send({
+            type: "broadcast",
+            event: "rtc-signal",
+            payload: { answer }
+          });
+        }
+      });
+
+    } catch (e) {
+      console.error("Error answering call:", e);
+      endCallCleanup();
+    }
   };
 
   const toggleScreenShare = async () => {
