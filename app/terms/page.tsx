@@ -16,13 +16,13 @@ export default function TermsPage() {
             <ShieldCheck className="w-3.5 h-3.5" />
             <span>LEGAL_FRAMEWORK // COMPLIANCE</span>
           </div>
-          <h1 className="text-3xl font-black text-white tracking-tight">Comprehensive Terms and Conditions for NexusPlay</h1>
+          <h1 className="text-3xl font-black text-white tracking-tight">Comprehensive Terms and Conditions for ASTEROID GAMING-CLOUD</h1>
           <div className="flex flex-wrap items-center gap-4 mt-2 text-xs font-mono text-slate-400">
             <span className="flex items-center gap-1">
               <Calendar className="w-3.5 h-3.5 text-red-500" /> Effective Date: July 30, 2026
             </span>
             <span>•</span>
-            <span>Platform Name: NexusPlay</span>
+            <span>Platform Name: ASTEROID GAMING-CLOUD</span>
             <span>•</span>
             <span className="text-red-400">Contact Email: jainteerthyarta@gmail.com</span>
           </div>
@@ -30,7 +30,7 @@ export default function TermsPage() {
 
         {/* Introduction Notice */}
         <div className="p-5 rounded-xl bg-[#121216] border border-white/10 text-xs sm:text-sm font-mono text-slate-300 leading-relaxed shadow-inner">
-          Please read these Terms and Conditions (&quot;Terms&quot;) carefully before using NexusPlay. By accessing the website, utilizing the broadcasting studio (/studio), or interacting with our community features, you agree to these Terms.
+          Please read these Terms and Conditions (&quot;Terms&quot;) carefully before using ASTEROID GAMING-CLOUD. By accessing the website, utilizing the broadcasting studio (/studio), or interacting with our community features, you agree to these Terms.
         </div>
 
         {/* Content Sections */}
@@ -106,7 +106,7 @@ export default function TermsPage() {
             </h2>
             <div className="pl-5 space-y-2 text-slate-400">
               <p>
-                NexusPlay integrates a custom Node.js, WebSocket, and FFmpeg streaming utility that permits live transcoding and RTMP forwarding to external destinations and endpoints (such as YouTube).
+                ASTEROID GAMING-CLOUD integrates a custom Node.js, WebSocket, and FFmpeg streaming utility that permits live transcoding and RTMP forwarding to external destinations and endpoints (such as YouTube).
               </p>
               <p>
                 You are solely legally responsible for all audio-visual material broadcasted through your studio session and must ensure complete compliance with third-party platform rules and copyright guidelines.
@@ -123,7 +123,7 @@ export default function TermsPage() {
             </h2>
             <div className="pl-5 space-y-3 text-slate-400">
               <p>
-                NexusPlay is provided on an <strong className="text-slate-200">&quot;as-is&quot;</strong> and <strong className="text-slate-200">&quot;as-available&quot;</strong> basis. We provide no warranties regarding absolute server uptime, real-time message delivery speed, video transcoding performance, or permanent data retention.
+                ASTEROID GAMING-CLOUD is provided on an <strong className="text-slate-200">&quot;as-is&quot;</strong> and <strong className="text-slate-200">&quot;as-available&quot;</strong> basis. We provide no warranties regarding absolute server uptime, real-time message delivery speed, video transcoding performance, or permanent data retention.
               </p>
               <p>
                 <strong className="text-red-400">Data Breach & Leak Disclaimer:</strong> While we implement standard enterprise security measures (such as Row Level Security and encrypted auth tokens via Supabase), <strong className="text-slate-200">NexusPlay and its creators are NOT responsible or liable for any data leaks, security breaches, unauthorized database access, or compromise of user information</strong> resulting from malicious cyber-attacks, zero-day vulnerabilities, third-party cloud infrastructure failures (such as Supabase or Vercel), or user negligence in managing credentials.
@@ -140,7 +140,7 @@ export default function TermsPage() {
             </h2>
             <div className="pl-5 space-y-2 text-slate-400">
               <p>
-                To the maximum extent permitted by applicable law, NexusPlay and its creators shall not be liable for any direct, indirect, incidental, special, or consequential damages resulting from your use of the platform, community interactions, squad matchmaking, data exposures, or live streaming tools.
+                To the maximum extent permitted by applicable law, ASTEROID GAMING-CLOUD and its creators shall not be liable for any direct, indirect, incidental, special, or consequential damages resulting from your use of the platform, community interactions, squad matchmaking, data exposures, or live streaming tools.
               </p>
             </div>
           </section>
