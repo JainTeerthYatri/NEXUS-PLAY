@@ -22,13 +22,13 @@ export default function PrivacyPage() {
               <Calendar className="w-3.5 h-3.5 text-red-500" /> Effective Date: July 30, 2026
             </span>
             <span>•</span>
-            <span>Platform: NexusPlay</span>
+            <span>Platform: ASTEROID GAMING-CLOUD</span>
           </div>
         </div>
 
         {/* Introduction Notice */}
         <div className="p-4 rounded-xl bg-[#121216] border border-white/10 text-xs font-mono text-slate-300 leading-relaxed">
-          Welcome to NexusPlay (&quot;we,&quot; &quot;our,&quot; or &quot;us&quot;). We are committed to protecting your privacy and ensuring that your personal information is handled safely. This Privacy Policy details how we collect, use, store, and secure your data across our Next.js platform, database schemas, storage buckets, and real-time streaming tools.
+          Welcome to ASTEROID GAMING-CLOUD (&quot;we,&quot; &quot;our,&quot; or &quot;us&quot;). We are committed to protecting your privacy and ensuring that your personal information is handled safely. This Privacy Policy details how we collect, use, store, and secure your data across our Next.js platform, database schemas, storage buckets, and real-time streaming tools.
         </div>
 
         {/* Content Sections */}
@@ -86,7 +86,7 @@ export default function PrivacyPage() {
               <span className="text-red-500 font-mono text-xs">04.</span> Age Restrictions & Statutory Privacy Compliance
             </h2>
             <p className="text-slate-400 pl-5">
-              NexusPlay strictly complies with statutory age restriction laws and government digital privacy regulations.
+              ASTEROID GAMING-CLOUD strictly complies with statutory age restriction laws and government digital privacy regulations.
             </p>
             <ul className="list-disc list-inside text-slate-400 pl-5 space-y-1.5">
               <li>Users must meet the minimum legal age limit mandated by their local jurisdiction to register an account and use this platform.</li>
