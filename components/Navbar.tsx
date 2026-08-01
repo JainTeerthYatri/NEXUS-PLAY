@@ -86,7 +86,7 @@ export default function Navbar() {
         <div className="flex items-center gap-6">
           <Link href="/" className="flex items-center gap-2 font-black text-white text-lg tracking-wider shrink-0">
             <span className="w-3 h-3 bg-red-600 rounded-sm inline-block shadow-[0_0_10px_rgba(239,68,68,0.8)]"></span>
-            NEXUS<span className="text-red-500">PLAY</span>
+            ASTEROID<span className="text-red-500">GAMING CLOUD</span>
           </Link>
 
           {/* Desktop Core Links */}
@@ -260,7 +260,7 @@ export default function Navbar() {
               isActive('/studio') ? 'bg-red-950/60 border border-red-500/30 text-red-400 font-bold' : 'text-slate-300 hover:bg-white/5'
             }`}
           >
-            NEXUS Studio
+            ASTEROID Gaming-Cloud
           </Link>
 
           {user && (
