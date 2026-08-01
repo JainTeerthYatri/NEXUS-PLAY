@@ -52,7 +52,7 @@ export default function SignupPage() {
             <UserPlus className="w-6 h-6" />
           </div>
           <h1 className="text-2xl font-black text-white tracking-tight">Create Operator Profile</h1>
-          <p className="text-xs font-mono text-slate-400 mt-1">Register to join the NEXUSPLAY grid</p>
+          <p className="text-xs font-mono text-slate-400 mt-1">Register to join the ASTEROID GAMING-CLOUD grid</p>
         </div>
 
         {errorMsg && (
@@ -88,7 +88,7 @@ export default function SignupPage() {
                 required
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="Nexus Operator"
+                placeholder="ASTEROID GAMING-CLOUD Operator"
                 className="w-full pl-10 pr-3 py-2 rounded bg-black/40 border border-white/10 text-white text-sm focus:border-red-500 outline-none transition-colors [&:-webkit-autofill]:!bg-black [&:-webkit-autofill]:!text-white [&:-webkit-autofill]:[-webkit-box-shadow:0_0_0_1000px_#121216_inset]"
               />
             </div>
