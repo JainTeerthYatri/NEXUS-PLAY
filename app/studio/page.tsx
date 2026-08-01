@@ -17,7 +17,7 @@ export default function StudioPage() {
             <Radio className="w-3.5 h-3.5 text-orange-400" />
             <span>BROADCAST_HUB // MODULE_OFFLINE</span>
           </div>
-          <h1 className="text-3xl font-black text-white tracking-tight">NEXUS Broadcasting Studio</h1>
+          <h1 className="text-3xl font-black text-white tracking-tight">ASTEROID Broadcasting Studio</h1>
           <p className="text-sm text-slate-400 mt-1">
             Professional browser-based broadcasting workspace, WebSocket RTMP streaming bridge, and 16:9 preview canvas.
           </p>
@@ -35,9 +35,9 @@ export default function StudioPage() {
             <span className="px-3 py-1 rounded bg-orange-950/80 border border-orange-500/40 text-xs font-mono text-orange-300 uppercase shadow-[0_0_10px_rgba(249,115,22,0.2)]">
               Coming in a New Software Update
             </span>
-            <h2 className="text-2xl font-bold text-white">NEXUS Studio & Streaming Pipeline</h2>
+            <h2 className="text-2xl font-bold text-white">ASTEROID Studio & Streaming Pipeline</h2>
             <p className="text-sm text-slate-400 leading-relaxed">
-              Because building the NEXUS Studio integration, FFmpeg process spawning, and real-time WebSocket telemetry requires rigorous architecture, this module is locked and scheduled for release in an upcoming software update.
+              Because building the ASTEROID Studio integration, FFmpeg process spawning, and real-time WebSocket telemetry requires rigorous architecture, this module is locked and scheduled for release in an upcoming software update.
             </p>
           </div>
 
