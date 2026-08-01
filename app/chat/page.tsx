@@ -33,7 +33,6 @@ export default function AsteroidChatPage() {
   }, []);
 
   async function fetchFriendsAndRequests(userId: string) {
-    // Fetch accepted friendships
     const { data: rels } = await supabase
       .from("friendships")
       .select("*")
@@ -53,7 +52,6 @@ export default function AsteroidChatPage() {
       }
     }
 
-    // Fetch pending requests received
     const { data: pendings } = await supabase
       .from("friendships")
       .select("id, user_id")
@@ -191,19 +189,33 @@ export default function AsteroidChatPage() {
     };
   }, [activeTab, currentUser]);
 
-  // 5. Send Message
+  // 5. Send Message (TypeScript Type Fixed)
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !currentUser) return;
 
-    const payload = activeTab === "global"
-      ? { message: newMessage.trim(), user_id: currentUser.id }
-      : { message: newMessage.trim(), sender_id: currentUser.id, receiver_id: activeTab };
+    let error = null;
 
-    const tableName = activeTab === "global" ? "global_chat" : "direct_messages";
-    const { error } = await supabase.from(tableName).insert(payload);
+    if (activeTab === "global") {
+      const res = await supabase.from("global_chat").insert({
+        message: newMessage.trim(),
+        user_id: currentUser.id,
+      });
+      error = res.error;
+    } else {
+      const res = await supabase.from("direct_messages").insert({
+        message: newMessage.trim(),
+        sender_id: currentUser.id,
+        receiver_id: activeTab,
+      });
+      error = res.error;
+    }
 
-    if (!error) setNewMessage("");
+    if (error) {
+      alert("Error: " + error.message);
+    } else {
+      setNewMessage("");
+    }
   };
 
   // 6. Delete Message (Within 5 minutes check)
@@ -220,9 +232,7 @@ export default function AsteroidChatPage() {
     const tableName = activeTab === "global" ? "global_chat" : "direct_messages";
     const { error } = await supabase.from(tableName).delete().eq("id", msgId);
 
-    if (error) {
-      alert("Failed to delete transmission: " + error.message);
-    } else {
+    if (!error) {
       setMessages((prev) => prev.filter((m) => m.id !== msgId));
     }
   };
@@ -263,7 +273,6 @@ export default function AsteroidChatPage() {
           {/* Left Sidebar: Channels & Friends */}
           <div className="w-full md:w-64 bg-[#0d0902] border-r border-amber-500/30 flex flex-col shrink-0 h-44 md:h-full">
             
-            {/* Add Friend Input */}
             <form onSubmit={handleSendFriendRequest} className="p-2 border-b border-amber-500/20 flex gap-1">
               <input
                 type="text"
@@ -277,7 +286,6 @@ export default function AsteroidChatPage() {
               </button>
             </form>
 
-            {/* Global Channel Button */}
             <div className="p-2">
               <button
                 onClick={() => setActiveTab("global")}
@@ -289,7 +297,6 @@ export default function AsteroidChatPage() {
               </button>
             </div>
 
-            {/* Pending Requests Notification Section */}
             {pendingRequests.length > 0 && (
               <div className="px-2 pb-2 border-b border-amber-500/20">
                 <span className="text-[10px] font-mono text-yellow-400 font-bold uppercase block mb-1">Pending Requests</span>
@@ -304,7 +311,6 @@ export default function AsteroidChatPage() {
               </div>
             )}
 
-            {/* Friends Direct Message List */}
             <div className="p-2 border-b border-amber-500/20 text-[10px] font-mono text-amber-400 font-bold uppercase">
               Friends DMs
             </div>
@@ -338,7 +344,6 @@ export default function AsteroidChatPage() {
               </span>
             </div>
 
-            {/* Messages Scroll Area with Invisible Scrollbar & Arrow Keys */}
             <div
               ref={chatContainerRef}
               tabIndex={0}
@@ -354,7 +359,6 @@ export default function AsteroidChatPage() {
                   const isMe = currentUser && (msg.user_id === currentUser.id || msg.sender_id === currentUser.id);
                   const name = activeTab === "global" ? msg.profiles?.username : (isMe ? "You" : activeFriendObj?.username);
                   
-                  // 5 minute deletion eligibility check
                   const sentTime = new Date(msg.created_at).getTime();
                   const canDelete = isMe && (new Date().getTime() - sentTime) <= (5 * 60 * 1000);
 
@@ -390,7 +394,6 @@ export default function AsteroidChatPage() {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Input Form */}
             <form onSubmit={handleSendMessage} className="p-2.5 bg-[#0d0902] border-t border-amber-500/30 flex gap-2 shrink-0">
               <input
                 type="text"
