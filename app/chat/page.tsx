@@ -24,14 +24,12 @@ export default function AsteroidChatPage() {
 
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
 
-  // Close context menu on click outside
   useEffect(() => {
     const handleClickOutside = () => setContextMenu(null);
     window.addEventListener("click", handleClickOutside);
     return () => window.removeEventListener("click", handleClickOutside);
   }, []);
 
-  // Play audio notification beep
   const playNotificationSound = () => {
     try {
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
@@ -50,7 +48,6 @@ export default function AsteroidChatPage() {
     } catch (e) {}
   };
 
-  // 1. Initialize User & Profile Data
   useEffect(() => {
     async function init() {
       const { data: { user } } = await supabase.auth.getUser();
@@ -102,7 +99,6 @@ export default function AsteroidChatPage() {
     }
   }
 
-  // 2. Send Friend Request
   const handleSendFriendRequest = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!friendUsernameInput.trim() || !currentUser) return;
@@ -150,7 +146,6 @@ export default function AsteroidChatPage() {
     }
   };
 
-  // 3. Load Messages & Realtime Sync
   useEffect(() => {
     if (!currentUser) return;
 
@@ -231,7 +226,6 @@ export default function AsteroidChatPage() {
     };
   }, [activeTab, currentUser]);
 
-  // 4. Send Message with Reply Support
   const sendChatMessage = async (textToSend: string) => {
     if (!textToSend.trim() || !currentUser) return;
 
@@ -316,34 +310,34 @@ export default function AsteroidChatPage() {
   const activeFriendObj = friends.find((f) => f.id === activeTab);
 
   return (
-    <div className="min-h-screen bg-[#080600] text-slate-100 flex flex-col">
+    <div className="min-h-screen bg-[#020803] text-slate-100 flex flex-col">
       <Navbar />
       <main className="flex-1 max-w-6xl mx-auto px-4 py-4 w-full flex flex-col">
         
-        <div className="mb-4 pb-3 border-b border-amber-500/30 flex items-center justify-between">
+        <div className="mb-4 pb-3 border-b border-emerald-500/30 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-yellow-400 animate-pulse" />
+            <Sparkles className="w-5 h-5 text-emerald-400 animate-pulse" />
             <h1 className="text-lg font-black text-white tracking-tight">ASTEROID GAMING-CLOUD // SECURE COMMS</h1>
           </div>
-          <span className="text-xs font-mono text-amber-400 bg-amber-950/60 px-3 py-1 rounded border border-amber-500/40">
+          <span className="text-xs font-mono text-emerald-400 bg-emerald-950/60 px-3 py-1 rounded border border-emerald-500/40">
             ENCRYPTED
           </span>
         </div>
 
-        <div className="flex flex-col md:flex-row h-[520px] rounded-xl bg-[#140e04] border border-amber-500/40 shadow-xl overflow-hidden relative">
+        <div className="flex flex-col md:flex-row h-[520px] rounded-xl bg-[#061408] border border-emerald-500/40 shadow-xl overflow-hidden relative">
           
           {/* Left Sidebar */}
-          <div className="w-full md:w-64 bg-[#0d0902] border-r border-amber-500/30 flex flex-col shrink-0 h-44 md:h-full">
+          <div className="w-full md:w-64 bg-[#030d04] border-r border-emerald-500/30 flex flex-col shrink-0 h-44 md:h-full">
             
-            <form onSubmit={handleSendFriendRequest} className="p-2 border-b border-amber-500/20 flex gap-1">
+            <form onSubmit={handleSendFriendRequest} className="p-2 border-b border-emerald-500/20 flex gap-1">
               <input
                 type="text"
                 placeholder="Add friend (@username)"
                 value={friendUsernameInput}
                 onChange={(e) => setFriendUsernameInput(e.target.value)}
-                className="w-full px-2 py-1.5 rounded bg-[#080600] border border-amber-500/30 text-xs text-white focus:outline-none focus:border-amber-400"
+                className="w-full px-2 py-1.5 rounded bg-[#020803] border border-emerald-500/30 text-xs text-white focus:outline-none focus:border-emerald-400"
               />
-              <button type="submit" className="p-1.5 bg-amber-500 hover:bg-amber-400 text-black rounded cursor-pointer">
+              <button type="submit" className="p-1.5 bg-emerald-500 hover:bg-emerald-400 text-black rounded cursor-pointer">
                 <UserPlus className="w-4 h-4" />
               </button>
             </form>
@@ -352,7 +346,7 @@ export default function AsteroidChatPage() {
               <button
                 onClick={() => setActiveTab("global")}
                 className={`w-full flex items-center gap-2 px-3 py-1.5 rounded text-xs font-bold ${
-                  activeTab === "global" ? "bg-amber-500 text-black" : "text-slate-300 hover:bg-amber-500/10"
+                  activeTab === "global" ? "bg-emerald-500 text-black" : "text-slate-300 hover:bg-emerald-500/10"
                 }`}
               >
                 <Globe className="w-3.5 h-3.5" /> Global Network
@@ -360,12 +354,12 @@ export default function AsteroidChatPage() {
             </div>
 
             {pendingRequests.length > 0 && (
-              <div className="px-2 pb-2 border-b border-amber-500/20">
-                <span className="text-[10px] font-mono text-yellow-400 font-bold uppercase block mb-1">Pending Requests</span>
+              <div className="px-2 pb-2 border-b border-emerald-500/20">
+                <span className="text-[10px] font-mono text-emerald-300 font-bold uppercase block mb-1">Pending Requests</span>
                 {pendingRequests.map((req) => (
-                  <div key={req.id} className="flex items-center justify-between bg-amber-950/40 p-1.5 rounded mb-1 border border-amber-500/30">
-                    <span className="text-xs text-amber-200 truncate">@{req.username}</span>
-                    <button onClick={() => handleAcceptRequest(req.id)} className="p-1 bg-amber-500 hover:bg-amber-400 text-black rounded text-xs cursor-pointer">
+                  <div key={req.id} className="flex items-center justify-between bg-emerald-950/40 p-1.5 rounded mb-1 border border-emerald-500/30">
+                    <span className="text-xs text-emerald-200 truncate">@{req.username}</span>
+                    <button onClick={() => handleAcceptRequest(req.id)} className="p-1 bg-emerald-500 hover:bg-emerald-400 text-black rounded text-xs cursor-pointer">
                       <Check className="w-3 h-3" />
                     </button>
                   </div>
@@ -373,7 +367,7 @@ export default function AsteroidChatPage() {
               </div>
             )}
 
-            <div className="p-2 border-b border-amber-500/20 text-[10px] font-mono text-amber-400 font-bold uppercase">
+            <div className="p-2 border-b border-emerald-500/20 text-[10px] font-mono text-emerald-400 font-bold uppercase">
               Friends DMs
             </div>
             
@@ -386,10 +380,10 @@ export default function AsteroidChatPage() {
                     key={f.id}
                     onClick={() => setActiveTab(f.id)}
                     className={`w-full flex items-center gap-2 px-3 py-1.5 rounded text-xs ${
-                      activeTab === f.id ? "bg-amber-500/20 border border-amber-500/50 text-amber-300 font-bold" : "text-slate-400 hover:bg-amber-500/10"
+                      activeTab === f.id ? "bg-emerald-500/20 border border-emerald-500/50 text-emerald-300 font-bold" : "text-slate-400 hover:bg-emerald-500/10"
                     }`}
                   >
-                    <ShieldCheck className="w-3.5 h-3.5 text-amber-500" />
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
                     <span className="truncate">@{f.username}</span>
                   </button>
                 ))
@@ -398,10 +392,10 @@ export default function AsteroidChatPage() {
           </div>
 
           {/* Right Chat Area */}
-          <div className="flex-1 flex flex-col min-w-0 bg-[#140e04] h-full">
-            <div className="px-4 py-2.5 bg-[#0f0a02] border-b border-amber-500/30 flex items-center justify-between shrink-0">
+          <div className="flex-1 flex flex-col min-w-0 bg-[#061408] h-full">
+            <div className="px-4 py-2.5 bg-[#040f05] border-b border-emerald-500/30 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2">
-                <MessageSquare className="w-4 h-4 text-amber-400" />
+                <MessageSquare className="w-4 h-4 text-emerald-400" />
                 <span className="font-bold text-xs text-white">
                   {activeTab === "global" ? "global-network" : `@${activeFriendObj?.username || "operator"}`}
                 </span>
@@ -409,14 +403,14 @@ export default function AsteroidChatPage() {
               {activeTab !== "global" && (
                 <button
                   onClick={handleQuickPing}
-                  className="flex items-center gap-1 bg-yellow-500 hover:bg-yellow-400 text-black px-2.5 py-1 rounded text-[11px] font-extrabold cursor-pointer transition-transform active:scale-95"
+                  className="flex items-center gap-1 bg-emerald-500 hover:bg-emerald-400 text-black px-2.5 py-1 rounded text-[11px] font-extrabold cursor-pointer transition-transform active:scale-95"
                 >
                   <Zap className="w-3 h-3 fill-current" /> Ping Alert
                 </button>
               )}
             </div>
 
-            {/* Messages Scroll Area with Touch Swipe & Right-Click Context Menu */}
+            {/* Messages Scroll Area */}
             <div
               ref={chatContainerRef}
               tabIndex={0}
@@ -424,7 +418,7 @@ export default function AsteroidChatPage() {
               className="flex-1 p-4 overflow-y-auto flex flex-col gap-3 focus:outline-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
             >
               {messages.length === 0 ? (
-                <div className="text-center py-16 text-amber-200/40 font-mono text-xs">
+                <div className="text-center py-16 text-emerald-200/40 font-mono text-xs">
                   No transmissions found in this channel. (Right-click or right-swipe any message to reply)
                 </div>
               ) : (
@@ -448,7 +442,7 @@ export default function AsteroidChatPage() {
                       }}
                       className={`flex flex-col group relative ${isMe ? "items-end" : "items-start"}`}
                     >
-                      <span className="text-[10px] font-mono text-amber-200/60 mb-0.5 px-1">
+                      <span className="text-[10px] font-mono text-emerald-200/60 mb-0.5 px-1">
                         @{name || "operator"}
                       </span>
                       
@@ -456,14 +450,13 @@ export default function AsteroidChatPage() {
                         <div
                           className={`px-3 py-2 text-xs font-medium break-words rounded-lg shadow cursor-pointer ${
                             isMe
-                              ? "bg-amber-500 text-black rounded-tr-none"
-                              : "bg-[#1f1606] border border-amber-500/30 text-white rounded-tl-none"
+                              ? "bg-emerald-500 text-black rounded-tr-none"
+                              : "bg-[#081f0b] border border-emerald-500/30 text-white rounded-tl-none"
                           }`}
                         >
-                          {/* Quoted Reply Preview Inside Message if Replied */}
                           {msg.reply_message && (
-                            <div className="mb-1.5 p-1.5 rounded bg-black/20 border-l-2 border-amber-300 text-[10px] opacity-90">
-                              <span className="font-bold block text-amber-300">@{msg.reply_sender || "operator"}</span>
+                            <div className="mb-1.5 p-1.5 rounded bg-black/20 border-l-2 border-emerald-300 text-[10px] opacity-90">
+                              <span className="font-bold block text-emerald-300">@{msg.reply_sender || "operator"}</span>
                               <span className="truncate block">{msg.reply_message}</span>
                             </div>
                           )}
@@ -479,11 +472,11 @@ export default function AsteroidChatPage() {
 
             {/* Replying Banner Above Input */}
             {replyingTo && (
-              <div className="px-3 py-1.5 bg-[#1a1205] border-t border-amber-500/30 flex items-center justify-between text-xs text-amber-200 shrink-0">
+              <div className="px-3 py-1.5 bg-[#071a09] border-t border-emerald-500/30 flex items-center justify-between text-xs text-emerald-200 shrink-0">
                 <div className="flex items-center gap-2 truncate">
-                  <Reply className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  <Reply className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                   <span className="truncate">
-                    Replying to <strong className="text-amber-400">@{replyingTo.user_id === currentUser?.id || replyingTo.sender_id === currentUser?.id ? "You" : (activeTab === "global" ? replyingTo.profiles?.username : activeFriendObj?.username)}</strong>: {replyingTo.message}
+                    Replying to <strong className="text-emerald-400">@{replyingTo.user_id === currentUser?.id || replyingTo.sender_id === currentUser?.id ? "You" : (activeTab === "global" ? replyingTo.profiles?.username : activeFriendObj?.username)}</strong>: {replyingTo.message}
                   </span>
                 </div>
                 <button onClick={() => setReplyingTo(null)} className="p-1 hover:text-white cursor-pointer">
@@ -493,17 +486,17 @@ export default function AsteroidChatPage() {
             )}
 
             {/* Input Form */}
-            <form onSubmit={handleSendMessage} className="p-2.5 bg-[#0d0902] border-t border-amber-500/30 flex gap-2 shrink-0">
+            <form onSubmit={handleSendMessage} className="p-2.5 bg-[#030d04] border-t border-emerald-500/30 flex gap-2 shrink-0">
               <input
                 type="text"
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
                 placeholder={activeTab === "global" ? "Broadcast to global network..." : `Message @${activeFriendObj?.username}...`}
-                className="flex-1 px-3 py-2 rounded bg-[#080600] border border-amber-500/30 text-white text-xs focus:border-yellow-400 outline-none"
+                className="flex-1 px-3 py-2 rounded bg-[#020803] border border-emerald-500/30 text-white text-xs focus:border-emerald-400 outline-none"
               />
               <button
                 type="submit"
-                className="px-4 py-2 rounded bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs flex items-center gap-1 cursor-pointer"
+                className="px-4 py-2 rounded bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-xs flex items-center gap-1 cursor-pointer"
               >
                 <Send className="w-3.5 h-3.5" /> Send
               </button>
@@ -518,14 +511,14 @@ export default function AsteroidChatPage() {
       {contextMenu && (
         <div
           style={{ top: contextMenu.y, left: contextMenu.x }}
-          className="fixed z-50 bg-[#1f1606] border border-amber-500/50 rounded-lg shadow-2xl py-1 w-36 text-xs text-slate-200"
+          className="fixed z-50 bg-[#081f0b] border border-emerald-500/50 rounded-lg shadow-2xl py-1 w-36 text-xs text-slate-200"
         >
           <button
             onClick={() => {
               setReplyingTo(contextMenu.msg);
               setContextMenu(null);
             }}
-            className="w-full text-left px-3 py-2 hover:bg-amber-500/20 flex items-center gap-2 text-amber-300 font-bold cursor-pointer"
+            className="w-full text-left px-3 py-2 hover:bg-emerald-500/20 flex items-center gap-2 text-emerald-300 font-bold cursor-pointer"
           >
             <Reply className="w-3.5 h-3.5" /> Reply
           </button>
@@ -536,7 +529,7 @@ export default function AsteroidChatPage() {
                 handleDeleteMessage(contextMenu.msg.id, contextMenu.msg.created_at);
                 setContextMenu(null);
               }}
-              className="w-full text-left px-3 py-2 hover:bg-red-500/20 flex items-center gap-2 text-red-400 font-bold cursor-pointer border-t border-amber-500/20"
+              className="w-full text-left px-3 py-2 hover:bg-red-500/20 flex items-center gap-2 text-red-400 font-bold cursor-pointer border-t border-emerald-500/20"
             >
               <Trash2 className="w-3.5 h-3.5" /> Delete (5m)
             </button>
