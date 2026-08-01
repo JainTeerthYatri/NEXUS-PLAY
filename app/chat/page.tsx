@@ -11,6 +11,7 @@ export default function DiscordStyleChatPage() {
   const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
 
   const supabase = createClient();
 
@@ -25,7 +26,6 @@ export default function DiscordStyleChatPage() {
       setCurrentUser(user);
 
       if (user) {
-        // Fetch other users for DM list
         const { data: allProfiles } = await supabase
           .from("profiles")
           .select("id, username, display_name")
@@ -43,7 +43,6 @@ export default function DiscordStyleChatPage() {
 
     async function fetchMessages() {
       if (activeTab === "global") {
-        // Fetch Global Chat
         const { data } = await supabase
           .from("global_chat")
           .select("id, message, created_at, user_id")
@@ -64,7 +63,6 @@ export default function DiscordStyleChatPage() {
           setMessages(withProfiles);
         }
       } else {
-        // Fetch DMs between currentUser and activeTab (receiver)
         const { data } = await supabase
           .from("direct_messages")
           .select("*")
@@ -78,7 +76,6 @@ export default function DiscordStyleChatPage() {
 
     fetchMessages();
 
-    // Realtime subscriptions
     let channel: any;
     if (activeTab === "global") {
       channel = supabase
@@ -136,6 +133,18 @@ export default function DiscordStyleChatPage() {
     setNewMessage("");
   };
 
+  // 4. Keyboard Arrow Up / Down Handler for PC
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!chatContainerRef.current) return;
+    if (e.key === "ArrowUp") {
+      chatContainerRef.current.scrollTop -= 50;
+      e.preventDefault();
+    } else if (e.key === "ArrowDown") {
+      chatContainerRef.current.scrollTop += 50;
+      e.preventDefault();
+    }
+  };
+
   const activeUserObj = profiles.find((p) => p.id === activeTab);
 
   return (
@@ -158,7 +167,7 @@ export default function DiscordStyleChatPage() {
         {/* Discord Style Container */}
         <div className="flex-1 flex rounded-xl bg-[#140e04] border border-amber-500/40 shadow-[0_0_20px_rgba(251,191,36,0.1)] overflow-hidden min-h-0">
           
-          {/* Left Sidebar (Channels & DMs) */}
+          {/* Left Sidebar */}
           <div className="w-64 bg-[#0d0902] border-r border-amber-500/30 flex flex-col shrink-0">
             <div className="p-3 border-b border-amber-500/20 text-xs font-mono text-amber-400 font-bold uppercase tracking-wider">
               Channels
@@ -179,7 +188,8 @@ export default function DiscordStyleChatPage() {
               Direct Messages
             </div>
 
-            <div className="flex-1 overflow-y-auto p-2 space-y-1">
+            {/* Invisible Scrollbar for Sidebar User List */}
+            <div className="flex-1 overflow-y-auto p-2 space-y-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
               {profiles.length === 0 ? (
                 <p className="text-xs text-slate-500 p-2 font-mono">No other operators online.</p>
               ) : (
@@ -213,8 +223,13 @@ export default function DiscordStyleChatPage() {
               </span>
             </div>
 
-            {/* Messages Scroll Area */}
-            <div className="flex-1 p-4 overflow-y-auto flex flex-col gap-3">
+            {/* Messages Scroll Area with Invisible Scrollbar & Arrow Key Support */}
+            <div 
+              ref={chatContainerRef}
+              tabIndex={0}
+              onKeyDown={handleKeyDown}
+              className="flex-1 p-4 overflow-y-auto flex flex-col gap-3 focus:outline-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+            >
               {messages.length === 0 ? (
                 <div className="text-center py-20 text-amber-200/40 font-mono text-xs">
                   {activeTab === "global" ? "No transmissions on global network yet." : "No private messages yet. Send a transmission below!"}
