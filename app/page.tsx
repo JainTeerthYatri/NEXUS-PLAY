@@ -51,7 +51,7 @@ export default function LandingPage() {
 
     setCanvasDimensions();
 
-    const letters = "0101010101XYZTECHMATRIX_NEXUSPLAY";
+    const letters = "0101010101XYZTECHMATRIX_ASTEROIDGAMINGCLOUD";
     const fontSize = 14;
     let columns = Math.floor(canvas.width / fontSize);
     let drops: number[] = Array.from({ length: columns }).fill(1) as number[];
@@ -194,7 +194,7 @@ export default function LandingPage() {
             
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-md bg-[#0a0a0c]/80 border border-emerald-500/40 text-xs font-mono text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.15)] backdrop-blur-md">
               <Terminal className="w-3.5 h-3.5 animate-pulse" />
-              <span>NEXUS PLAY PLATFORM v1.0 // SECURE_MATRIX</span>
+              <span>ASTEROID GAMNG-CLOUD PLATFORM v1.0 // SECURE_MATRIX</span>
             </div>
 
             <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.1] text-white">
