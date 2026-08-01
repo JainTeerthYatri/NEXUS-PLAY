@@ -16,13 +16,13 @@ export default function CookiePolicyPage() {
             <ShieldCheck className="w-3.5 h-3.5" />
             <span>LEGAL_FRAMEWORK // COOKIE_POLICY</span>
           </div>
-          <h1 className="text-3xl font-black text-white tracking-tight">Cookie Policy for NexusPlay</h1>
+          <h1 className="text-3xl font-black text-white tracking-tight">Cookie Policy for ASTEROID GAMING-CLOUD</h1>
           <div className="flex flex-wrap items-center gap-4 mt-2 text-xs font-mono text-slate-400">
             <span className="flex items-center gap-1">
               <Calendar className="w-3.5 h-3.5 text-red-500" /> Effective Date: July 30, 2026
             </span>
             <span>•</span>
-            <span>Platform Name: NexusPlay</span>
+            <span>Platform Name: ASTEROID GAMING-CLOUD</span>
             <span>•</span>
             <span className="text-red-400">Contact Email: jainteerthyarta@gmail.com</span>
           </div>
@@ -30,7 +30,7 @@ export default function CookiePolicyPage() {
 
         {/* Introduction Notice */}
         <div className="p-5 rounded-xl bg-[#121216] border border-white/10 text-xs sm:text-sm font-mono text-slate-300 leading-relaxed shadow-inner">
-          This Cookie Policy explains how NexusPlay uses cookies and local storage tokens during your visit across our platform, community clips vault, LFG matrix, and live broadcasting studio.
+          This Cookie Policy explains how ASTEROID GAMING-CLOUD uses cookies and local storage tokens during your visit across our platform, community clips vault, LFG matrix, and live broadcasting studio.
         </div>
 
         {/* Content Sections */}
@@ -53,7 +53,7 @@ export default function CookiePolicyPage() {
           {/* Section 2 */}
           <section className="space-y-3">
             <h2 className="text-white font-bold text-base flex items-center gap-2">
-              <span className="text-red-500 font-mono text-xs">02.</span> Cookies and Storage Used by NexusPlay
+              <span className="text-red-500 font-mono text-xs">02.</span> Cookies and Storage Used by ASTEROID GAMING-CLOUD
             </h2>
             <div className="pl-5 space-y-3 text-slate-400">
               <p>
