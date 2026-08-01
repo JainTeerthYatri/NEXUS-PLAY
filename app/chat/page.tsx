@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/client";
 import Navbar from "@/components/Navbar";
 import { Send, Sparkles, MessageSquare, Globe, UserPlus, Check, Trash2, ShieldCheck, Reply, X, Search, ShieldAlert, Lock } from "lucide-react";
 
-// --- E2EE Crypto Helpers using Web Crypto API ---
+// --- E2EE Alphanumeric Crypto Helpers using Web Crypto API ---
 async function getSharedKey(userId1: string, userId2: string) {
   const sortedIds = [userId1, userId2].sort().join("_");
   const enc = new TextEncoder();
@@ -29,6 +29,18 @@ async function getSharedKey(userId1: string, userId2: string) {
   );
 }
 
+// Convert Uint8Array to Pure Alphanumeric Hex String
+function arrayToHex(arr: Uint8Array) {
+  return Array.from(arr).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Convert Hex String back to Uint8Array
+function hexToArray(hex: string) {
+  const matches = hex.match(/.{1,2}/g);
+  if (!matches) return new Uint8Array(0);
+  return new Uint8Array(matches.map(byte => parseInt(byte, 16)));
+}
+
 async function encryptText(text: string, key: CryptoKey) {
   const enc = new TextEncoder();
   const iv = window.crypto.getRandomValues(new Uint8Array(12));
@@ -37,20 +49,28 @@ async function encryptText(text: string, key: CryptoKey) {
     key,
     enc.encode(text)
   );
-  return JSON.stringify({
-    iv: Array.from(iv),
-    data: Array.from(new Uint8Array(encrypted)),
-  });
+
+  // Combine IV (12 bytes) and Encrypted Payload into single buffer
+  const combined = new Uint8Array(iv.length + encrypted.byteLength);
+  combined.set(iv, 0);
+  combined.set(new Uint8Array(encrypted), iv.length);
+
+  // Returns a pure alphanumeric hex ciphertext string
+  return arrayToHex(combined);
 }
 
-async function decryptText(ciphertextJson: string, key: CryptoKey) {
+async function decryptText(hexCiphertext: string, key: CryptoKey) {
   try {
-    const parsed = JSON.parse(ciphertextJson);
-    if (!parsed.iv || !parsed.data) return ciphertextJson;
+    const combined = hexToArray(hexCiphertext);
+    if (combined.length < 12) return hexCiphertext;
+    
+    const iv = combined.slice(0, 12);
+    const data = combined.slice(12);
+
     const decrypted = await window.crypto.subtle.decrypt(
-      { name: "AES-GCM", iv: new Uint8Array(parsed.iv) },
+      { name: "AES-GCM", iv },
       key,
-      new Uint8Array(parsed.data)
+      data
     );
     return new TextDecoder().decode(decrypted);
   } catch (e) {
@@ -118,7 +138,6 @@ export default function AsteroidChatPage() {
         const { data: prof } = await supabase.from("profiles").select("username, role").eq("id", user.id).single();
         if (prof) {
           setProfileUsername(prof.username);
-          // Only owner and moderator roles are checked now
           if (prof.role === "owner" || prof.role === "moderator") {
             setIsModerator(true);
           }
@@ -446,7 +465,7 @@ export default function AsteroidChatPage() {
               </span>
             )}
             <span className="text-xs font-mono text-emerald-400 bg-emerald-950/60 px-3 py-1 rounded border border-emerald-500/40 flex items-center gap-1">
-              <Lock className="w-3 h-3" /> E2EE ACTIVE
+              <Lock className="w-3 h-3" /> E2EE ACTIVE (HEX)
             </span>
           </div>
         </div>
@@ -562,7 +581,7 @@ export default function AsteroidChatPage() {
                   </button>
                 )}
                 <span className="text-[10px] text-emerald-400 font-mono bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-500/30 flex items-center gap-1">
-                  <Lock className="w-2.5 h-2.5" /> {activeTab === "global" ? "Public Channel" : "End-to-End Encrypted"}
+                  <Lock className="w-2.5 h-2.5" /> {activeTab === "global" ? "Public Channel" : "Alphanumeric Encrypted"}
                 </span>
               </div>
             </div>
