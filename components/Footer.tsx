@@ -8,7 +8,7 @@ export default function Footer() {
         
         <div className="flex items-center gap-2">
           <Shield className="w-4 h-4 text-red-500" />
-          <span className="text-slate-300 font-bold">NEXUSPLAY GRID</span>
+          <span className="text-slate-300 font-bold">ASTEROIDCLOUD GRID</span>
           <span className="text-slate-600">|</span>
           <span>© 2026 All Rights Reserved</span>
         </div>
