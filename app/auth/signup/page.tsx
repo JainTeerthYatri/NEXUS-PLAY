@@ -22,8 +22,8 @@ export default function SignupPage() {
     e.preventDefault();
     setErrorMsg("");
 
-    if (!acceptTerms) {
-      setErrorMsg("You must accept the Terms and Conditions to register.");
+    if (!acceptTerms || !acceptCookies) {
+      setErrorMsg("You must accept both the Terms & Conditions and Cookies Policy to register.");
       return;
     }
 
@@ -137,7 +137,7 @@ export default function SignupPage() {
                 className="mt-0.5 rounded border-white/20 bg-black/50 text-red-600 focus:ring-0 cursor-pointer"
               />
               <span>
-                I agree to the <Link href="/terms" target="_blank" className="text-red-400 underline hover:text-red-300">Terms & Conditions</Link> and platform rules.
+                I agree to the <Link href="/terms" target="_blank" className="text-red-400 underline hover:text-red-300">Terms & Conditions</Link> and platform rules. <span className="text-red-500">*</span>
               </span>
             </label>
 
@@ -150,15 +150,15 @@ export default function SignupPage() {
                 className="mt-0.5 rounded border-white/20 bg-black/50 text-red-600 focus:ring-0 cursor-pointer"
               />
               <span>
-                I accept the use of <Link href="/cookies" target="_blank" className="text-red-400 underline hover:text-red-300">Cookies & Privacy Policy</Link> for session tracking.
+                I accept the use of <Link href="/cookies" target="_blank" className="text-red-400 underline hover:text-red-300">Cookies & Privacy Policy</Link> for session tracking. <span className="text-red-500">*</span>
               </span>
             </label>
           </div>
 
           <button 
             type="submit"
-            disabled={loading}
-            className="w-full py-2.5 rounded bg-red-600 hover:bg-red-500 text-white font-bold text-sm transition-colors flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(239,68,68,0.2)] disabled:opacity-50 mt-4 cursor-pointer"
+            disabled={loading || !acceptTerms || !acceptCookies}
+            className="w-full py-2.5 rounded bg-red-600 hover:bg-red-500 text-white font-bold text-sm transition-colors flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(239,68,68,0.2)] disabled:opacity-50 disabled:cursor-not-allowed mt-4 cursor-pointer"
           >
             <span>{loading ? "Registering..." : "Register Profile"}</span>
             <ArrowRight className="w-4 h-4" />
