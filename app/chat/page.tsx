@@ -151,10 +151,10 @@ export default function DiscordStyleChatPage() {
     <div className="min-h-screen bg-[#080600] text-slate-100 flex flex-col">
       <Navbar />
 
-      <main className="flex-1 max-w-6xl mx-auto px-4 py-6 w-full flex flex-col h-[calc(100vh-80px)]">
+      <main className="flex-1 max-w-6xl mx-auto px-4 py-6 w-full flex flex-col">
         
         {/* Header Title */}
-        <div className="mb-4 pb-3 border-b border-amber-500/30 flex items-center justify-between shrink-0">
+        <div className="mb-6 pb-3 border-b border-amber-500/30 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-yellow-400 animate-pulse" />
             <h1 className="text-xl font-black text-white tracking-tight">ASTEROID GAMING-CLOUD // COMMUNICATIONS</h1>
@@ -164,11 +164,11 @@ export default function DiscordStyleChatPage() {
           </span>
         </div>
 
-        {/* Discord Style Container */}
-        <div className="flex-1 flex rounded-xl bg-[#140e04] border border-amber-500/40 shadow-[0_0_20px_rgba(251,191,36,0.1)] overflow-hidden min-h-0">
+        {/* Discord Style Container with Fixed Height Box (h-[600px]) */}
+        <div className="flex flex-col md:flex-row h-[600px] rounded-xl bg-[#140e04] border border-amber-500/40 shadow-[0_0_20px_rgba(251,191,36,0.1)] overflow-hidden">
           
           {/* Left Sidebar */}
-          <div className="w-64 bg-[#0d0902] border-r border-amber-500/30 flex flex-col shrink-0">
+          <div className="w-full md:w-64 bg-[#0d0902] border-r border-amber-500/30 flex flex-col shrink-0 h-48 md:h-full">
             <div className="p-3 border-b border-amber-500/20 text-xs font-mono text-amber-400 font-bold uppercase tracking-wider">
               Channels
             </div>
@@ -184,11 +184,11 @@ export default function DiscordStyleChatPage() {
               </button>
             </div>
 
-            <div className="p-3 border-y border-amber-500/20 text-xs font-mono text-amber-400 font-bold uppercase tracking-wider mt-2">
+            <div className="p-3 border-y border-amber-500/20 text-xs font-mono text-amber-400 font-bold uppercase tracking-wider mt-1">
               Direct Messages
             </div>
 
-            {/* Invisible Scrollbar for Sidebar User List */}
+            {/* Invisible Scrollbar for User List */}
             <div className="flex-1 overflow-y-auto p-2 space-y-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
               {profiles.length === 0 ? (
                 <p className="text-xs text-slate-500 p-2 font-mono">No other operators online.</p>
@@ -210,7 +210,7 @@ export default function DiscordStyleChatPage() {
           </div>
 
           {/* Right Chat Area */}
-          <div className="flex-1 flex flex-col min-w-0 bg-[#140e04]">
+          <div className="flex-1 flex flex-col min-w-0 bg-[#140e04] h-full">
             
             {/* Chat Top Bar */}
             <div className="px-4 py-3 bg-[#0f0a02] border-b border-amber-500/30 flex items-center gap-2 shrink-0">
@@ -218,7 +218,7 @@ export default function DiscordStyleChatPage() {
               <span className="font-bold text-sm text-white">
                 {activeTab === "global" ? "global-network" : `@${activeUserObj?.username || "operator"}`}
               </span>
-              <span className="text-xs text-slate-400 font-mono ml-2">
+              <span className="text-xs text-slate-400 font-mono ml-2 hidden sm:inline">
                 {activeTab === "global" ? "— Public frequency for all operators" : `— Secure private transmission`}
               </span>
             </div>
