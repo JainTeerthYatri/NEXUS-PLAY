@@ -115,7 +115,7 @@ export default function GlobalChatPage() {
         {/* Chat Box Container */}
         <div className="flex-1 flex flex-col rounded-xl bg-[#140e04] border border-amber-500/40 shadow-[0_0_20px_rgba(251,191,36,0.1)] overflow-hidden min-h-0">
           
-          {/* Messages List Area (Scrollable with fixed inner bounds) */}
+          {/* Messages List Area (Scrollable with proper bounds) */}
           <div className="flex-1 p-4 overflow-y-auto flex flex-col gap-3 min-h-0">
             {messages.length === 0 ? (
               <div className="text-center py-20 text-amber-200/40 font-mono text-xs">
