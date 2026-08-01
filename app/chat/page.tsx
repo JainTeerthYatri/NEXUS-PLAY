@@ -96,10 +96,10 @@ export default function GlobalChatPage() {
     <div className="min-h-screen bg-[#080600] text-slate-100 flex flex-col">
       <Navbar />
 
-      <main className="flex-1 max-w-4xl mx-auto px-4 py-8 w-full flex flex-col h-[calc(100vh-80px)]">
+      <main className="flex-1 max-w-4xl mx-auto px-4 py-8 w-full flex flex-col h-[calc(100vh-80px)] overflow-hidden">
         
         {/* Header */}
-        <div className="mb-4 pb-4 border-b border-amber-500/30 flex items-center justify-between">
+        <div className="mb-4 pb-4 border-b border-amber-500/30 flex items-center justify-between shrink-0">
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-[#161004] border border-amber-500/50 text-xs font-mono text-amber-300 mb-1 shadow-[0_0_15px_rgba(251,191,36,0.15)]">
               <Sparkles className="w-3.5 h-3.5 text-yellow-400 animate-pulse" />
@@ -113,10 +113,10 @@ export default function GlobalChatPage() {
         </div>
 
         {/* Chat Box Container */}
-        <div className="flex-1 flex flex-col rounded-xl bg-[#140e04] border border-amber-500/40 shadow-[0_0_20px_rgba(251,191,36,0.1)] overflow-hidden">
+        <div className="flex-1 flex flex-col rounded-xl bg-[#140e04] border border-amber-500/40 shadow-[0_0_20px_rgba(251,191,36,0.1)] overflow-hidden min-h-0">
           
-          {/* Messages List Area */}
-          <div className="flex-1 p-4 overflow-y-auto flex flex-col gap-3">
+          {/* Messages List Area (Scrollable with fixed inner bounds) */}
+          <div className="flex-1 p-4 overflow-y-auto flex flex-col gap-3 min-h-0">
             {messages.length === 0 ? (
               <div className="text-center py-20 text-amber-200/40 font-mono text-xs">
                 No transmissions on the global network yet. Send the first message below!
@@ -144,7 +144,7 @@ export default function GlobalChatPage() {
           </div>
 
           {/* Input Form */}
-          <form onSubmit={handleSendMessage} className="p-3 bg-[#0d0902] border-t border-amber-500/30 flex gap-2">
+          <form onSubmit={handleSendMessage} className="p-3 bg-[#0d0902] border-t border-amber-500/30 flex gap-2 shrink-0">
             <input
               type="text"
               value={newMessage}
