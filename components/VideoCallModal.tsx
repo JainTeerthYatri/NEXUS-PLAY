@@ -52,7 +52,6 @@ export default function VideoCallModal({ currentUser, targetFriend, isCaller, on
         if (payload.sdp) {
           await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
           
-          // Process queued ICE candidates once remote description is set
           while (iceCandidateQueue.current.length > 0) {
             const candidate = iceCandidateQueue.current.shift();
             try {
@@ -102,8 +101,10 @@ export default function VideoCallModal({ currentUser, targetFriend, isCaller, on
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       setLocalStream(stream);
+      
       if (localVideoRef.current) {
         localVideoRef.current.srcObject = stream;
+        localVideoRef.current.play().catch(err => console.log("Local video play error:", err));
       }
 
       const pc = new RTCPeerConnection(servers);
@@ -112,9 +113,11 @@ export default function VideoCallModal({ currentUser, targetFriend, isCaller, on
       stream.getTracks().forEach((track) => pc.addTrack(track, stream));
 
       pc.ontrack = (event) => {
-        setRemoteStream(event.streams[0]);
+        const incomingStream = event.streams[0];
+        setRemoteStream(incomingStream);
         if (remoteVideoRef.current) {
-          remoteVideoRef.current.srcObject = event.streams[0];
+          remoteVideoRef.current.srcObject = incomingStream;
+          remoteVideoRef.current.play().catch(err => console.log("Remote video play error:", err));
         }
         setCallStatus("Connected");
       };
@@ -129,6 +132,7 @@ export default function VideoCallModal({ currentUser, targetFriend, isCaller, on
         }
       };
     } catch (error) {
+      console.error("Media devices error:", error);
       alert("Could not access camera/microphone. Check permissions.");
       onClose();
     }
@@ -160,7 +164,7 @@ export default function VideoCallModal({ currentUser, targetFriend, isCaller, on
   };
 
   const toggleVideo = () => {
-    if (localStream) {
+    if (localStream && !isScreenSharing) {
       localStream.getVideoTracks().forEach((track) => {
         track.enabled = !track.enabled;
       });
@@ -174,16 +178,17 @@ export default function VideoCallModal({ currentUser, targetFriend, isCaller, on
       if (!pc) return;
 
       if (!isScreenSharing) {
-        const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+        const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
         const screenTrack = screenStream.getVideoTracks()[0];
 
         const sender = pc.getSenders().find((s) => s.track && s.track.kind === "video");
         if (sender) {
-          sender.replaceTrack(screenTrack);
+          await sender.replaceTrack(screenTrack);
         }
 
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = screenStream;
+          localVideoRef.current.play().catch(err => console.log("Screen share play error:", err));
         }
 
         screenTrack.onended = () => {
@@ -205,12 +210,13 @@ export default function VideoCallModal({ currentUser, targetFriend, isCaller, on
       const pc = peerConnectionRef.current;
       if (pc) {
         const sender = pc.getSenders().find((s) => s.track && s.track.kind === "video");
-        if (sender) {
-          sender.replaceTrack(videoTrack);
+        if (sender && videoTrack) {
+          await sender.replaceTrack(videoTrack);
         }
       }
       if (localVideoRef.current) {
         localVideoRef.current.srcObject = localStream;
+        localVideoRef.current.play().catch(err => console.log("Local video restore play error:", err));
       }
       setIsScreenSharing(false);
     }
@@ -261,6 +267,11 @@ export default function VideoCallModal({ currentUser, targetFriend, isCaller, on
         {/* Local Video (You) */}
         <div className="relative bg-[#040f05] rounded-xl border border-emerald-500/40 overflow-hidden flex items-center justify-center">
           <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover scale-x-[-1]" />
+          {isVideoOff && !isScreenSharing && (
+            <div className="absolute inset-0 bg-[#040f05] flex items-center justify-center text-xs text-emerald-400 font-mono">
+              Camera Off
+            </div>
+          )}
           <span className="absolute bottom-2 left-2 bg-black/60 px-2 py-0.5 rounded text-[10px] font-mono text-emerald-300">
             You {isScreenSharing && "(Screen Sharing)"}
           </span>
