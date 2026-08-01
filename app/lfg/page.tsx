@@ -577,7 +577,7 @@ export default function LfgBoardPage() {
                     required
                     value={contactInfo}
                     onChange={(e) => setContactInfo(e.target.value)}
-                    placeholder="e.g., discord.gg/nexusplay or #tag"
+                    placeholder="e.g., discord.gg/ASTEROID GAMING-CLOUD or #tag"
                     className="w-full px-3 py-2 rounded bg-black/40 border border-white/10 text-white text-sm focus:border-violet-500 outline-none"
                   />
                 </div>
