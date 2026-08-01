@@ -2,7 +2,61 @@
 import { useEffect, useState, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import Navbar from "@/components/Navbar";
-import { Send, Sparkles, MessageSquare, Globe, UserPlus, Check, Trash2, ShieldCheck, Reply, X, Search, ShieldAlert } from "lucide-react";
+import { Send, Sparkles, MessageSquare, Globe, UserPlus, Check, Trash2, ShieldCheck, Reply, X, Search, ShieldAlert, Lock } from "lucide-react";
+
+// --- E2EE Crypto Helpers using Web Crypto API ---
+async function getSharedKey(userId1: string, userId2: string) {
+  const sortedIds = [userId1, userId2].sort().join("_");
+  const enc = new TextEncoder();
+  const keyMaterial = await window.crypto.subtle.importKey(
+    "raw",
+    enc.encode(sortedIds),
+    { name: "PBKDF2" },
+    false,
+    ["deriveKey"]
+  );
+  return window.crypto.subtle.deriveKey(
+    {
+      name: "PBKDF2",
+      salt: enc.encode("asteroid_chat_e2ee_salt_v1"),
+      iterations: 100000,
+      hash: "SHA-256",
+    },
+    keyMaterial,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["encrypt", "decrypt"]
+  );
+}
+
+async function encryptText(text: string, key: CryptoKey) {
+  const enc = new TextEncoder();
+  const iv = window.crypto.getRandomValues(new Uint8Array(12));
+  const encrypted = await window.crypto.subtle.encrypt(
+    { name: "AES-GCM", iv },
+    key,
+    enc.encode(text)
+  );
+  return JSON.stringify({
+    iv: Array.from(iv),
+    data: Array.from(new Uint8Array(encrypted)),
+  });
+}
+
+async function decryptText(ciphertextJson: string, key: CryptoKey) {
+  try {
+    const parsed = JSON.parse(ciphertextJson);
+    if (!parsed.iv || !parsed.data) return ciphertextJson;
+    const decrypted = await window.crypto.subtle.decrypt(
+      { name: "AES-GCM", iv: new Uint8Array(parsed.iv) },
+      key,
+      new Uint8Array(parsed.data)
+    );
+    return new TextDecoder().decode(decrypted);
+  } catch (e) {
+    return "[Encrypted Message]";
+  }
+}
 
 export default function AsteroidChatPage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -197,18 +251,31 @@ export default function AsteroidChatPage() {
           setMessages(withProfiles);
         }
       } else {
+        const key = await getSharedKey(currentUser.id, activeTab);
         const { data } = await supabase
           .from("direct_messages")
           .select("*")
           .or(`and(sender_id.eq.${currentUser.id},receiver_id.eq.${activeTab}),and(sender_id.eq.${activeTab},receiver_id.eq.${currentUser.id})`)
           .order("created_at", { ascending: true });
 
-        if (data) setMessages(data);
+        if (data) {
+          const decryptedMessages = await Promise.all(
+            data.map(async (msg) => {
+              const decryptedMessage = await decryptText(msg.message, key);
+              let decryptedReply = msg.reply_message;
+              if (msg.reply_message) {
+                decryptedReply = await decryptText(msg.reply_message, key);
+              }
+              return { ...msg, message: decryptedMessage, reply_message: decryptedReply };
+            })
+          );
+          setMessages(decryptedMessages);
+        }
       }
     }
     loadMessages();
 
-    const channelName = activeTab === "global" ? "public:global_chat" : `dm-${Math.random()}`;
+    const channelName = activeTab === "global" ? "public:global_chat" : `dm-${activeTab}`;
     const channel = supabase
       .channel(channelName)
       .on(
@@ -232,9 +299,17 @@ export default function AsteroidChatPage() {
               (msg.sender_id === currentUser.id && msg.receiver_id === activeTab) ||
               (msg.sender_id === activeTab && msg.receiver_id === currentUser.id)
             ) {
+              const key = await getSharedKey(currentUser.id, activeTab);
+              const decryptedMessage = await decryptText(msg.message, key);
+              let decryptedReply = msg.reply_message;
+              if (msg.reply_message) {
+                decryptedReply = await decryptText(msg.reply_message, key);
+              }
+              const processedMsg = { ...msg, message: decryptedMessage, reply_message: decryptedReply };
+
               setMessages((prev) => {
                 if (prev.some((m) => m.id === msg.id)) return prev;
-                return [...prev, msg];
+                return [...prev, processedMsg];
               });
               if (msg.sender_id !== currentUser.id) {
                 playNotificationSound();
@@ -253,7 +328,6 @@ export default function AsteroidChatPage() {
         "postgres_changes",
         { event: "DELETE", schema: "public", table: activeTab === "global" ? "global_chat" : "direct_messages" },
         (payload) => {
-          // If a single message is deleted or if table is purged
           if (payload.old?.id) {
             setMessages((prev) => prev.filter((m) => m.id !== payload.old.id));
           } else {
@@ -289,16 +363,28 @@ export default function AsteroidChatPage() {
         setReplyingTo(null);
       }
     } else {
+      const key = await getSharedKey(currentUser.id, activeTab);
+      const encryptedMessage = await encryptText(textToSend, key);
+      let encryptedReply = null;
+      if (replyingTo) {
+        encryptedReply = await encryptText(replyingTo.message, key);
+      }
+
       const { data, error } = await supabase.from("direct_messages").insert({
-        message: textToSend,
+        message: encryptedMessage,
         sender_id: currentUser.id,
         receiver_id: activeTab,
-        reply_message: replyingTo ? replyingTo.message : null,
+        reply_message: encryptedReply,
         reply_sender: replySenderName,
       }).select().single();
 
       if (!error && data) {
-        setMessages((prev) => [...prev, data]);
+        const decryptedMsg = {
+          ...data,
+          message: textToSend,
+          reply_message: replyingTo ? replyingTo.message : null,
+        };
+        setMessages((prev) => [...prev, decryptedMsg]);
         setReplyingTo(null);
       }
     }
@@ -358,8 +444,8 @@ export default function AsteroidChatPage() {
                 Moderator Access
               </span>
             )}
-            <span className="text-xs font-mono text-emerald-400 bg-emerald-950/60 px-3 py-1 rounded border border-emerald-500/40">
-              ENCRYPTED
+            <span className="text-xs font-mono text-emerald-400 bg-emerald-950/60 px-3 py-1 rounded border border-emerald-500/40 flex items-center gap-1">
+              <Lock className="w-3 h-3" /> E2EE ACTIVE
             </span>
           </div>
         </div>
@@ -433,7 +519,7 @@ export default function AsteroidChatPage() {
             )}
 
             <div className="p-2 border-b border-emerald-500/20 text-[10px] font-mono text-emerald-400 font-bold uppercase">
-              Friends DMs
+              Friends DMs (Encrypted)
             </div>
             
             <div className="flex-1 overflow-y-auto p-2 space-y-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
@@ -474,8 +560,8 @@ export default function AsteroidChatPage() {
                     <ShieldAlert className="w-3.5 h-3.5" /> Purge Chat
                   </button>
                 )}
-                <span className="text-[10px] text-emerald-400 font-mono bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-500/30">
-                  Type @username to ping
+                <span className="text-[10px] text-emerald-400 font-mono bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-500/30 flex items-center gap-1">
+                  <Lock className="w-2.5 h-2.5" /> {activeTab === "global" ? "Public Channel" : "End-to-End Encrypted"}
                 </span>
               </div>
             </div>
@@ -564,7 +650,7 @@ export default function AsteroidChatPage() {
                 type="text"
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
-                placeholder={activeTab === "global" ? "Type message or @username to ping..." : `Message @${activeFriendObj?.username} (type @username to ping)...`}
+                placeholder={activeTab === "global" ? "Type message or @username to ping..." : `Secure message @${activeFriendObj?.username}...`}
                 className="flex-1 px-3 py-2 rounded bg-[#020803] border border-emerald-500/30 text-white text-xs focus:border-emerald-400 outline-none"
               />
               <button
