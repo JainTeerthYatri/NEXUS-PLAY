@@ -103,6 +103,7 @@ export default function AsteroidChatPage() {
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const signalingChannelRef = useRef<any>(null);
   const screenStreamRef = useRef<MediaStream | null>(null);
+  const iceCandidateQueue = useRef<RTCIceCandidateInit[]>([]);
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -245,10 +246,24 @@ export default function AsteroidChatPage() {
     return pc;
   };
 
+  const flushIceQueue = async (pc: RTCPeerConnection) => {
+    while (iceCandidateQueue.current.length > 0) {
+      const candidate = iceCandidateQueue.current.shift();
+      if (candidate) {
+        try {
+          await pc.addIceCandidate(new RTCIceCandidate(candidate));
+        } catch (e) {
+          console.error("Error adding queued ice candidate:", e);
+        }
+      }
+    }
+  };
+
   const startCall = async (type: 'audio' | 'video') => {
     if (activeTab === "global" || !currentUser) return;
     setCallType(type);
     setIsInCall(true);
+    iceCandidateQueue.current = [];
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: type === 'video' });
@@ -264,19 +279,17 @@ export default function AsteroidChatPage() {
 
       stream.getTracks().forEach((track) => pc.addTrack(track, stream));
 
-      // Register listener BEFORE subscribing
       channel.on("broadcast", { event: "rtc-signal" }, async ({ payload }: { payload: any }) => {
         if (payload.answer) {
           if (!pc.remoteDescription) {
             await pc.setRemoteDescription(new RTCSessionDescription(payload.answer));
+            await flushIceQueue(pc);
           }
         } else if (payload.candidate) {
-          try {
-            if (pc.remoteDescription) {
-              await pc.addIceCandidate(new RTCIceCandidate(payload.candidate));
-            }
-          } catch (e) {
-            console.error("Error adding ice candidate:", e);
+          if (pc.remoteDescription && pc.remoteDescription.type) {
+            await pc.addIceCandidate(new RTCIceCandidate(payload.candidate));
+          } else {
+            iceCandidateQueue.current.push(payload.candidate);
           }
         }
       });
@@ -286,7 +299,6 @@ export default function AsteroidChatPage() {
           const offer = await pc.createOffer();
           await pc.setLocalDescription(offer);
 
-          // Notify remote user to open modal and pass the offer
           await supabase.channel(`user_signal_${activeTab}`).send({
             type: "broadcast",
             event: "call-signal",
@@ -309,6 +321,7 @@ export default function AsteroidChatPage() {
     setIsInCall(true);
     const incomingOffer = incomingCall.offer;
     setIncomingCall(null);
+    iceCandidateQueue.current = [];
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: incomingCall.type === 'video' });
@@ -324,15 +337,12 @@ export default function AsteroidChatPage() {
 
       stream.getTracks().forEach((track) => pc.addTrack(track, stream));
 
-      // Register listener BEFORE subscribing
       channel.on("broadcast", { event: "rtc-signal" }, async ({ payload }: { payload: any }) => {
         if (payload.candidate) {
-          try {
-            if (pc.remoteDescription) {
-              await pc.addIceCandidate(new RTCIceCandidate(payload.candidate));
-            }
-          } catch (e) {
-            console.error("Error adding ice candidate:", e);
+          if (pc.remoteDescription && pc.remoteDescription.type) {
+            await pc.addIceCandidate(new RTCIceCandidate(payload.candidate));
+          } else {
+            iceCandidateQueue.current.push(payload.candidate);
           }
         }
       });
@@ -340,6 +350,8 @@ export default function AsteroidChatPage() {
       channel.subscribe(async (status: string) => {
         if (status === "SUBSCRIBED" && incomingOffer) {
           await pc.setRemoteDescription(new RTCSessionDescription(incomingOffer));
+          await flushIceQueue(pc);
+          
           const answer = await pc.createAnswer();
           await pc.setLocalDescription(answer);
 
@@ -434,6 +446,7 @@ export default function AsteroidChatPage() {
     if (signalingChannelRef.current) {
       supabase.removeChannel(signalingChannelRef.current);
     }
+    iceCandidateQueue.current = [];
     setIsInCall(false);
     setIncomingCall(null);
     setIsMuted(false);
