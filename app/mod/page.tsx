@@ -141,8 +141,6 @@ export default function ModDashboardExtended() {
 
     async function initializeModConsole() {
       try {
-        const { data: { user }, error: authError } = await.supabaseAuthGetUser();
-        // Fallback standard getUser
         const { data: authData } = await supabase.auth.getUser();
         const currentUser = authData?.user;
 
