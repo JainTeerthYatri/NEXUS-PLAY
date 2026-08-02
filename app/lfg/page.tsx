@@ -40,19 +40,16 @@ export default function LfgBoardPage() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   
-  // Real-time Chat Modal State
   const [activeListing, setActiveListing] = useState<LfgListing | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [participantCounts, setParticipantCounts] = useState<{ [key: string]: number }>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Filters & Search state
   const [filterGame, setFilterGame] = useState("ALL");
   const [filterRegion, setFilterRegion] = useState("ALL");
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Form state for new matchmaking node
   const [gameTitle, setGameTitle] = useState("Valorant");
   const [region, setRegion] = useState("Asia");
   const [skillTier, setSkillTier] = useState("Ascendant");
@@ -82,7 +79,6 @@ export default function LfgBoardPage() {
     init();
   }, []);
 
-  // Realtime listener for participant changes (live slot updates)
   useEffect(() => {
     const channel = supabase
       .channel('lfg-global-participants')
@@ -102,7 +98,6 @@ export default function LfgBoardPage() {
     };
   }, [listings]);
 
-  // Auto-scroll to bottom of chat
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -114,7 +109,6 @@ export default function LfgBoardPage() {
         .from("lfg_participants")
         .select("*", { count: 'exact', head: true })
         .eq("listing_id", item.id);
-      // Total members = Host (1) + Current Joined Participants
       countsMap[item.id] = (count || 0) + 1;
     }
     setParticipantCounts(countsMap);
@@ -177,7 +171,6 @@ export default function LfgBoardPage() {
     }
   }
 
-  // Secure Connect & Slot Check Logic
   async function openChat(item: LfgListing) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
@@ -185,7 +178,6 @@ export default function LfgBoardPage() {
       return;
     }
 
-    // 1. Agar user khud Host hai, toh seedha enter karne do
     if (item.user_id === user.id) {
       setActiveListing(item);
       await fetchMessages(item.id);
@@ -193,7 +185,6 @@ export default function LfgBoardPage() {
       return;
     }
 
-    // 2. Check karo ki user pehle se registered participant hai ya nahi
     const { data: existingParticipant } = await supabase
       .from("lfg_participants")
       .select("*")
@@ -208,7 +199,6 @@ export default function LfgBoardPage() {
       return;
     }
 
-    // 3. Current participants count fetch karo
     const { count } = await supabase
       .from("lfg_participants")
       .select("*", { count: 'exact', head: true })
@@ -222,7 +212,6 @@ export default function LfgBoardPage() {
       return;
     }
 
-    // 4. Register user as a participant in lfg_participants table
     const { error: joinError } = await supabase
       .from("lfg_participants")
       .insert({
@@ -252,7 +241,6 @@ export default function LfgBoardPage() {
     }
   }
 
-  // Realtime Subscription for Chat Messages
   useEffect(() => {
     if (!activeListing) return;
 
@@ -312,7 +300,6 @@ export default function LfgBoardPage() {
     }
   }
 
-  // Filter & Search logic
   const filteredListings = listings.filter((item) => {
     const matchesGame = filterGame === "ALL" || item.game_title.toLowerCase() === filterGame.toLowerCase();
     const matchesRegion = filterRegion === "ALL" || item.region.toLowerCase().includes(filterRegion.toLowerCase());
@@ -330,7 +317,6 @@ export default function LfgBoardPage() {
 
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full">
         
-        {/* Header Section */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 pb-6 border-b border-white/10">
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-[#121216] border border-violet-500/30 text-xs font-mono text-violet-400 mb-2 shadow-[0_0_10px_rgba(139,92,246,0.1)]">
@@ -353,7 +339,6 @@ export default function LfgBoardPage() {
           )}
         </div>
 
-        {/* Filter & Search Bar */}
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6 p-4 rounded-xl bg-[#121216] border border-white/10 shadow-lg">
           <div className="flex flex-wrap items-center gap-4 flex-1">
             <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
@@ -385,7 +370,6 @@ export default function LfgBoardPage() {
             </select>
           </div>
 
-          {/* Search Input Box */}
           <div className="relative w-full md:w-72">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
             <input 
@@ -398,7 +382,6 @@ export default function LfgBoardPage() {
           </div>
         </div>
 
-        {/* Listings Grid */}
         {loading ? (
           <div className="text-center py-20 text-violet-400 font-mono text-sm animate-pulse">
             INITIALIZING_MATCHMAKING_NODES...
@@ -450,7 +433,6 @@ export default function LfgBoardPage() {
                       {item.description}
                     </p>
                     
-                    {/* Real-time Slots Progress Bar */}
                     <div className="mb-4 bg-black/30 p-3 rounded-lg border border-white/5">
                       <div className="flex justify-between items-center text-xs font-mono mb-1.5">
                         <span className="text-slate-400 flex items-center gap-1">
@@ -504,12 +486,10 @@ export default function LfgBoardPage() {
           </div>
         )}
 
-        {/* Real-time Party Chat Modal with Refined Messaging */}
         {activeListing && (
           <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="w-full max-w-lg h-[620px] p-6 rounded-2xl bg-[#121216] border border-violet-500/40 shadow-2xl flex flex-col justify-between">
+            <div className="w-full max-w-lg h-[450px] p-6 rounded-2xl bg-[#121216] border border-violet-500/40 shadow-2xl flex flex-col justify-between">
               
-              {/* Chat Header */}
               <div className="flex items-center justify-between pb-4 border-b border-white/10">
                 <div>
                   <h3 className="text-base font-bold text-white flex items-center gap-2">
@@ -527,7 +507,6 @@ export default function LfgBoardPage() {
                 </button>
               </div>
 
-              {/* Messages Box */}
               <div className="flex-1 overflow-y-auto my-4 space-y-3 pr-2 scrollbar-thin scrollbar-thumb-violet-500/20">
                 {messages.length === 0 ? (
                   <div className="text-center text-xs font-mono text-slate-500 py-20">
@@ -554,7 +533,6 @@ export default function LfgBoardPage() {
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* Message Input Form */}
               <form onSubmit={handleSendMessage} className="flex items-center gap-2 pt-3 border-t border-white/10">
                 <input 
                   type="text"
@@ -575,7 +553,6 @@ export default function LfgBoardPage() {
           </div>
         )}
 
-        {/* Deploy LFG Node Modal */}
         {isModalOpen && user && (
           <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="w-full max-w-lg p-6 rounded-2xl bg-[#121216] border border-white/10 shadow-2xl">
