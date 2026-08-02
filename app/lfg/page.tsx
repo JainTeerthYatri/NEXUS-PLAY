@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import Navbar from "@/components/Navbar";
 import { createClient } from "@/lib/supabase/client";
-import { Radio, Plus, Globe, MessageSquare, Filter, Trash2, Users, Send, Search } from "lucide-react";
+import { Radio, Plus, Globe, MessageSquare, Filter, Trash2, Users, Send, Search, Eye } from "lucide-react";
 
 type LfgListing = {
   id: string;
@@ -33,6 +33,15 @@ type ChatMessage = {
   };
 };
 
+type LfgMember = {
+  user_id: string;
+  profiles?: {
+    username: string;
+    display_name: string;
+  } | null;
+  joined_at?: string;
+};
+
 export default function LfgBoardPage() {
   const [user, setUser] = useState<any>(null);
   const [userRole, setUserRole] = useState<string>("member");
@@ -45,6 +54,10 @@ export default function LfgBoardPage() {
   const [newMessage, setNewMessage] = useState("");
   const [participantCounts, setParticipantCounts] = useState<{ [key: string]: number }>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const [activeMembersListing, setActiveMembersListing] = useState<LfgListing | null>(null);
+  const [lfgMembersList, setLfgMembersList] = useState<LfgMember[]>([]);
+  const [loadingLfgMembers, setLoadingLfgMembers] = useState(false);
 
   const [filterGame, setFilterGame] = useState("ALL");
   const [filterRegion, setFilterRegion] = useState("ALL");
@@ -169,6 +182,40 @@ export default function LfgBoardPage() {
     } else {
       alert("Error deleting listing: " + error.message);
     }
+  }
+
+  async function openLfgMembersModal(item: LfgListing) {
+    setActiveMembersListing(item);
+    setLoadingLfgMembers(true);
+
+    const { data: participantsData, error: partError } = await supabase
+      .from("lfg_participants")
+      .select("user_id, joined_at, profiles(username, display_name)")
+      .eq("listing_id", item.id);
+
+    const membersMap: LfgMember[] = [];
+
+    if (item.user_id) {
+      membersMap.push({
+        user_id: item.user_id,
+        profiles: item.profiles ? { username: item.profiles.username, display_name: item.profiles.display_name } : null,
+      });
+    }
+
+    if (!partError && participantsData) {
+      participantsData.forEach((p: any) => {
+        if (p.user_id !== item.user_id) {
+          membersMap.push({
+            user_id: p.user_id,
+            profiles: p.profiles,
+            joined_at: p.joined_at,
+          });
+        }
+      });
+    }
+
+    setLfgMembersList(membersMap);
+    setLoadingLfgMembers(false);
   }
 
   async function openChat(item: LfgListing) {
@@ -396,7 +443,7 @@ export default function LfgBoardPage() {
             {user && (
               <button 
                 onClick={() => setIsModalOpen(true)}
-                className="px-4 py-2 rounded bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs shadow-[0_0_15px_rgba(139,92,246,0.2)]"
+                className="px-4 py-2 rounded bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs shadow-[0_0_15px_rgba(139,92,246,0.2)] cursor-pointer"
               >
                 Deploy Node
               </button>
@@ -433,6 +480,19 @@ export default function LfgBoardPage() {
                       {item.description}
                     </p>
                     
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-xs text-slate-400 font-mono">
+                        Host: <span className="text-slate-200 font-semibold">@{item.profiles?.username || "operator"}</span>
+                      </p>
+                      
+                      <button 
+                        onClick={() => openLfgMembersModal(item)}
+                        className="text-xs text-violet-400 hover:text-violet-300 font-mono flex items-center gap-1 underline cursor-pointer"
+                      >
+                        <Eye className="w-3.5 h-3.5" /> Members ({currentCount})
+                      </button>
+                    </div>
+
                     <div className="mb-4 bg-black/30 p-3 rounded-lg border border-white/5">
                       <div className="flex justify-between items-center text-xs font-mono mb-1.5">
                         <span className="text-slate-400 flex items-center gap-1">
@@ -458,8 +518,8 @@ export default function LfgBoardPage() {
                   </div>
 
                   <div className="pt-4 border-t border-white/5 flex items-center justify-between">
-                    <span className="text-xs font-mono text-slate-400">
-                      Host: <span className="text-slate-200">@{item.profiles?.username || "operator"}</span>
+                    <span className="text-xs font-mono text-slate-500">
+                      ID: {item.id.slice(0, 8)}...
                     </span>
                     <div className="flex items-center gap-2">
                       {user && (user.id === item.user_id || userRole === "owner" || userRole === "moderator") && (
@@ -483,6 +543,75 @@ export default function LfgBoardPage() {
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {activeMembersListing && (
+          <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm">
+            <div className="w-full max-w-md p-6 rounded-2xl bg-[#121216] border border-violet-500/40 shadow-2xl">
+              <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/10">
+                <div>
+                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                    <Users className="w-5 h-5 text-violet-400" /> {activeMembersListing.game_title} Roster
+                  </h3>
+                  <p className="text-xs font-mono text-slate-400">
+                    Region: {activeMembersListing.region} | Slots: {participantCounts[activeMembersListing.id] || 1}/{activeMembersListing.max_players}
+                  </p>
+                </div>
+                <button 
+                  onClick={() => setActiveMembersListing(null)}
+                  className="text-violet-400 hover:text-white text-xs font-mono cursor-pointer"
+                >
+                  [CLOSE]
+                </button>
+              </div>
+
+              {loadingLfgMembers ? (
+                <div className="text-center py-10 text-violet-400 font-mono text-xs animate-pulse">
+                  FETCHING_ROSTER...
+                </div>
+              ) : lfgMembersList.length === 0 ? (
+                <div className="text-center py-10 text-slate-500 font-mono text-xs">
+                  No members found in this party.
+                </div>
+              ) : (
+                <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1">
+                  {lfgMembersList.map((m, idx) => {
+                    const isHost = m.user_id === activeMembersListing.user_id;
+                    return (
+                      <div 
+                        key={idx}
+                        className="flex items-center justify-between p-3 rounded-xl bg-black/40 border border-white/5"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          {isHost ? (
+                            <div className="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)]" />
+                          ) : (
+                            <div className="w-2 h-2 rounded-full bg-violet-500" />
+                          )}
+                          <div>
+                            <p className="text-sm font-bold text-white">
+                              @{m.profiles?.username || "operator"}
+                            </p>
+                            <p className="text-[10px] font-mono text-slate-400">
+                              {m.profiles?.display_name || (isHost ? "Host / Leader" : "Party Member")}
+                            </p>
+                          </div>
+                        </div>
+
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-mono ${
+                          isHost 
+                            ? 'bg-amber-950/80 border border-amber-500/40 text-amber-300' 
+                            : 'bg-violet-950/60 border border-violet-500/30 text-violet-300'
+                        }`}>
+                          {isHost ? "HOST" : "MEMBER"}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
