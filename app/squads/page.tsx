@@ -421,9 +421,12 @@ export default function FindSquadsPage() {
       message: `[ASTEROID_BOT] This is to inform you all that @${kickedUsername} has been kicked from the '${squad.name}' squad by the leader.`,
     });
 
-    alert("✅ Member has been kicked from the squad.");
-    openMembersModal(squad);
+    // Instant local state update to remove member from table immediately
+    setSquadMembersList((prev) => prev.filter((m) => m.user_id !== memberUserId));
+    setActiveMembersSquad((prev) => prev ? { ...prev, current_members: newCount } : null);
+
     fetchSquads(currentUser.id);
+    alert("✅ Member has been kicked from the squad.");
   }
 
   async function handleLeaveSquad(squad: Squad) {
@@ -808,7 +811,7 @@ export default function FindSquadsPage() {
           </div>
         )}
 
-        {/* Member Roster Modal (Width increased to max-w-xl for long names) */}
+        {/* Member Roster Modal */}
         {activeMembersSquad && (
           <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm">
             <div className="w-full max-w-xl p-6 rounded-xl bg-[#161004] border border-amber-500/50 shadow-[0_0_30px_rgba(251,191,36,0.2)]">
