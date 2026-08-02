@@ -33,6 +33,30 @@ export async function proxy(request: NextRequest) {
   const url = request.nextUrl.clone()
   const pathname = url.pathname
 
+  // 1. Check if user is logged in and query the `banned_users` table
+  if (user) {
+    const { data: banCheck } = await supabase
+      .from("banned_users")
+      .select("id")
+      .eq("user_id", user.id)
+      .single()
+
+    // Agar user banned_users table mein mil jata hai
+    if (banCheck) {
+      // Agar wo /banned page par nahi hai, toh use seedha /banned par redirect karo
+      if (pathname !== "/banned") {
+        url.pathname = "/banned"
+        return NextResponse.redirect(url)
+      }
+    } else {
+      // Agar user banned nahi hai, lekin galti se /banned page khol raha hai, toh use dashboard/home bhej do
+      if (pathname === "/banned") {
+        url.pathname = "/dashboard"
+        return NextResponse.redirect(url)
+      }
+    }
+  }
+
   // List of routes jo sirf authenticated users ke liye khulne chahiye
   const protectedRoutes = ['/dashboard', '/studio', '/mod', '/squads/create', '/lfg/create']
   const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route))
