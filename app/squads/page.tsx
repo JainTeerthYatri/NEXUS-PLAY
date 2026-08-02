@@ -345,7 +345,6 @@ export default function FindSquadsPage() {
 
     const joinedUsername = userProfile?.username || "operator";
 
-    // FIXED: Using currentUser.id (Leader's ID) so RLS policy passes successfully!
     await supabase.from("squad_messages").insert({
       squad_id: squad.id,
       user_id: currentUser.id,
@@ -369,6 +368,63 @@ export default function FindSquadsPage() {
     } else {
       alert("Error rejecting request.");
     }
+  }
+
+  async function handleKickMember(memberUserId: string, squad: Squad) {
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    if (!currentUser || currentUser.id !== squad.created_by) {
+      alert("Only the squad leader can kick members.");
+      return;
+    }
+
+    if (memberUserId === squad.created_by) {
+      alert("You cannot kick yourself! Use delete squad instead.");
+      return;
+    }
+
+    if (!confirm("Are you sure you want to kick this member from the squad?")) return;
+
+    const { error: memberError } = await supabase
+      .from("squad_members")
+      .delete()
+      .eq("squad_id", squad.id)
+      .eq("user_id", memberUserId);
+
+    if (memberError) {
+      alert("Error kicking member: " + memberError.message);
+      return;
+    }
+
+    const newCount = Math.max(1, squad.current_members - 1);
+    await supabase
+      .from("squads")
+      .update({ current_members: newCount })
+      .eq("id", squad.id);
+
+    await supabase
+      .from("squad_requests")
+      .delete()
+      .eq("squad_id", squad.id)
+      .eq("user_id", memberUserId);
+
+    const { data: userProfile } = await supabase
+      .from("profiles")
+      .select("username")
+      .eq("id", memberUserId)
+      .single();
+
+    const kickedUsername = userProfile?.username || "operator";
+
+    // Asteroid Bot Notification for Kick
+    await supabase.from("squad_messages").insert({
+      squad_id: squad.id,
+      user_id: currentUser.id,
+      message: `[ASTEROID_BOT] This is to inform you all that @${kickedUsername} has been kicked from the '${squad.name}' squad by the leader.`,
+    });
+
+    alert("✅ Member has been kicked from the squad.");
+    openMembersModal(squad);
+    fetchSquads(currentUser.id);
   }
 
   async function handleLeaveSquad(squad: Squad) {
@@ -785,6 +841,8 @@ export default function FindSquadsPage() {
                 <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1">
                   {squadMembersList.map((m, idx) => {
                     const isLeader = m.user_id === activeMembersSquad.created_by;
+                    const isCurrentLeader = user?.id === activeMembersSquad.created_by;
+
                     return (
                       <div 
                         key={idx}
@@ -806,13 +864,25 @@ export default function FindSquadsPage() {
                           </div>
                         </div>
 
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-mono ${
-                          isLeader 
-                            ? 'bg-yellow-950/80 border border-yellow-500/50 text-yellow-300' 
-                            : 'bg-amber-950/40 border border-amber-500/30 text-amber-300'
-                        }`}>
-                          {isLeader ? "LEADER" : "MEMBER"}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-mono ${
+                            isLeader 
+                              ? 'bg-yellow-950/80 border border-yellow-500/50 text-yellow-300' 
+                              : 'bg-amber-950/40 border border-amber-500/30 text-amber-300'
+                          }`}>
+                            {isLeader ? "LEADER" : "MEMBER"}
+                          </span>
+
+                          {isCurrentLeader && !isLeader && (
+                            <button
+                              onClick={() => handleKickMember(m.user_id, activeMembersSquad)}
+                              className="px-2 py-1 rounded bg-red-950/60 hover:bg-red-600 border border-red-500/40 text-red-400 hover:text-white text-[10px] font-extrabold transition-all cursor-pointer flex items-center gap-1 shadow-[0_0_10px_rgba(239,68,68,0.2)]"
+                              title="Kick Member"
+                            >
+                              <UserMinus className="w-3 h-3" /> Kick
+                            </button>
+                          )}
+                        </div>
                       </div>
                     );
                   })}
