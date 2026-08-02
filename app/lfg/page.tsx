@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import Navbar from "@/components/Navbar";
 import { createClient } from "@/lib/supabase/client";
-import { Radio, Plus, Globe, MessageSquare, Filter, Trash2, Users, Send, Search, Eye, Crown, Bot } from "lucide-react";
+import { Radio, Plus, Globe, MessageSquare, Filter, Trash2, Users, Send, Search, Eye, Crown, Bot, LogOut } from "lucide-react";
 
 type LfgListing = {
   id: string;
@@ -180,6 +180,47 @@ export default function LfgBoardPage() {
     }
   }
 
+  async function handleLeaveParty(item: LfgListing) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    if (item.user_id === user.id) {
+      alert("Hosts cannot leave their own node. You can delete the node instead.");
+      return;
+    }
+
+    if (!confirm("Are you sure you want to leave this party?")) return;
+
+    const { error } = await supabase
+      .from("lfg_participants")
+      .delete()
+      .eq("listing_id", item.id)
+      .eq("user_id", user.id);
+
+    if (error) {
+      alert("Error leaving party: " + error.message);
+      return;
+    }
+
+    const { data: userProfile } = await supabase
+      .from("profiles")
+      .select("username")
+      .eq("id", user.id)
+      .single();
+
+    const leavingUsername = userProfile?.username || "operator";
+
+    await supabase.from("chat_messages").insert({
+      listing_id: item.id,
+      sender_id: user.id,
+      message: `[ASTEROID_BOT] This is to inform you all that @${leavingUsername} has left the '${item.game_title}' squad.`,
+    });
+
+    setActiveListing(null);
+    setActiveMembersListing(null);
+    fetchListings();
+  }
+
   async function openLfgMembersModal(item: LfgListing) {
     setActiveMembersListing(item);
     setLoadingLfgMembers(true);
@@ -278,7 +319,6 @@ export default function LfgBoardPage() {
       return;
     }
 
-    // Fetch user profile username for bot announcement
     const { data: userProfile } = await supabase
       .from("profiles")
       .select("username")
@@ -287,7 +327,6 @@ export default function LfgBoardPage() {
 
     const joiningUsername = userProfile?.username || "operator";
 
-    // Trigger Asteroid Chat Bot automatic join notification message
     await supabase.from("chat_messages").insert({
       listing_id: item.id,
       sender_id: user.id,
@@ -591,40 +630,51 @@ export default function LfgBoardPage() {
                   No members found in this party.
                 </div>
               ) : (
-                <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1">
-                  {lfgMembersList.map((m, idx) => {
-                    const isHost = m.user_id === activeMembersListing.user_id;
-                    return (
-                      <div 
-                        key={idx}
-                        className="flex items-center justify-between p-3 rounded-xl bg-black/40 border border-white/5"
-                      >
-                        <div className="flex items-center gap-2.5">
-                          {isHost ? (
-                            <Crown className="w-4 h-4 text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.8)]" />
-                          ) : (
-                            <div className="w-2.5 h-2.5 rounded-full bg-violet-500" />
-                          )}
-                          <div>
-                            <p className="text-sm font-bold text-white flex items-center gap-1.5">
-                              @{m.profiles?.username || "operator"}
-                            </p>
-                            <p className="text-[10px] font-mono text-slate-400">
-                              {m.profiles?.display_name || (isHost ? "Host / Leader" : "Party Member")}
-                            </p>
+                <div className="space-y-4">
+                  <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1">
+                    {lfgMembersList.map((m, idx) => {
+                      const isHost = m.user_id === activeMembersListing.user_id;
+                      return (
+                        <div 
+                          key={idx}
+                          className="flex items-center justify-between p-3 rounded-xl bg-black/40 border border-white/5"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            {isHost ? (
+                              <Crown className="w-4 h-4 text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.8)]" />
+                            ) : (
+                              <div className="w-2.5 h-2.5 rounded-full bg-violet-500" />
+                            )}
+                            <div>
+                              <p className="text-sm font-bold text-white flex items-center gap-1.5">
+                                @{m.profiles?.username || "operator"}
+                              </p>
+                              <p className="text-[10px] font-mono text-slate-400">
+                                {m.profiles?.display_name || (isHost ? "Host / Leader" : "Party Member")}
+                              </p>
+                            </div>
                           </div>
-                        </div>
 
-                        <span className={`px-2.5 py-0.5 rounded text-[10px] font-mono ${
-                          isHost 
-                            ? 'bg-amber-950/80 border border-amber-500/40 text-amber-300 font-bold' 
-                            : 'bg-violet-950/60 border border-violet-500/30 text-violet-300'
-                        }`}>
-                          {isHost ? "HOST" : "MEMBER"}
-                        </span>
-                      </div>
-                    );
-                  })}
+                          <span className={`px-2.5 py-0.5 rounded text-[10px] font-mono ${
+                            isHost 
+                              ? 'bg-amber-950/80 border border-amber-500/40 text-amber-300 font-bold' 
+                              : 'bg-violet-950/60 border border-violet-500/30 text-violet-300'
+                          }`}>
+                            {isHost ? "HOST" : "MEMBER"}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {user && user.id !== activeMembersListing.user_id && lfgMembersList.some(m => m.user_id === user.id) && (
+                    <button 
+                      onClick={() => handleLeaveParty(activeMembersListing)}
+                      className="w-full py-2.5 rounded-xl bg-red-950/40 hover:bg-red-900/60 border border-red-500/40 text-red-400 text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-[0_0_15px_rgba(239,68,68,0.2)]"
+                    >
+                      <LogOut className="w-4 h-4" /> Leave Party
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -633,7 +683,7 @@ export default function LfgBoardPage() {
 
         {activeListing && (
           <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="w-full max-w-lg h-[480px] p-6 rounded-2xl bg-[#121216] border border-violet-500/40 shadow-2xl flex flex-col justify-between">
+            <div className="w-full max-w-lg h-[520px] p-6 rounded-2xl bg-[#121216] border border-violet-500/40 shadow-2xl flex flex-col justify-between">
               
               <div className="flex items-center justify-between pb-4 border-b border-white/10">
                 <div>
@@ -641,15 +691,26 @@ export default function LfgBoardPage() {
                     💬 Party Chat: {activeListing.game_title}
                   </h3>
                   <p className="text-xs font-mono text-violet-400 mt-0.5">
-                    Region: {activeListing.region} | Active Slots Filled: {participantCounts[activeListing.id] || 1} / {activeListing.max_players}
+                    Region: {activeListing.region} | Active Slots: {participantCounts[activeListing.id] || 1} / {activeListing.max_players}
                   </p>
                 </div>
-                <button 
-                  onClick={() => setActiveListing(null)}
-                  className="text-slate-400 hover:text-white text-xs font-mono px-2.5 py-1 rounded bg-white/5 hover:bg-white/10 transition-colors cursor-pointer"
-                >
-                  [CLOSE]
-                </button>
+                <div className="flex items-center gap-2">
+                  {user && user.id !== activeListing.user_id && (
+                    <button 
+                      onClick={() => handleLeaveParty(activeListing)}
+                      className="px-3 py-1 rounded bg-red-950/40 hover:bg-red-900/60 border border-red-500/30 text-red-400 text-xs font-mono flex items-center gap-1 transition-colors cursor-pointer"
+                      title="Leave Party"
+                    >
+                      <LogOut className="w-3 h-3" /> Leave
+                    </button>
+                  )}
+                  <button 
+                    onClick={() => setActiveListing(null)}
+                    className="text-slate-400 hover:text-white text-xs font-mono px-2.5 py-1 rounded bg-white/5 hover:bg-white/10 transition-colors cursor-pointer"
+                  >
+                    [CLOSE]
+                  </button>
+                </div>
               </div>
 
               <div className="flex-1 overflow-y-auto my-4 space-y-3 pr-2 scrollbar-thin scrollbar-thumb-violet-500/20">
