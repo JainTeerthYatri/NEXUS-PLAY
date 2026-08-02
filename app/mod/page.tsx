@@ -4,7 +4,32 @@ import { useEffect, useState, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import { createClient } from "@/lib/supabase/client";
-import { ShieldAlert, Save, CheckCircle2, Search, Users, Shield, UserCheck, Trash2, Radio, Globe, Ban, Eye, UserX, Check } from "lucide-react";
+import { 
+  ShieldAlert, 
+  Save, 
+  Search, 
+  Users, 
+  Shield, 
+  Trash2, 
+  Radio, 
+  Globe, 
+  Ban, 
+  Eye, 
+  Check, 
+  Gamepad2, 
+  AlertTriangle,
+  FileText,
+  Activity,
+  Flag,
+  RefreshCw,
+  Lock,
+  Unlock,
+  Filter,
+  CheckCircle2,
+  XCircle,
+  Clock,
+  Terminal
+} from "lucide-react";
 
 type Profile = {
   id: string;
@@ -12,6 +37,8 @@ type Profile = {
   display_name: string;
   role: string;
   updated_at: string;
+  created_at?: string;
+  is_banned?: boolean;
 };
 
 type LfgListing = {
@@ -53,22 +80,54 @@ type ChatMessage = {
   };
 };
 
-export default function ModDashboard() {
+type AuditLog = {
+  id: string;
+  moderator_id: string;
+  action_type: string;
+  target_id: string;
+  details: string;
+  created_at: string;
+  profiles?: {
+    username: string;
+  };
+};
+
+type ReportItem = {
+  id: string;
+  reporter_id: string;
+  target_type: "user" | "lfg" | "squad" | "message";
+  target_id: string;
+  reason: string;
+  status: "pending" | "resolved" | "dismissed";
+  created_at: string;
+  profiles?: {
+    username: string;
+  };
+};
+
+export default function ModDashboardExtended() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [listings, setListings] = useState<LfgListing[]>([]);
   const [squads, setSquads] = useState<Squad[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [reports, setReports] = useState<ReportItem[]>([]);
+  
   const [loading, setLoading] = useState(true);
   const [isAuthorized, setIsAuthorized] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUserRole, setCurrentUserRole] = useState<string>("member");
+  
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState<"users" | "lfg" | "squads">("users");
+  const [activeTab, setActiveTab] = useState<"users" | "lfg" | "squads" | "reports" | "logs">("users");
 
-  // User Action States
+  // Action States & Rate Limiting
   const [savingId, setSavingId] = useState<string | null>(null);
   const [successId, setSuccessId] = useState<string | null>(null);
   const [cooldown, setCooldown] = useState(false);
+  const [banReasonInput, setBanReasonInput] = useState("");
+  const [selectedUserForBan, setSelectedUserForBan] = useState<Profile | null>(null);
 
-  // Inspector Modal States (LFG or Squad)
+  // Inspector Modal States
   const [inspectingItem, setInspectingItem] = useState<{ type: "lfg" | "squad"; data: LfgListing | Squad } | null>(null);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -76,95 +135,95 @@ export default function ModDashboard() {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
 
+  // Comprehensive Data Fetching & Authorization Check
   useEffect(() => {
     let isMounted = true;
 
-    async function checkAccessAndFetchData() {
-      const { data: { user } } = await supabase.auth.getUser();
+    async function initializeModConsole() {
+      try {
+        const { data: { user }, error: authError } = await.supabaseAuthGetUser();
+        // Fallback standard getUser
+        const { data: authData } = await supabase.auth.getUser();
+        const currentUser = authData?.user;
 
-      if (!user) {
-        router.push("/");
-        return;
+        if (!currentUser) {
+          router.push("/");
+          return;
+        }
+
+        setCurrentUserId(currentUser.id);
+
+        // 1. Check if current operator is banned via banned_users table
+        const { data: banCheck } = await supabase
+          .from("banned_users")
+          .select("id")
+          .eq("user_id", currentUser.id)
+          .single();
+
+        if (banCheck) {
+          router.push("/banned");
+          return;
+        }
+
+        // 2. Fetch current user profile & role verification
+        const { data: currentProfile } = await supabase
+          .from("profiles")
+          .select("role, username")
+          .eq("id", currentUser.id)
+          .single();
+
+        if (!currentProfile || (currentProfile.role !== "owner" && currentProfile.role !== "moderator")) {
+          alert("Access Denied: Insufficient security clearance level.");
+          router.push("/");
+          return;
+        }
+
+        if (isMounted) {
+          setIsAuthorized(true);
+          setCurrentUserRole(currentProfile.role);
+        }
+
+        // 3. Parallel fetch for all core matrices: profiles, banned records, lfg, squads, audit logs, reports
+        const [
+          profileRes, 
+          bannedRes, 
+          lfgRes, 
+          squadRes, 
+          logsRes, 
+          reportsRes
+        ] = await Promise.all([
+          supabase.from("profiles").select("*").order("username", { ascending: true }),
+          supabase.from("banned_users").select("user_id, reason, created_at"),
+          supabase.from("lfg_listings").select("*, profiles(username, display_name)").order("created_at", { ascending: false }),
+          supabase.from("squads").select("*, profiles(username)").order("created_at", { ascending: false }),
+          supabase.from("audit_logs").select("*, profiles(username)").order("created_at", { ascending: false }).limit(50),
+          supabase.from("reports").select("*, profiles(username)").order("created_at", { ascending: false })
+        ]);
+
+        const bannedMap = new Map();
+        bannedRes.data?.forEach(b => bannedMap.set(b.user_id, b.reason));
+
+        if (profileRes.data && isMounted) {
+          const mappedProfiles = profileRes.data.map(p => ({
+            ...p,
+            is_banned: bannedMap.has(p.id)
+          }));
+          setProfiles(mappedProfiles);
+        }
+
+        if (lfgRes.data && isMounted) setListings(lfgRes.data);
+        if (squadRes.data && isMounted) setSquads(squadRes.data);
+        if (logsRes.data && isMounted) setAuditLogs(logsRes.data);
+        if (reportsRes.data && isMounted) setReports(reportsRes.data);
+
+      } catch (err) {
+        console.error("Initialization error in Mod Center:", err);
+      } finally {
+        if (isMounted) setLoading(false);
       }
-
-      // Check current user role
-      const { data: currentProfile } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .single();
-
-      if (!currentProfile || currentProfile.role === "banned") {
-        router.push("/banned");
-        return;
-      }
-
-      if (!currentProfile || (currentProfile.role !== "owner" && currentProfile.role !== "moderator")) {
-        alert("Access Denied: You do not have moderator clearance.");
-        router.push("/");
-        return;
-      }
-
-      if (isMounted) {
-        setIsAuthorized(true);
-        setCurrentUserRole(currentProfile.role);
-      }
-
-      // Fetch profiles
-      const { data: profileData } = await supabase
-        .from("profiles")
-        .select("*")
-        .order("username", { ascending: true });
-
-      if (profileData && isMounted) {
-        setProfiles(profileData);
-      }
-
-      // Fetch LFG listings
-      const { data: lfgData } = await supabase
-        .from("lfg_listings")
-        .select("*, profiles(username, display_name)")
-        .order("created_at", { ascending: false });
-
-      if (lfgData && isMounted) {
-        setListings(lfgData);
-      }
-
-      // Fetch Squads (if squad table exists)
-      const { data: squadData } = await supabase
-        .from("squads")
-        .select("*, profiles(username)")
-        .order("created_at", { ascending: false });
-
-      if (squadData && isMounted) {
-        setSquads(squadData);
-      }
-
-      if (isMounted) setLoading(false);
     }
 
-    checkAccessAndFetchData();
-
-    // Realtime Listeners for Profiles & Bans
-    const profileChannel = supabase
-      .channel("public:profiles")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "profiles" },
-        (payload) => {
-          if (!isMounted) return;
-          if (payload.eventType === "UPDATE") {
-            const updated = payload.new as Profile;
-            setProfiles((prev) => prev.map((p) => p.id === updated.id ? updated : p));
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      isMounted = false;
-      supabase.removeChannel(profileChannel);
-    };
+    initializeModConsole();
   }, [supabase, router]);
 
   // Auto scroll chat inspector
@@ -176,10 +235,25 @@ export default function ModDashboard() {
     setProfiles(profiles.map(p => p.id === userId ? { ...p, role: newRole } : p));
   }
 
-  // Save Role / Ban Function
+  // Record Audit Log Helper
+  async function logAdminAction(actionType: string, targetId: string, details: string) {
+    if (!currentUserId) return;
+    try {
+      await supabase.from("audit_logs").insert({
+        moderator_id: currentUserId,
+        action_type: actionType,
+        target_id: targetId,
+        details: details
+      });
+    } catch (e) {
+      console.error("Failed to write audit log:", e);
+    }
+  }
+
+  // Save Role Changes with Rate Limiting & Audit Logging
   async function handleSaveRole(userId: string, newRole: string) {
     if (cooldown) {
-      alert("Rate limit active: Please wait before making another change.");
+      alert("Rate limit active: Please wait 2 seconds before executing another security update.");
       return;
     }
 
@@ -191,6 +265,10 @@ export default function ModDashboard() {
       .update({ role: newRole, updated_at: new Date().toISOString() })
       .eq("id", userId);
 
+    if (!error) {
+      await logAdminAction("UPDATE_ROLE", userId, `Changed role to ${newRole}`);
+    }
+
     setSavingId(null);
     setTimeout(() => setCooldown(false), 2000);
 
@@ -199,92 +277,132 @@ export default function ModDashboard() {
     } else {
       setSuccessId(userId);
       setTimeout(() => setSuccessId(null), 2000);
-      router.refresh();
     }
   }
 
-  // Ban User Quick Action
-  async function handleBanUser(userId: string, username: string) {
-    if (!confirm(`⚠️ Are you sure you want to BAN operator @${username}? Their account will be instantly restricted.`)) return;
-    await handleSaveRole(userId, "banned");
-  }
+  // Ban User with Custom Reason
+  async function executeBanUser() {
+    if (!selectedUserForBan) return;
+    const userId = selectedUserForBan.id;
+    const username = selectedUserForBan.username;
+    const reason = banReasonInput.trim() || "Violation of NexusPlay Community Guidelines";
 
-  // Pardon User Quick Action (Unban)
-  async function handlePardonUser(userId: string, username: string) {
-    if (!confirm(`🕊️ Pardon operator @${username}? This will restore their member access.`)) return;
-    await handleSaveRole(userId, "member");
-  }
-
-  // Delete LFG Listing
-  async function handleDeleteLfgListing(listingId: string) {
-    if (!confirm("⚠️ Are you sure you want to purge this LFG node and its chat messages?")) return;
-
-    await supabase.from("chat_messages").delete().eq("listing_id", listingId);
-    await supabase.from("lfg_participants").delete().eq("listing_id", listingId);
-
+    setSavingId(userId);
     const { error } = await supabase
-      .from("lfg_listings")
-      .delete()
-      .eq("id", listingId);
+      .from("banned_users")
+      .insert({ 
+        user_id: userId, 
+        banned_by: currentUserId, 
+        reason: reason 
+      });
+
+    if (!error) {
+      await logAdminAction("BAN_USER", userId, `Banned operator @${username}. Reason: ${reason}`);
+      setProfiles(profiles.map(p => p.id === userId ? { ...p, is_banned: true } : p));
+    }
+
+    setSavingId(null);
+    setSelectedUserForBan(null);
+    setBanReasonInput("");
 
     if (error) {
-      alert("Error purging LFG node: " + error.message);
-    } else {
-      setListings((prev) => prev.filter(l => l.id !== listingId));
-      if (inspectingItem?.data.id === listingId) {
-        setInspectingItem(null);
-      }
+      alert("Error executing ban protocol: " + error.message);
     }
   }
 
-  // Delete Squad
-  async function handleDeleteSquad(squadId: string) {
-    if (!confirm("⚠️ Are you sure you want to delete this squad and its squad chat?")) return;
+  // Pardon User (Remove from banned_users)
+  async function handlePardonUser(userId: string, username: string) {
+    if (!confirm(`🕊️ Authorize pardon for operator @${username}? This will immediately restore full platform access.`)) return;
 
+    setSavingId(userId);
+    const { error } = await supabase
+      .from("banned_users")
+      .delete()
+      .eq("user_id", userId);
+
+    if (!error) {
+      await logAdminAction("PARDON_USER", userId, `Pardoned operator @${username}`);
+      setProfiles(profiles.map(p => p.id === userId ? { ...p, is_banned: false } : p));
+    }
+
+    setSavingId(null);
+
+    if (error) {
+      alert("Error pardoning user: " + error.message);
+    }
+  }
+
+  // Delete LFG Listing & Cascading Cleanup
+  async function handleDeleteLfgListing(listingId: string) {
+    if (!confirm("⚠️ Purge this LFG node, participant records, and associated chat messages permanently?")) return;
+    
+    await supabase.from("chat_messages").delete().eq("listing_id", listingId);
+    await supabase.from("lfg_participants").delete().eq("listing_id", listingId);
+    const { error } = await supabase.from("lfg_listings").delete().eq("id", listingId);
+
+    if (!error) {
+      await logAdminAction("PURGE_LFG", listingId, "Purged LFG listing and chat logs");
+      setListings((prev) => prev.filter(l => l.id !== listingId));
+      if (inspectingItem?.data.id === listingId) setInspectingItem(null);
+    } else {
+      alert("Failed to purge LFG node: " + error.message);
+    }
+  }
+
+  // Delete Squad & Cascading Cleanup
+  async function handleDeleteSquad(squadId: string) {
+    if (!confirm("⚠️ Delete this squad and all its secure chat history?")) return;
+    
     await supabase.from("chat_messages").delete().eq("squad_id", squadId);
     const { error } = await supabase.from("squads").delete().eq("id", squadId);
 
-    if (error) {
-      alert("Error deleting squad: " + error.message);
-    } else {
+    if (!error) {
+      await logAdminAction("DELETE_SQUAD", squadId, "Deleted squad and associated logs");
       setSquads((prev) => prev.filter(s => s.id !== squadId));
-      if (inspectingItem?.data.id === squadId) {
-        setInspectingItem(null);
-      }
+      if (inspectingItem?.data.id === squadId) setInspectingItem(null);
+    } else {
+      alert("Failed to delete squad: " + error.message);
     }
   }
 
-  // Inspect Chat (LFG or Squad)
+  // Inspect Chat History
   async function openChatInspector(type: "lfg" | "squad", item: LfgListing | Squad) {
     setInspectingItem({ type, data: item });
     const queryField = type === "lfg" ? "listing_id" : "squad_id";
-    
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from("chat_messages")
       .select("*, profiles(username)")
       .eq(queryField, item.id)
       .order("created_at", { ascending: true });
 
-    if (!error && data) {
-      setChatMessages(data);
-    } else {
-      setChatMessages([]);
+    setChatMessages(data || []);
+  }
+
+  async function handleDeleteMessage(msgId: string) {
+    if (!confirm("Permanently erase this chat payload?")) return;
+    const { error } = await supabase.from("chat_messages").delete().eq("id", msgId);
+    if (!error) {
+      await logAdminAction("DELETE_MESSAGE", msgId, "Deleted individual chat message");
+      setChatMessages((prev) => prev.filter(m => m.id !== msgId));
     }
   }
 
-  // Delete Individual Chat Message
-  async function handleDeleteMessage(msgId: string) {
-    if (!confirm("Delete this message?")) return;
-    const { error } = await supabase.from("chat_messages").delete().eq("id", msgId);
+  // Update Report Status
+  async function handleUpdateReportStatus(reportId: string, newStatus: "resolved" | "dismissed") {
+    const { error } = await supabase
+      .from("reports")
+      .update({ status: newStatus })
+      .eq("id", reportId);
 
     if (!error) {
-      setChatMessages((prev) => prev.filter(m => m.id !== msgId));
+      setReports(reports.map(r => r.id === reportId ? { ...r, status: newStatus } : r));
+      await logAdminAction("UPDATE_REPORT", reportId, `Marked report as ${newStatus}`);
     } else {
-      alert("Error deleting message: " + error.message);
+      alert("Failed to update report status: " + error.message);
     }
   }
 
-  // Filter computations
+  // Filtering Logic
   const filteredProfiles = profiles.filter(p => 
     (p.username && p.username.toLowerCase().includes(searchQuery.toLowerCase())) ||
     (p.display_name && p.display_name.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -292,87 +410,97 @@ export default function ModDashboard() {
 
   const filteredListings = listings.filter(l =>
     l.game_title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    l.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (l.profiles?.username && l.profiles.username.toLowerCase().includes(searchQuery.toLowerCase()))
+    l.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const filteredSquads = squads.filter(s =>
-    s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (s.game_title && s.game_title.toLowerCase().includes(searchQuery.toLowerCase())) ||
-    (s.profiles?.username && s.profiles.username.toLowerCase().includes(searchQuery.toLowerCase()))
+    s.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const totalOperators = profiles.length;
-  const totalOwners = profiles.filter(p => p.role === "owner").length;
-  const totalMods = profiles.filter(p => p.role === "moderator").length;
-  const totalBanned = profiles.filter(p => p.role === "banned").length;
+  const totalBanned = profiles.filter(p => p.is_banned).length;
+  const pendingReportsCount = reports.filter(r => r.status === "pending").length;
 
   if (!isAuthorized) return null;
 
   return (
-    <div className="min-h-screen bg-[#0a0a0c] text-slate-100 flex flex-col">
+    <div className="min-h-screen bg-[#0a0a0c] text-slate-100 flex flex-col font-sans">
       <Navbar />
 
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full">
-        
-        {/* Header */}
+        {/* Header Section */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 pb-6 border-b border-white/10">
           <div className="flex items-center gap-3">
-            <div className="p-3 rounded bg-red-600/10 border border-red-500/30 text-red-500 shadow-[0_0_15px_rgba(239,68,68,0.2)]">
-              <ShieldAlert className="w-6 h-6" />
+            <div className="p-3 rounded-xl bg-red-600/10 border border-red-500/30 text-red-500 shadow-lg shadow-red-500/10">
+              <ShieldAlert className="w-6 h-6 animate-pulse" />
             </div>
             <div>
-              <h1 className="text-3xl font-black text-white tracking-tight">Command Center // Moderation</h1>
-              <p className="text-sm text-slate-400 mt-1">
-                Full oversight of operators, LFG nodes, and squad chats with instant ban/pardon privileges.
-              </p>
+              <h1 className="text-3xl font-black text-white tracking-tight flex items-center gap-2">
+                Command Center <span className="text-red-500 text-sm font-mono px-2 py-0.5 rounded bg-red-950/55 border border-red-500/30">v2.4 SECURE</span>
+              </h1>
+              <p className="text-sm text-slate-400 mt-1">Full administrative matrix, audit trails, and moderation tooling active.</p>
             </div>
           </div>
 
-          {/* Search Box */}
-          <div className="relative w-full md:w-72">
-            <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" />
-            <input 
-              type="text"
-              placeholder="Search records..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 rounded bg-[#121216] border border-white/10 text-xs text-white font-mono outline-none focus:border-red-500 transition-colors shadow-inner"
-            />
+          <div className="flex items-center gap-3 w-full md:w-auto">
+            <div className="relative w-full md:w-72">
+              <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" />
+              <input 
+                type="text"
+                placeholder="Search database records..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 rounded-lg bg-[#121216] border border-white/10 text-xs text-white font-mono outline-none focus:border-red-500 transition-colors"
+              />
+            </div>
+            <button 
+              onClick={() => window.location.reload()}
+              className="p-2.5 rounded-lg bg-[#121216] border border-white/10 hover:border-white/30 text-slate-400 hover:text-white transition-colors cursor-pointer"
+              title="Refresh Database Cache"
+            >
+              <RefreshCw className="w-4 h-4" />
+            </button>
           </div>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-8">
-          <div className="p-4 rounded-xl bg-[#121216] border border-white/10 flex items-center gap-4">
-            <div className="p-3 rounded bg-violet-600/10 text-violet-400 border border-violet-500/20"><Users className="w-5 h-5" /></div>
+        {/* Stats Grid Overview */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+          <div className="p-4 rounded-xl bg-[#121216] border border-white/10 flex items-center gap-4 shadow-xl">
+            <div className="p-3 rounded-lg bg-violet-600/10 text-violet-400 border border-violet-500/20"><Users className="w-5 h-5" /></div>
             <div>
               <p className="text-xs font-mono text-slate-400">Total Operators</p>
-              <h3 className="text-xl font-black text-white">{totalOperators}</h3>
+              <h3 className="text-xl font-black text-white">{profiles.length}</h3>
             </div>
           </div>
 
-          <div className="p-4 rounded-xl bg-[#121216] border border-white/10 flex items-center gap-4">
-            <div className="p-3 rounded bg-red-600/10 text-red-400 border border-red-500/20"><Shield className="w-5 h-5" /></div>
+          <div className="p-4 rounded-xl bg-[#121216] border border-white/10 flex items-center gap-4 shadow-xl">
+            <div className="p-3 rounded-lg bg-red-600/10 text-red-400 border border-red-500/20"><Shield className="w-5 h-5" /></div>
             <div>
               <p className="text-xs font-mono text-slate-400">Owners / Mods</p>
-              <h3 className="text-xl font-black text-white">{totalOwners + totalMods}</h3>
+              <h3 className="text-xl font-black text-white">{profiles.filter(p => p.role === "owner" || p.role === "moderator").length}</h3>
             </div>
           </div>
 
-          <div className="p-4 rounded-xl bg-[#121216] border border-white/10 flex items-center gap-4">
-            <div className="p-3 rounded bg-amber-600/10 text-amber-400 border border-amber-500/20"><Radio className="w-5 h-5" /></div>
+          <div className="p-4 rounded-xl bg-[#121216] border border-white/10 flex items-center gap-4 shadow-xl">
+            <div className="p-3 rounded-lg bg-amber-600/10 text-amber-400 border border-amber-500/20"><Radio className="w-5 h-5" /></div>
             <div>
-              <p className="text-xs font-mono text-slate-400">Active LFG & Squads</p>
+              <p className="text-xs font-mono text-slate-400">Active Nodes</p>
               <h3 className="text-xl font-black text-white">{listings.length + squads.length}</h3>
             </div>
           </div>
 
-          <div className="p-4 rounded-xl bg-[#121216] border border-white/10 flex items-center gap-4">
-            <div className="p-3 rounded bg-rose-600/10 text-rose-400 border border-rose-500/20"><Ban className="w-5 h-5" /></div>
+          <div className="p-4 rounded-xl bg-[#121216] border border-white/10 flex items-center gap-4 shadow-xl">
+            <div className="p-3 rounded-lg bg-rose-600/10 text-rose-400 border border-rose-500/20"><Ban className="w-5 h-5" /></div>
             <div>
               <p className="text-xs font-mono text-slate-400">Banned Accounts</p>
               <h3 className="text-xl font-black text-white">{totalBanned}</h3>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-xl bg-[#121216] border border-white/10 flex items-center gap-4 shadow-xl">
+            <div className="p-3 rounded-lg bg-orange-600/10 text-orange-400 border border-orange-500/20"><Flag className="w-5 h-5" /></div>
+            <div>
+              <p className="text-xs font-mono text-slate-400">Pending Reports</p>
+              <h3 className="text-xl font-black text-white">{pendingReportsCount}</h3>
             </div>
           </div>
         </div>
@@ -382,103 +510,203 @@ export default function ModDashboard() {
           <button
             onClick={() => setActiveTab("users")}
             className={`px-4 py-2 rounded-lg font-mono text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
-              activeTab === "users" ? "bg-red-600 text-white shadow-[0_0_15px_rgba(239,68,68,0.3)]" : "bg-[#121216] text-slate-400 hover:text-white border border-white/10"
+              activeTab === "users" ? "bg-red-600 text-white shadow-lg shadow-red-600/20" : "bg-[#121216] text-slate-400 hover:text-white border border-white/10"
             }`}
           >
             <Users className="w-4 h-4" /> Operator Security ({profiles.length})
           </button>
-
           <button
             onClick={() => setActiveTab("lfg")}
             className={`px-4 py-2 rounded-lg font-mono text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
-              activeTab === "lfg" ? "bg-red-600 text-white shadow-[0_0_15px_rgba(239,68,68,0.3)]" : "bg-[#121216] text-slate-400 hover:text-white border border-white/10"
+              activeTab === "lfg" ? "bg-red-600 text-white shadow-lg shadow-red-600/20" : "bg-[#121216] text-slate-400 hover:text-white border border-white/10"
             }`}
           >
             <Radio className="w-4 h-4" /> LFG Matrix ({listings.length})
           </button>
-
           <button
             onClick={() => setActiveTab("squads")}
             className={`px-4 py-2 rounded-lg font-mono text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
-              activeTab === "squads" ? "bg-red-600 text-white shadow-[0_0_15px_rgba(239,68,68,0.3)]" : "bg-[#121216] text-slate-400 hover:text-white border border-white/10"
+              activeTab === "squads" ? "bg-red-600 text-white shadow-lg shadow-red-600/20" : "bg-[#121216] text-slate-400 hover:text-white border border-white/10"
             }`}
           >
-            <Users className="w-4 h-4" /> Squad Chats ({squads.length})
+            <Gamepad2 className="w-4 h-4" /> Squad Chats ({squads.length})
+          </button>
+          <button
+            onClick={() => setActiveTab("reports")}
+            className={`px-4 py-2 rounded-lg font-mono text-xs font-bold transition-all cursor-pointer flex items-center gap-2 relative ${
+              activeTab === "reports" ? "bg-red-600 text-white shadow-lg shadow-red-600/20" : "bg-[#121216] text-slate-400 hover:text-white border border-white/10"
+            }`}
+          >
+            <Flag className="w-4 h-4" /> Reports 
+            {pendingReportsCount > 0 && (
+              <span className="ml-1 px-1.5 py-0.2 rounded-full bg-orange-500 text-white text-[10px] font-black">{pendingReportsCount}</span>
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab("logs")}
+            className={`px-4 py-2 rounded-lg font-mono text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+              activeTab === "logs" ? "bg-red-600 text-white shadow-lg shadow-red-600/20" : "bg-[#121216] text-slate-400 hover:text-white border border-white/10"
+            }`}
+          >
+            <Terminal className="w-4 h-4" /> Audit Trails ({auditLogs.length})
           </button>
         </div>
 
+        {/* Tab Content Panels */}
         {loading ? (
-          <div className="text-center py-20 text-slate-500 font-mono text-sm animate-pulse">
-            FETCHING_SECURITY_MANIFEST...
+          <div className="text-center py-28 text-slate-500 font-mono text-sm flex flex-col items-center justify-center gap-3">
+            <RefreshCw className="w-8 h-8 animate-spin text-red-500" />
+            SYNCING_SECURE_DATABASE_REGISTERS...
           </div>
         ) : activeTab === "users" ? (
-          /* USERS TAB */
           <div className="bg-[#121216] border border-white/10 rounded-xl overflow-hidden shadow-2xl">
             <div className="p-4 border-b border-white/10 font-mono text-xs text-slate-400 uppercase tracking-wider grid grid-cols-12 gap-4">
               <div className="col-span-4">Operator / Username</div>
-              <div className="col-span-4">Display Name</div>
-              <div className="col-span-4">Security Clearance & Actions</div>
+              <div className="col-span-3">Display Name</div>
+              <div className="col-span-5">Security Clearance & Sanctions</div>
             </div>
 
             <div className="divide-y divide-white/5">
-              {filteredProfiles.length === 0 ? (
-                <div className="p-8 text-center text-slate-500 font-mono text-xs">NO_OPERATORS_FOUND</div>
-              ) : (
-                filteredProfiles.map((profile) => (
-                  <div key={profile.id} className="p-4 grid grid-cols-12 gap-4 items-center text-sm">
-                    <div className="col-span-4 font-mono text-violet-400 font-bold flex items-center gap-2">
-                      @{profile.username || "unknown"}
-                      {profile.role === "banned" && (
-                        <span className="px-2 py-0.5 rounded bg-red-950 text-red-400 border border-red-500/30 text-[10px] font-mono">BANNED</span>
-                      )}
-                    </div>
-                    <div className="col-span-4 text-slate-300">
-                      {profile.display_name || "N/A"}
-                    </div>
-                    <div className="col-span-4 flex items-center gap-2 flex-wrap">
-                      <select
-                        value={profile.role || "member"}
-                        disabled={currentUserRole !== "owner" && profile.role === "owner"}
-                        onChange={(e) => handleLocalRoleChange(profile.id, e.target.value)}
-                        className="px-3 py-1.5 rounded bg-black/50 border border-white/10 text-white text-xs font-mono outline-none cursor-pointer focus:border-red-500"
-                      >
-                        <option value="member">Member</option>
-                        <option value="moderator">Moderator</option>
-                        <option value="owner">Owner</option>
-                        <option value="banned">Banned</option>
-                      </select>
+              {filteredProfiles.map((profile) => (
+                <div key={profile.id} className="p-4 grid grid-cols-12 gap-4 items-center text-sm hover:bg-white/[0.02] transition-colors">
+                  <div className="col-span-4 font-mono text-violet-400 font-bold flex items-center gap-2 flex-wrap">
+                    <span>@{profile.username || "unknown"}</span>
+                    {profile.is_banned && (
+                      <span className="px-2 py-0.5 rounded bg-red-950 text-red-400 border border-red-500/30 text-[10px] font-mono tracking-wider font-black">BANNED</span>
+                    )}
+                    {profile.id === currentUserId && (
+                      <span className="px-1.5 py-0.5 rounded bg-violet-950 text-violet-300 text-[10px] font-mono">(YOU)</span>
+                    )}
+                  </div>
+                  <div className="col-span-3 text-slate-300 truncate">
+                    {profile.display_name || "N/A"}
+                  </div>
+                  <div className="col-span-5 flex items-center gap-2 flex-wrap">
+                    <select
+                      value={profile.role || "member"}
+                      disabled={currentUserRole !== "owner" && profile.role === "owner"}
+                      onChange={(e) => handleLocalRoleChange(profile.id, e.target.value)}
+                      className="px-3 py-1.5 rounded-lg bg-black/50 border border-white/10 text-white text-xs font-mono outline-none cursor-pointer focus:border-red-500 disabled:opacity-50"
+                    >
+                      <option value="member">Member</option>
+                      <option value="moderator">Moderator</option>
+                      <option value="owner">Owner</option>
+                    </select>
 
+                    <button
+                      onClick={() => handleSaveRole(profile.id, profile.role)}
+                      disabled={savingId === profile.id || cooldown}
+                      className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer disabled:opacity-50 shadow-md"
+                    >
+                      <Save className="w-3.5 h-3.5" /> Save
+                    </button>
+
+                    {successId === profile.id && (
+                      <span className="text-emerald-400 text-xs font-mono flex items-center gap-1">
+                        <Check className="w-3.5 h-3.5" /> Saved
+                      </span>
+                    )}
+
+                    {profile.is_banned ? (
                       <button
-                        onClick={() => handleSaveRole(profile.id, profile.role)}
-                        disabled={savingId === profile.id || cooldown}
-                        className="px-3 py-1.5 rounded bg-red-600 hover:bg-red-500 disabled:bg-red-900 text-white text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer"
+                        onClick={() => handlePardonUser(profile.id, profile.username)}
+                        disabled={savingId === profile.id}
+                        className="px-3 py-1.5 rounded-lg bg-emerald-950 hover:bg-emerald-900 border border-emerald-500/30 text-emerald-300 text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer"
                       >
-                        <Save className="w-3.5 h-3.5" />
-                        {savingId === profile.id ? "Saving..." : "Save"}
+                        <Unlock className="w-3.5 h-3.5" /> Pardon
                       </button>
+                    ) : profile.role !== "owner" && profile.id !== currentUserId && (
+                      <button
+                        onClick={() => setSelectedUserForBan(profile)}
+                        disabled={savingId === profile.id}
+                        className="px-3 py-1.5 rounded-lg bg-rose-950 hover:bg-rose-900 border border-rose-500/30 text-rose-300 text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer"
+                      >
+                        <Lock className="w-3.5 h-3.5" /> Ban
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : activeTab === "lfg" ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {filteredListings.map((item) => (
+              <div key={item.id} className="p-5 rounded-xl bg-[#121216] border border-white/10 flex flex-col justify-between shadow-xl hover:border-white/20 transition-all">
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="px-2.5 py-1 rounded-md bg-violet-950/60 text-xs font-mono text-violet-400 border border-violet-500/20 font-bold">{item.game_title}</span>
+                    <span className="px-2.5 py-1 rounded-md bg-emerald-950/60 text-xs font-mono text-emerald-400 border border-emerald-500/20"><Globe className="w-3 h-3 inline mr-1" /> {item.region}</span>
+                  </div>
+                  <p className="text-slate-300 text-sm mb-3 bg-black/40 p-3 rounded-lg border border-white/5 leading-relaxed">{item.description}</p>
+                  <div className="text-xs font-mono text-slate-500 mb-4">Host: <span className="text-slate-300">@{item.profiles?.username}</span> | Slots: {item.max_players}</div>
+                </div>
+                <div className="pt-3 border-t border-white/5 flex items-center justify-between">
+                  <button onClick={() => openChatInspector("lfg", item)} className="px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-lg shadow-violet-600/20">
+                    <Eye className="w-3.5 h-3.5" /> Inspect LFG Chat
+                  </button>
+                  <button onClick={() => handleDeleteLfgListing(item.id)} className="px-3 py-1.5 rounded-lg bg-red-950 hover:bg-red-900 border border-red-500/30 text-red-300 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer">
+                    <Trash2 className="w-3.5 h-3.5" /> Purge Node
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : activeTab === "squads" ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {filteredSquads.map((squad) => (
+              <div key={squad.id} className="p-5 rounded-xl bg-[#121216] border border-white/10 flex flex-col justify-between shadow-xl hover:border-white/20 transition-all">
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="px-2.5 py-1 rounded-md bg-indigo-950/60 text-xs font-mono text-indigo-400 font-bold border border-indigo-500/20">{squad.name}</span>
+                  </div>
+                  <div className="text-xs font-mono text-slate-400 mb-4 bg-black/30 p-2.5 rounded-lg border border-white/5">Squad Leader: <span className="text-violet-400 font-bold">@{squad.profiles?.username}</span></div>
+                </div>
+                <div className="pt-3 border-t border-white/5 flex items-center justify-between">
+                  <button onClick={() => openChatInspector("squad", squad)} className="px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-lg shadow-violet-600/20">
+                    <Eye className="w-3.5 h-3.5" /> Inspect Squad Chat
+                  </button>
+                  <button onClick={() => handleDeleteSquad(squad.id)} className="px-3 py-1.5 rounded-lg bg-red-950 hover:bg-red-900 border border-red-500/30 text-red-300 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer">
+                    <Trash2 className="w-3.5 h-3.5" /> Delete Squad
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : activeTab === "reports" ? (
+          <div className="bg-[#121216] border border-white/10 rounded-xl overflow-hidden shadow-2xl">
+            <div className="p-4 border-b border-white/10 font-mono text-xs text-slate-400 uppercase tracking-wider grid grid-cols-12 gap-4">
+              <div className="col-span-3">Reporter</div>
+              <div className="col-span-2">Target Type</div>
+              <div className="col-span-4">Reason / Details</div>
+              <div className="col-span-3 text-right">Moderator Verdict</div>
+            </div>
 
-                      {profile.role === "banned" ? (
-                        <button
-                          onClick={() => handlePardonUser(profile.id, profile.username)}
-                          className="px-3 py-1.5 rounded bg-emerald-950 hover:bg-emerald-900 border border-emerald-500/30 text-emerald-300 text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer"
-                          title="Pardon / Unban Account"
-                        >
-                          <Check className="w-3.5 h-3.5" /> Pardon
-                        </button>
-                      ) : profile.role !== "owner" && (
-                        <button
-                          onClick={() => handleBanUser(profile.id, profile.username)}
-                          className="px-2.5 py-1.5 rounded bg-rose-950 hover:bg-rose-900 border border-rose-500/30 text-rose-300 text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer"
-                          title="Ban Account"
-                        >
-                          <Ban className="w-3.5 h-3.5" /> Ban
-                        </button>
-                      )}
+            <div className="divide-y divide-white/5">
+              {reports.length === 0 ? (
+                <div className="text-center py-16 text-slate-500 font-mono text-xs">NO_COMMUNITY_REPORTS_PENDING</div>
+              ) : (
+                reports.map((report) => (
+                  <div key={report.id} className="p-4 grid grid-cols-12 gap-4 items-center text-sm hover:bg-white/[0.02] transition-colors">
+                    <div className="col-span-3 font-mono text-violet-400 font-bold">@{report.profiles?.username || "unknown"}</div>
+                    <div className="col-span-2 font-mono text-xs uppercase text-amber-400">{report.target_type}</div>
+                    <div className="col-span-4 text-slate-300">{report.reason}</div>
+                    <div className="col-span-3 flex items-center justify-end gap-2">
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase ${
+                        report.status === "pending" ? "bg-amber-950 text-amber-400 border border-amber-500/30" :
+                        report.status === "resolved" ? "bg-emerald-950 text-emerald-400 border border-emerald-500/30" :
+                        "bg-slate-800 text-slate-400"
+                      }`}>{report.status}</span>
 
-                      {successId === profile.id && (
-                        <span className="text-emerald-400 text-xs flex items-center gap-1 font-mono">
-                          <CheckCircle2 className="w-4 h-4" /> Saved
-                        </span>
+                      {report.status === "pending" && (
+                        <>
+                          <button onClick={() => handleUpdateReportStatus(report.id, "resolved")} className="p-1.5 rounded bg-emerald-950 hover:bg-emerald-900 text-emerald-400 transition-colors" title="Resolve">
+                            <CheckCircle2 className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => handleUpdateReportStatus(report.id, "dismissed")} className="p-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors" title="Dismiss">
+                            <XCircle className="w-4 h-4" />
+                          </button>
+                        </>
                       )}
                     </div>
                   </div>
@@ -486,168 +714,99 @@ export default function ModDashboard() {
               )}
             </div>
           </div>
-        ) : activeTab === "lfg" ? (
-          /* LFG TAB */
-          <div className="space-y-4">
-            {filteredListings.length === 0 ? (
-              <div className="p-12 text-center text-slate-500 font-mono text-xs bg-[#121216] border border-white/10 rounded-xl">
-                NO_ACTIVE_LFG_NODES_FOUND
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {filteredListings.map((item) => (
-                  <div key={item.id} className="p-5 rounded-xl bg-[#121216] border border-white/10 flex flex-col justify-between shadow-lg">
-                    <div>
-                      <div className="flex items-center justify-between mb-3">
-                        <span className="px-2.5 py-1 rounded bg-violet-950/60 border border-violet-500/30 text-xs font-mono text-violet-400">
-                          {item.game_title}
-                        </span>
-                        <div className="flex items-center gap-2">
-                          <span className="px-2.5 py-1 rounded bg-emerald-950/60 border border-emerald-500/30 text-xs font-mono text-emerald-400 flex items-center gap-1">
-                            <Globe className="w-3 h-3" /> {item.region}
-                          </span>
-                          <span className="px-2.5 py-1 rounded bg-amber-950/60 border border-amber-500/30 text-xs font-mono text-amber-400">
-                            {item.skill_tier}
-                          </span>
-                        </div>
-                      </div>
-
-                      <p className="text-slate-300 text-sm mb-3 bg-black/40 p-3 rounded-lg border border-white/5 leading-relaxed">
-                        {item.description}
-                      </p>
-
-                      <div className="text-xs font-mono text-slate-400 mb-4">
-                        Host: <span className="text-slate-200">@{item.profiles?.username || "unknown"}</span> | Slots: <span className="text-violet-400">{item.max_players}</span>
-                      </div>
-                    </div>
-
-                    <div className="pt-3 border-t border-white/5 flex items-center justify-between">
-                      <button
-                        onClick={() => openChatInspector("lfg", item)}
-                        className="px-3 py-1.5 rounded bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer"
-                      >
-                        <Eye className="w-3.5 h-3.5" /> Inspect LFG Chat
-                      </button>
-
-                      <button
-                        onClick={() => handleDeleteLfgListing(item.id)}
-                        className="px-3 py-1.5 rounded bg-red-950 hover:bg-red-900 border border-red-500/30 text-red-300 text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" /> Purge LFG
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
         ) : (
-          /* SQUADS TAB */
-          <div className="space-y-4">
-            {filteredSquads.length === 0 ? (
-              <div className="p-12 text-center text-slate-500 font-mono text-xs bg-[#121216] border border-white/10 rounded-xl">
-                NO_ACTIVE_SQUADS_FOUND
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {filteredSquads.map((squad) => (
-                  <div key={squad.id} className="p-5 rounded-xl bg-[#121216] border border-white/10 flex flex-col justify-between shadow-lg">
-                    <div>
-                      <div className="flex items-center justify-between mb-3">
-                        <span className="px-2.5 py-1 rounded bg-indigo-950/60 border border-indigo-500/30 text-xs font-mono text-indigo-400 font-bold">
-                          {squad.name}
-                        </span>
-                        {squad.game_title && (
-                          <span className="px-2.5 py-1 rounded bg-violet-950/60 border border-violet-500/30 text-xs font-mono text-violet-400">
-                            {squad.game_title}
-                          </span>
-                        )}
-                      </div>
+          <div className="bg-[#121216] border border-white/10 rounded-xl overflow-hidden shadow-2xl font-mono text-xs">
+            <div className="p-4 border-b border-white/10 text-slate-400 uppercase tracking-wider grid grid-cols-12 gap-4">
+              <div className="col-span-3">Timestamp</div>
+              <div className="col-span-3">Moderator</div>
+              <div className="col-span-2 text-amber-400">Action Type</div>
+              <div className="col-span-4">Details</div>
+            </div>
 
-                      <div className="text-xs font-mono text-slate-400 mb-4">
-                        Squad Leader: <span className="text-slate-200">@{squad.profiles?.username || "unknown"}</span>
-                      </div>
-                    </div>
-
-                    <div className="pt-3 border-t border-white/5 flex items-center justify-between">
-                      <button
-                        onClick={() => openChatInspector("squad", squad)}
-                        className="px-3 py-1.5 rounded bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer"
-                      >
-                        <Eye className="w-3.5 h-3.5" /> Inspect Squad Chat
-                      </button>
-
-                      <button
-                        onClick={() => handleDeleteSquad(squad.id)}
-                        className="px-3 py-1.5 rounded bg-red-950 hover:bg-red-900 border border-red-500/30 text-red-300 text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" /> Delete Squad
-                      </button>
-                    </div>
+            <div className="divide-y divide-white/5">
+              {auditLogs.length === 0 ? (
+                <div className="text-center py-16 text-slate-500">NO_AUDIT_TRAIL_RECORDS_FOUND</div>
+              ) : (
+                auditLogs.map((log) => (
+                  <div key={log.id} className="p-4 grid grid-cols-12 gap-4 items-center text-slate-300 hover:bg-white/[0.02]">
+                    <div className="col-span-3 text-slate-500">{new Date(log.created_at).toLocaleString()}</div>
+                    <div className="col-span-3 text-violet-400 font-bold">@{log.profiles?.username || "system"}</div>
+                    <div className="col-span-2 text-amber-300 font-bold">{log.action_type}</div>
+                    <div className="col-span-4 text-slate-400 truncate">{log.details}</div>
                   </div>
-                ))}
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Ban Reason Modal Dialog */}
+        {selectedUserForBan && (
+          <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-md">
+            <div className="w-full max-w-md p-6 rounded-2xl bg-[#121216] border border-red-500/40 shadow-2xl flex flex-col gap-4">
+              <div className="flex items-center justify-between pb-3 border-b border-white/10">
+                <div className="flex items-center gap-2 text-red-500 font-bold text-base">
+                  <Lock className="w-5 h-5" /> Ban Operator @{selectedUserForBan.username}
+                </div>
+                <button onClick={() => setSelectedUserForBan(null)} className="text-slate-400 hover:text-white text-xs font-mono cursor-pointer">[ESC]</button>
               </div>
-            )}
+
+              <div>
+                <label className="block text-xs font-mono text-slate-400 mb-2">Ban Reason / Infraction Details:</label>
+                <textarea 
+                  rows={3}
+                  value={banReasonInput}
+                  onChange={(e) => setBanReasonInput(e.target.value)}
+                  placeholder="E.g., Toxicity, harassment, or violating community safety guidelines..."
+                  className="w-full p-3 rounded-lg bg-black/50 border border-white/10 text-xs text-white outline-none focus:border-red-500 resize-none font-sans"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button 
+                  onClick={() => setSelectedUserForBan(null)}
+                  className="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-mono text-white transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={executeBanUser}
+                  className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-xs font-bold text-white transition-colors cursor-pointer shadow-lg shadow-red-600/30"
+                >
+                  Confirm Permanent Ban
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
         {/* Chat Inspector Modal */}
         {inspectingItem && (
-          <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm">
-            <div className="w-full max-w-xl h-[650px] p-6 rounded-2xl bg-[#121216] border border-red-500/40 shadow-2xl flex flex-col justify-between">
-              
+          <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-md">
+            <div className="w-full max-w-xl h-[680px] p-6 rounded-2xl bg-[#121216] border border-red-500/40 shadow-2xl flex flex-col justify-between">
               <div className="flex items-center justify-between pb-4 border-b border-white/15">
-                <div>
-                  <h3 className="text-base font-bold text-white flex items-center gap-2">
-                    🛡️ Chat Inspector: {inspectingItem.type === "lfg" ? (inspectingItem.data as LfgListing).game_title : (inspectingItem.data as Squad).name}
-                  </h3>
-                  <p className="text-xs font-mono text-red-400 mt-0.5">
-                    Realtime Moderator Audit
-                  </p>
-                </div>
                 <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => {
-                      if (inspectingItem.type === "lfg") {
-                        handleDeleteLfgListing(inspectingItem.data.id);
-                      } else {
-                        handleDeleteSquad(inspectingItem.data.id);
-                      }
-                    }}
-                    className="px-3 py-1 rounded bg-red-600 hover:bg-red-500 text-white text-xs font-mono font-bold transition-colors cursor-pointer"
-                  >
-                    PURGE {inspectingItem.type.toUpperCase()}
-                  </button>
-                  <button 
-                    onClick={() => setInspectingItem(null)}
-                    className="text-slate-400 hover:text-white text-xs font-mono px-2.5 py-1 rounded bg-white/5 hover:bg-white/10 transition-colors cursor-pointer"
-                  >
-                    [CLOSE]
-                  </button>
+                  <ShieldAlert className="w-5 h-5 text-red-500" />
+                  <h3 className="text-base font-bold text-white">Chat Inspector // {inspectingItem.type.toUpperCase()}</h3>
                 </div>
+                <button onClick={() => setInspectingItem(null)} className="text-slate-400 hover:text-white text-xs font-mono cursor-pointer">[CLOSE]</button>
               </div>
 
               <div className="flex-1 overflow-y-auto my-4 space-y-3 pr-2">
                 {chatMessages.length === 0 ? (
-                  <div className="text-center text-xs font-mono text-slate-500 py-24">
-                    NO_MESSAGES_LOGGED_IN_THIS_CHAT
-                  </div>
+                  <div className="text-center py-20 text-slate-500 font-mono text-xs">NO_MESSAGES_RECORDED_IN_LOG</div>
                 ) : (
                   chatMessages.map((msg) => (
                     <div key={msg.id} className="p-3 rounded-xl bg-black/50 border border-white/10 flex items-start justify-between gap-3 group">
                       <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-xs font-mono text-violet-400 font-bold">@{msg.profiles?.username || "operator"}</span>
-                          <span className="text-[10px] font-mono text-slate-500">
-                            {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                        </div>
-                        <p className="text-sm text-slate-200 break-words">{msg.message}</p>
+                        <span className="text-xs font-mono text-violet-400 font-bold">@{msg.profiles?.username || "unknown"}</span>
+                        <p className="text-sm text-slate-200 mt-1 leading-relaxed">{msg.message}</p>
+                        <span className="text-[10px] font-mono text-slate-500 mt-1 block">{new Date(msg.created_at).toLocaleTimeString()}</span>
                       </div>
-                      <button
-                        onClick={() => handleDeleteMessage(msg.id)}
-                        className="opacity-70 group-hover:opacity-100 p-1.5 rounded bg-red-950/60 hover:bg-red-900 border border-red-500/30 text-red-400 transition-all cursor-pointer"
-                        title="Delete toxic message"
+                      <button 
+                        onClick={() => handleDeleteMessage(msg.id)} 
+                        className="p-1.5 rounded-lg bg-red-950 hover:bg-red-900 text-red-400 transition-colors cursor-pointer shrink-0"
+                        title="Delete Message"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -657,14 +816,18 @@ export default function ModDashboard() {
                 <div ref={chatEndRef} />
               </div>
 
-              <div className="pt-3 border-t border-white/10 text-center text-xs font-mono text-slate-500">
-                Moderator audit active. Messages can be deleted individually or entire node purged.
+              <div className="pt-3 border-t border-white/10 flex items-center justify-between">
+                <span className="text-xs font-mono text-slate-500">Total Logged Messages: {chatMessages.length}</span>
+                <button 
+                  onClick={() => setInspectingItem(null)}
+                  className="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-mono text-white transition-colors cursor-pointer"
+                >
+                  Exit Inspector
+                </button>
               </div>
-
             </div>
           </div>
         )}
-
       </main>
     </div>
   );
