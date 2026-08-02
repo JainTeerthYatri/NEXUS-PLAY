@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import Navbar from "@/components/Navbar";
 import { createClient } from "@/lib/supabase/client";
-import { Radio, Plus, Globe, MessageSquare, Filter, Trash2, Users, Send, Search, Eye } from "lucide-react";
+import { Radio, Plus, Globe, MessageSquare, Filter, Trash2, Users, Send, Search, Eye, ShieldAlert, Sparkles } from "lucide-react";
 
 type LfgListing = {
   id: string;
@@ -13,7 +13,6 @@ type LfgListing = {
   skill_tier: string;
   max_players: number;
   description: string;
-  contact_info: string;
   created_at: string;
   profiles?: {
     username: string;
@@ -68,7 +67,6 @@ export default function LfgBoardPage() {
   const [skillTier, setSkillTier] = useState("Ascendant");
   const [maxPlayers, setMaxPlayers] = useState(5);
   const [description, setDescription] = useState("");
-  const [contactInfo, setContactInfo] = useState("");
 
   const supabase = createClient();
 
@@ -156,13 +154,11 @@ export default function LfgBoardPage() {
       skill_tier: skillTier,
       max_players: Number(maxPlayers),
       description,
-      contact_info: contactInfo,
     });
 
     if (!error) {
       setIsModalOpen(false);
       setDescription("");
-      setContactInfo("");
       fetchListings();
     } else {
       alert("Error publishing listing: " + error.message);
@@ -188,30 +184,43 @@ export default function LfgBoardPage() {
     setActiveMembersListing(item);
     setLoadingLfgMembers(true);
 
-    const { data: participantsData, error: partError } = await supabase
-      .from("lfg_participants")
-      .select("user_id, joined_at, profiles(username, display_name)")
-      .eq("listing_id", item.id);
-
     const membersMap: LfgMember[] = [];
 
-    if (item.user_id) {
-      membersMap.push({
-        user_id: item.user_id,
-        profiles: item.profiles ? { username: item.profiles.username, display_name: item.profiles.display_name } : null,
-      });
-    }
+    // Add host first
+    membersMap.push({
+      user_id: item.user_id,
+      profiles: item.profiles ? { username: item.profiles.username, display_name: item.profiles.display_name } : { username: "host", display_name: "Host" },
+    });
 
-    if (!partError && participantsData) {
-      participantsData.forEach((p: any) => {
-        if (p.user_id !== item.user_id) {
-          membersMap.push({
-            user_id: p.user_id,
-            profiles: p.profiles,
-            joined_at: p.joined_at,
-          });
-        }
-      });
+    // Fetch participants explicitly
+    const { data: participantsData, error: partError } = await supabase
+      .from("lfg_participants")
+      .select("user_id, joined_at")
+      .eq("listing_id", item.id);
+
+    if (!partError && participantsData && participantsData.length > 0) {
+      const userIds = participantsData.map((p: any) => p.user_id).filter((id: string) => id !== item.user_id);
+      
+      if (userIds.length > 0) {
+        const { data: profilesData } = await supabase
+          .from("profiles")
+          .select("id, username, display_name")
+          .in("id", userIds);
+
+        const profileMap = new Map();
+        profilesData?.forEach((prof: any) => profileMap.set(prof.id, prof));
+
+        participantsData.forEach((p: any) => {
+          if (p.user_id !== item.user_id) {
+            const prof = profileMap.get(p.user_id);
+            membersMap.push({
+              user_id: p.user_id,
+              profiles: prof ? { username: prof.username, display_name: prof.display_name } : { username: "operator", display_name: "Member" },
+              joined_at: p.joined_at,
+            });
+          }
+        });
+      }
     }
 
     setLfgMembersList(membersMap);
@@ -353,7 +362,6 @@ export default function LfgBoardPage() {
     const matchesSearch = searchQuery === "" || 
       item.game_title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.contact_info.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.skill_tier.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesGame && matchesRegion && matchesSearch;
   });
@@ -364,29 +372,31 @@ export default function LfgBoardPage() {
 
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full">
         
+        {/* Header Section */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 pb-6 border-b border-white/10">
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-[#121216] border border-violet-500/30 text-xs font-mono text-violet-400 mb-2 shadow-[0_0_10px_rgba(139,92,246,0.1)]">
               <Radio className="w-3.5 h-3.5 animate-pulse" />
-              <span>NEURAL_LFG_MATRIX // V2.9 LIVE_SLOTS</span>
+              <span>NEURAL_LFG_MATRIX // V3.0 SECURE_NODES</span>
             </div>
             <h1 className="text-3xl font-black text-white tracking-tight">LFG Board</h1>
             <p className="text-sm text-slate-400 mt-1">
-              Automated slot-locked secure party channels with live real-time member tracking.
+              Automated slot-locked secure party channels with live real-time member roster tracking.
             </p>
           </div>
 
           {user && (
             <button 
               onClick={() => setIsModalOpen(true)}
-              className="px-5 py-2.5 rounded bg-violet-600 hover:bg-violet-500 text-white font-bold text-sm transition-colors flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(139,92,246,0.3)] cursor-pointer"
+              className="px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-sm transition-all flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(139,92,246,0.3)] cursor-pointer"
             >
               <Plus className="w-4 h-4" /> Deploy LFG Node
             </button>
           )}
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-6 p-4 rounded-xl bg-[#121216] border border-white/10 shadow-lg">
+        {/* Filter & Search Bar */}
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-8 p-4 rounded-2xl bg-[#121216] border border-white/10 shadow-lg">
           <div className="flex flex-wrap items-center gap-4 flex-1">
             <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
               <Filter className="w-4 h-4 text-violet-400" /> Filters:
@@ -395,7 +405,7 @@ export default function LfgBoardPage() {
             <select 
               value={filterGame} 
               onChange={(e) => setFilterGame(e.target.value)}
-              className="px-3 py-1.5 rounded bg-black/50 border border-white/10 text-xs text-slate-200 font-mono outline-none focus:border-violet-500 transition-colors"
+              className="px-3.5 py-2 rounded-xl bg-black/50 border border-white/10 text-xs text-slate-200 font-mono outline-none focus:border-violet-500 transition-colors cursor-pointer"
             >
               <option value="ALL">All Games</option>
               <option value="Valorant">Valorant</option>
@@ -408,7 +418,7 @@ export default function LfgBoardPage() {
             <select 
               value={filterRegion} 
               onChange={(e) => setFilterRegion(e.target.value)}
-              className="px-3 py-1.5 rounded bg-black/50 border border-white/10 text-xs text-slate-200 font-mono outline-none focus:border-violet-500 transition-colors"
+              className="px-3.5 py-2 rounded-xl bg-black/50 border border-white/10 text-xs text-slate-200 font-mono outline-none focus:border-violet-500 transition-colors cursor-pointer"
             >
               <option value="ALL">All Regions</option>
               <option value="Asia">Asia</option>
@@ -418,39 +428,40 @@ export default function LfgBoardPage() {
           </div>
 
           <div className="relative w-full md:w-72">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input 
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search game, tier, tags..."
-              className="w-full pl-9 pr-3 py-1.5 rounded bg-black/50 border border-white/10 text-xs text-white placeholder:text-slate-500 outline-none focus:border-violet-500 transition-colors"
+              placeholder="Search game, tier, requirements..."
+              className="w-full pl-10 pr-4 py-2 rounded-xl bg-black/50 border border-white/10 text-xs text-white placeholder:text-slate-500 outline-none focus:border-violet-500 transition-colors"
             />
           </div>
         </div>
 
+        {/* Listings Grid */}
         {loading ? (
           <div className="text-center py-20 text-violet-400 font-mono text-sm animate-pulse">
             INITIALIZING_MATCHMAKING_NODES...
           </div>
         ) : filteredListings.length === 0 ? (
-          <div className="p-12 rounded-xl bg-[#121216] border border-white/10 text-center max-w-md mx-auto my-12 shadow-xl">
+          <div className="p-12 rounded-2xl bg-[#121216] border border-white/10 text-center max-w-md mx-auto my-12 shadow-xl">
             <Radio className="w-10 h-10 text-slate-600 mx-auto mb-4" />
             <h3 className="text-white font-bold mb-1">No Active LFG Nodes</h3>
             <p className="text-sm text-slate-400 mb-6">
-              The matrix is clear or no nodes match your search query.
+              The matrix is clear or no nodes match your search criteria.
             </p>
             {user && (
               <button 
                 onClick={() => setIsModalOpen(true)}
-                className="px-4 py-2 rounded bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs shadow-[0_0_15px_rgba(139,92,246,0.2)] cursor-pointer"
+                className="px-4 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs shadow-[0_0_15px_rgba(139,92,246,0.2)] cursor-pointer"
               >
                 Deploy Node
               </button>
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredListings.map((item) => {
               const currentCount = participantCounts[item.id] || 1;
               const percentage = Math.min(100, (currentCount / item.max_players) * 100);
@@ -459,47 +470,51 @@ export default function LfgBoardPage() {
               return (
                 <div 
                   key={item.id}
-                  className="p-6 rounded-xl bg-[#121216] border border-white/10 hover:border-violet-500/40 transition-all flex flex-col justify-between shadow-lg group"
+                  className="p-6 rounded-2xl bg-[#121216] border border-white/10 hover:border-violet-500/50 transition-all flex flex-col justify-between shadow-xl group"
                 >
-                  <div>
-                    <div className="flex items-center justify-between mb-4">
-                      <span className="px-2.5 py-1 rounded bg-violet-950/60 border border-violet-500/30 text-xs font-mono text-violet-400">
+                  <div className="space-y-4">
+                    {/* Top Badges */}
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="px-3 py-1 rounded-lg bg-violet-950/60 border border-violet-500/30 text-xs font-mono text-violet-400 font-semibold">
                         {item.game_title}
                       </span>
-                      <div className="flex items-center gap-2">
-                        <span className="px-2.5 py-1 rounded bg-emerald-950/60 border border-emerald-500/30 text-xs font-mono text-emerald-400 flex items-center gap-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="px-2.5 py-1 rounded-lg bg-emerald-950/60 border border-emerald-500/30 text-xs font-mono text-emerald-400 flex items-center gap-1">
                           <Globe className="w-3 h-3" /> {item.region}
                         </span>
-                        <span className="px-2.5 py-1 rounded bg-amber-950/60 border border-amber-500/30 text-xs font-mono text-amber-400">
+                        <span className="px-2.5 py-1 rounded-lg bg-amber-950/60 border border-amber-500/30 text-xs font-mono text-amber-400">
                           {item.skill_tier}
                         </span>
                       </div>
                     </div>
 
-                    <p className="text-slate-300 text-sm mb-4 bg-black/40 p-3 rounded-lg border border-white/5 leading-relaxed">
-                      {item.description}
-                    </p>
-                    
-                    <div className="flex items-center justify-between mb-3">
+                    {/* Host & Roster button */}
+                    <div className="flex items-center justify-between pt-1">
                       <p className="text-xs text-slate-400 font-mono">
-                        Host: <span className="text-slate-200 font-semibold">@{item.profiles?.username || "operator"}</span>
+                        Host: <span className="text-slate-200 font-bold">@{item.profiles?.username || "operator"}</span>
                       </p>
                       
                       <button 
                         onClick={() => openLfgMembersModal(item)}
-                        className="text-xs text-violet-400 hover:text-violet-300 font-mono flex items-center gap-1 underline cursor-pointer"
+                        className="text-xs text-violet-400 hover:text-violet-300 font-mono flex items-center gap-1 bg-violet-950/30 px-2.5 py-1 rounded-lg border border-violet-500/20 transition-all cursor-pointer"
                       >
-                        <Eye className="w-3.5 h-3.5" /> Members ({currentCount})
+                        <Eye className="w-3.5 h-3.5" /> Roster ({currentCount})
                       </button>
                     </div>
 
-                    <div className="mb-4 bg-black/30 p-3 rounded-lg border border-white/5">
-                      <div className="flex justify-between items-center text-xs font-mono mb-1.5">
-                        <span className="text-slate-400 flex items-center gap-1">
-                          <Users className="w-3 h-3 text-violet-400" /> Active Squad Slots
+                    {/* Description Box */}
+                    <p className="text-slate-300 text-sm bg-black/40 p-3.5 rounded-xl border border-white/5 leading-relaxed min-h-[72px]">
+                      {item.description}
+                    </p>
+                    
+                    {/* Progress Capacity Bar */}
+                    <div className="bg-black/40 p-3 rounded-xl border border-white/5">
+                      <div className="flex justify-between items-center text-xs font-mono mb-2">
+                        <span className="text-slate-400 flex items-center gap-1.5">
+                          <Users className="w-3.5 h-3.5 text-violet-400" /> Slots Status
                         </span>
                         <span className={isFull ? "text-red-400 font-bold" : "text-violet-400 font-bold"}>
-                          {currentCount} / {item.max_players} {isFull ? "(PARTY FULL)" : ""}
+                          {currentCount} / {item.max_players} {isFull ? "(FULL)" : ""}
                         </span>
                       </div>
                       <div className="w-full bg-black/60 rounded-full h-2 overflow-hidden border border-white/10">
@@ -509,34 +524,29 @@ export default function LfgBoardPage() {
                         />
                       </div>
                     </div>
-
-                    {item.contact_info && (
-                      <div className="text-xs font-mono text-slate-400 mb-4 bg-violet-950/20 px-3 py-1.5 rounded border border-violet-500/10 truncate">
-                        <span className="text-violet-400">Contact:</span> {item.contact_info}
-                      </div>
-                    )}
                   </div>
 
-                  <div className="pt-4 border-t border-white/5 flex items-center justify-between">
-                    <span className="text-xs font-mono text-slate-500">
-                      ID: {item.id.slice(0, 8)}...
+                  {/* Card Footer Actions */}
+                  <div className="pt-5 mt-5 border-t border-white/5 flex items-center justify-between gap-3">
+                    <span className="text-[11px] font-mono text-slate-500 truncate">
+                      ID: {item.id.slice(0, 8)}
                     </span>
                     <div className="flex items-center gap-2">
                       {user && (user.id === item.user_id || userRole === "owner" || userRole === "moderator") && (
                         <button 
                           onClick={() => handleDeleteListing(item.id)}
-                          className="p-1.5 rounded bg-red-950/40 hover:bg-red-900/60 border border-red-500/30 text-red-400 transition-colors cursor-pointer"
+                          className="p-2 rounded-xl bg-red-950/40 hover:bg-red-900/60 border border-red-500/30 text-red-400 transition-colors cursor-pointer"
                           title="Delete LFG Node"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       )}
 
                       <button 
                         onClick={() => openChat(item)}
-                        className="px-3.5 py-1.5 rounded bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold transition-colors flex items-center gap-1.5 shadow-[0_0_10px_rgba(139,92,246,0.2)] cursor-pointer"
+                        className="px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-[0_0_15px_rgba(139,92,246,0.25)] cursor-pointer"
                       >
-                        <MessageSquare className="w-3.5 h-3.5" /> Connect
+                        <MessageSquare className="w-4 h-4" /> Connect
                       </button>
                     </div>
                   </div>
@@ -546,6 +556,7 @@ export default function LfgBoardPage() {
           </div>
         )}
 
+        {/* Members Roster Modal */}
         {activeMembersListing && (
           <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm">
             <div className="w-full max-w-md p-6 rounded-2xl bg-[#121216] border border-violet-500/40 shadow-2xl">
@@ -585,9 +596,9 @@ export default function LfgBoardPage() {
                       >
                         <div className="flex items-center gap-2.5">
                           {isHost ? (
-                            <div className="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)]" />
+                            <div className="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)]" />
                           ) : (
-                            <div className="w-2 h-2 rounded-full bg-violet-500" />
+                            <div className="w-2.5 h-2.5 rounded-full bg-violet-500" />
                           )}
                           <div>
                             <p className="text-sm font-bold text-white">
@@ -599,9 +610,9 @@ export default function LfgBoardPage() {
                           </div>
                         </div>
 
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-mono ${
+                        <span className={`px-2.5 py-0.5 rounded text-[10px] font-mono ${
                           isHost 
-                            ? 'bg-amber-950/80 border border-amber-500/40 text-amber-300' 
+                            ? 'bg-amber-950/80 border border-amber-500/40 text-amber-300 font-bold' 
                             : 'bg-violet-950/60 border border-violet-500/30 text-violet-300'
                         }`}>
                           {isHost ? "HOST" : "MEMBER"}
@@ -615,6 +626,7 @@ export default function LfgBoardPage() {
           </div>
         )}
 
+        {/* Live Chat Modal */}
         {activeListing && (
           <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="w-full max-w-lg h-[450px] p-6 rounded-2xl bg-[#121216] border border-violet-500/40 shadow-2xl flex flex-col justify-between">
@@ -682,6 +694,7 @@ export default function LfgBoardPage() {
           </div>
         )}
 
+        {/* Deploy LFG Node Modal */}
         {isModalOpen && user && (
           <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="w-full max-w-lg p-6 rounded-2xl bg-[#121216] border border-white/10 shadow-2xl">
@@ -750,18 +763,6 @@ export default function LfgBoardPage() {
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder="Specify role requirements, mic check status, strategy..."
                     className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-white/10 text-white text-sm focus:border-violet-500 outline-none resize-none transition-colors"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-mono text-slate-400 mb-1">Contact Info (Discord / IGN)</label>
-                  <input 
-                    type="text" 
-                    required
-                    value={contactInfo}
-                    onChange={(e) => setContactInfo(e.target.value)}
-                    placeholder="e.g., discord.gg/ASTEROID or #tag"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-white/10 text-white text-sm focus:border-violet-500 outline-none transition-colors"
                   />
                 </div>
 
