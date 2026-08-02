@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import Navbar from "@/components/Navbar";
 import { createClient } from "@/lib/supabase/client";
-import { Radio, Plus, Globe, MessageSquare, Filter, Trash2, Users, Send, Search, Eye, Crown } from "lucide-react";
+import { Radio, Plus, Globe, MessageSquare, Filter, Trash2, Users, Send, Search, Eye, Crown, Bot } from "lucide-react";
 
 type LfgListing = {
   id: string;
@@ -278,6 +278,22 @@ export default function LfgBoardPage() {
       return;
     }
 
+    // Fetch user profile username for bot announcement
+    const { data: userProfile } = await supabase
+      .from("profiles")
+      .select("username")
+      .eq("id", user.id)
+      .single();
+
+    const joiningUsername = userProfile?.username || "operator";
+
+    // Trigger Asteroid Chat Bot automatic join notification message
+    await supabase.from("chat_messages").insert({
+      listing_id: item.id,
+      sender_id: user.id,
+      message: `[ASTEROID_BOT] This is to inform you all that here @${joiningUsername} had joined the '${item.game_title}' squad, so welcome him in the group!`,
+    });
+
     setActiveListing(item);
     await fetchMessages(item.id);
     await fetchParticipantCounts(listings);
@@ -483,8 +499,8 @@ export default function LfgBoardPage() {
                     </div>
 
                     <div className="flex items-center justify-between pt-1">
-                      <p className="text-xs text-slate-400 font-mono">
-                        Host: <span className="text-slate-200 font-bold">@{item.profiles?.username || "operator"}</span>
+                      <p className="text-xs text-slate-400 font-mono flex items-center gap-1.5">
+                        Host: <Crown className="w-3.5 h-3.5 text-amber-400 drop-shadow-[0_0_6px_rgba(251,191,36,0.8)]" /> <span className="text-slate-200 font-bold">@{item.profiles?.username || "operator"}</span>
                       </p>
                       
                       <button 
@@ -590,7 +606,7 @@ export default function LfgBoardPage() {
                             <div className="w-2.5 h-2.5 rounded-full bg-violet-500" />
                           )}
                           <div>
-                            <p className="text-sm font-bold text-white">
+                            <p className="text-sm font-bold text-white flex items-center gap-1.5">
                               @{m.profiles?.username || "operator"}
                             </p>
                             <p className="text-[10px] font-mono text-slate-400">
@@ -617,7 +633,7 @@ export default function LfgBoardPage() {
 
         {activeListing && (
           <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="w-full max-w-lg h-[450px] p-6 rounded-2xl bg-[#121216] border border-violet-500/40 shadow-2xl flex flex-col justify-between">
+            <div className="w-full max-w-lg h-[480px] p-6 rounded-2xl bg-[#121216] border border-violet-500/40 shadow-2xl flex flex-col justify-between">
               
               <div className="flex items-center justify-between pb-4 border-b border-white/10">
                 <div>
@@ -643,7 +659,23 @@ export default function LfgBoardPage() {
                   </div>
                 ) : (
                   messages.map((msg, index) => {
+                    const isBotMessage = msg.message.startsWith("[ASTEROID_BOT]");
+                    const cleanMessage = isBotMessage ? msg.message.replace("[ASTEROID_BOT] ", "") : msg.message;
                     const isMe = user && msg.sender_id === user.id;
+
+                    if (isBotMessage) {
+                      return (
+                        <div key={msg.id || index} className="my-2 p-3 rounded-xl bg-violet-950/30 border border-violet-500/40 text-center shadow-[0_0_15px_rgba(139,92,246,0.15)]">
+                          <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-violet-400 mb-1 font-mono">
+                            <Bot className="w-4 h-4 text-violet-400 animate-bounce" /> ASTEROID CHAT BOT
+                          </div>
+                          <p className="text-xs text-slate-200 font-mono leading-relaxed">
+                            {cleanMessage}
+                          </p>
+                        </div>
+                      );
+                    }
+
                     return (
                       <div key={msg.id || index} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
                         <span className="text-[10px] font-mono text-slate-400 mb-1 px-1">
