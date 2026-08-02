@@ -35,7 +35,18 @@ export async function handleSignupAction(
 
   const supabase = await createClient();
 
-  // 4. Supabase Sign Up
+  // 4. Check if Username already exists in the profiles table
+  const { data: existingUser, error: usernameCheckError } = await supabase
+    .from("profiles")
+    .select("username")
+    .eq("username", username)
+    .maybeSingle();
+
+  if (existingUser) {
+    return { error: "This username is already taken by an authorized user" };
+  }
+
+  // 5. Supabase Sign Up
   const { error } = await supabase.auth.signUp({
     email,
     password,
@@ -48,10 +59,16 @@ export async function handleSignupAction(
   });
 
   if (error) {
-    const errorMsg = 
-      typeof error === "string" 
-        ? error 
-        : error?.message || "An unexpected database or auth error occurred.";
+    let errorMsg = error?.message || "An unexpected database or auth error occurred.";
+    
+    // Check if error is related to existing email
+    if (
+      errorMsg.toLowerCase().includes("already registered") || 
+      errorMsg.toLowerCase().includes("already exists") ||
+      errorMsg.toLowerCase().includes("email address")
+    ) {
+      errorMsg = "if email is in our data then (this email is already in use)";
+    }
     
     return { error: errorMsg };
   }
