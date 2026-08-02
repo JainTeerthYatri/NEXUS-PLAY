@@ -10,7 +10,7 @@ export default function Footer() {
           <Shield className="w-4 h-4 text-red-500" />
           <span className="text-slate-300 font-bold">ASTEROIDCLOUD GRID</span>
           <span className="text-slate-600">|</span>
-          <span>© 2026 All Rights Reserved</span>
+          <span>© 2026 ASTEROID GAMING_CLOUD All Rights Reserved</span>
         </div>
 
         <div className="flex flex-wrap items-center justify-center gap-6 text-slate-300">
