@@ -3,7 +3,11 @@
 import { useEffect, useState, useMemo, useRef } from "react";
 import Navbar from "@/components/Navbar";
 import { createClient } from "@/lib/supabase/client";
-import { Users, Plus, Shield, Gamepad2, UserPlus, UserMinus, Trash2, Sparkles, CheckCircle2, Eye, Crown, Search, Filter, MessageSquare, Send, Clock, X, Check } from "lucide-react";
+import { 
+  Users, Plus, Shield, Gamepad2, UserPlus, UserMinus, 
+  Trash2, Sparkles, CheckCircle2, Eye, Crown, Search, 
+  Filter, MessageSquare, Send, Clock, X, Check, Bot 
+} from "lucide-react";
 
 type Squad = {
   id: string;
@@ -316,6 +320,21 @@ export default function FindSquadsPage() {
       .update({ current_members: newCount })
       .eq("id", squad.id);
 
+    const { data: userProfile } = await supabase
+      .from("profiles")
+      .select("username")
+      .eq("id", req.user_id)
+      .single();
+
+    const joinedUsername = userProfile?.username || "operator";
+
+    // Asteroid Bot Notification for Join
+    await supabase.from("squad_messages").insert({
+      squad_id: squad.id,
+      user_id: req.user_id,
+      message: `[ASTEROID_BOT] This is to inform you all that @${joinedUsername} has joined the '${squad.name}' squad, so welcome them in the group!`,
+    });
+
     alert("✅ Request accepted! User has joined the squad.");
     openRequestsModal(squad);
     fetchSquads(user?.id);
@@ -342,6 +361,8 @@ export default function FindSquadsPage() {
       return;
     }
 
+    if (!confirm("Are you sure you want to leave this squad?")) return;
+
     const { error } = await supabase
       .from("squad_members")
       .delete()
@@ -361,6 +382,21 @@ export default function FindSquadsPage() {
         .eq("squad_id", squad.id)
         .eq("user_id", user.id);
 
+      const { data: userProfile } = await supabase
+        .from("profiles")
+        .select("username")
+        .eq("id", user.id)
+        .single();
+
+      const leavingUsername = userProfile?.username || "operator";
+
+      // Asteroid Bot Notification for Leave
+      await supabase.from("squad_messages").insert({
+        squad_id: squad.id,
+        user_id: user.id,
+        message: `[ASTEROID_BOT] This is to inform you all that @${leavingUsername} has left the '${squad.name}' squad.`,
+      });
+
       setUserMemberships((prev) => {
         const copy = { ...prev };
         delete copy[squad.id];
@@ -372,6 +408,7 @@ export default function FindSquadsPage() {
         return copy;
       });
 
+      setActiveChatSquad(null);
       fetchSquads(user.id);
       alert("Successfully left the squad.");
     } else {
@@ -854,12 +891,23 @@ export default function FindSquadsPage() {
                     </p>
                   </div>
                 </div>
-                <button 
-                  onClick={() => setActiveChatSquad(null)}
-                  className="p-2 rounded-lg bg-amber-950/50 hover:bg-amber-900 text-amber-300 border border-amber-500/30 cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+                <div className="flex items-center gap-2">
+                  {user && user.id !== activeChatSquad.created_by && (
+                    <button 
+                      onClick={() => handleLeaveSquad(activeChatSquad)}
+                      className="px-3 py-1.5 rounded bg-red-950/40 hover:bg-red-900/60 border border-red-500/30 text-red-400 text-xs font-mono flex items-center gap-1 transition-colors cursor-pointer"
+                      title="Leave Squad"
+                    >
+                      <UserMinus className="w-3.5 h-3.5" /> Leave
+                    </button>
+                  )}
+                  <button 
+                    onClick={() => setActiveChatSquad(null)}
+                    className="p-2 rounded-lg bg-amber-950/50 hover:bg-amber-900 text-amber-300 border border-amber-500/30 cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
 
               <div ref={chatScrollRef} className="flex-1 overflow-y-auto p-6 space-y-4 bg-[#0a0701]">
@@ -868,13 +916,28 @@ export default function FindSquadsPage() {
                     No tactical transmissions yet. Start the conversation below!
                   </div>
                 ) : (
-                  chatMessages.map((msg) => {
+                  chatMessages.map((msg, index) => {
+                    const isBotMessage = msg.message.startsWith("[ASTEROID_BOT]");
+                    const cleanMessage = isBotMessage ? msg.message.replace("[ASTEROID_BOT] ", "") : msg.message;
                     const isMe = msg.user_id === user?.id;
                     const isLeader = msg.user_id === activeChatSquad.created_by;
 
+                    if (isBotMessage) {
+                      return (
+                        <div key={msg.id || index} className="my-2 p-3 rounded-xl bg-amber-950/30 border border-amber-500/40 text-center shadow-[0_0_15px_rgba(251,191,36,0.15)]">
+                          <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-yellow-400 mb-1 font-mono">
+                            <Bot className="w-4 h-4 text-yellow-400 animate-bounce" /> ASTEROID CHAT BOT
+                          </div>
+                          <p className="text-xs text-amber-200/90 font-mono leading-relaxed">
+                            {cleanMessage}
+                          </p>
+                        </div>
+                      );
+                    }
+
                     return (
                       <div 
-                        key={msg.id}
+                        key={msg.id || index}
                         className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}
                       >
                         <div className="flex items-center gap-2 mb-1">
