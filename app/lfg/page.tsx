@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Navbar from "@/components/Navbar";
 import { createClient } from "@/lib/supabase/client";
-import { Radio, Plus, Globe, MessageSquare, Filter, Trash2, Users } from "lucide-react";
+import { Radio, Plus, Globe, MessageSquare, Filter, Trash2, Users, Send } from "lucide-react";
 
 type LfgListing = {
   id: string;
@@ -45,6 +45,7 @@ export default function LfgBoardPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [participantCount, setParticipantCount] = useState<number>(1);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Filters state
   const [filterGame, setFilterGame] = useState("ALL");
@@ -79,6 +80,11 @@ export default function LfgBoardPage() {
     }
     init();
   }, []);
+
+  // Auto-scroll to bottom of chat
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   async function fetchListings() {
     const { data, error } = await supabase
@@ -168,13 +174,12 @@ export default function LfgBoardPage() {
     }
 
     // 3. Current participants count fetch karo
-    const { count, error: countError } = await supabase
+    const { count } = await supabase
       .from("lfg_participants")
       .select("*", { count: 'exact', head: true })
       .eq("listing_id", item.id);
 
     const currentJoined = count || 0;
-    // Total members = Host (1) + Current Joined Participants
     const totalCurrentMembers = currentJoined + 1;
 
     if (totalCurrentMembers >= item.max_players) {
@@ -206,7 +211,6 @@ export default function LfgBoardPage() {
       .select("*", { count: 'exact', head: true })
       .eq("listing_id", listingId);
     
-    // Total squad size = Host (1) + Participants count
     setParticipantCount((count || 0) + 1);
   }
 
@@ -227,7 +231,7 @@ export default function LfgBoardPage() {
     if (!activeListing) return;
 
     const channel = supabase
-      .channel(`room-${activeListing.id}`)
+      .channel(`lfg-room-${activeListing.id}`)
       .on(
         'postgres_changes',
         {
@@ -268,16 +272,16 @@ export default function LfgBoardPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
+    const msgContent = newMessage.trim();
+    setNewMessage("");
+
     const { error } = await supabase.from("chat_messages").insert({
       listing_id: activeListing.id,
       sender_id: user.id,
-      message: newMessage,
+      message: msgContent,
     });
 
-    if (!error) {
-      setNewMessage("");
-      fetchMessages(activeListing.id);
-    } else {
+    if (error) {
       alert("Error sending message: " + error.message);
     }
   }
@@ -290,7 +294,7 @@ export default function LfgBoardPage() {
   });
 
   return (
-    <div className="min-h-screen bg-[#0a0a0c] text-slate-100 flex flex-col">
+    <div className="min-h-screen bg-[#0a0a0c] text-slate-100 flex flex-col selection:bg-violet-500 selection:text-white">
       <Navbar />
 
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full">
@@ -298,20 +302,20 @@ export default function LfgBoardPage() {
         {/* Header Section */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 pb-6 border-b border-white/10">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-[#121216] border border-violet-500/30 text-xs font-mono text-violet-400 mb-2">
-              <Radio className="w-3.5 h-3.5" />
-              <span>NEURAL_LFG_MATRIX // V2.7 SECURE_SLOTS</span>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-[#121216] border border-violet-500/30 text-xs font-mono text-violet-400 mb-2 shadow-[0_0_10px_rgba(139,92,246,0.1)]">
+              <Radio className="w-3.5 h-3.5 animate-pulse" />
+              <span>NEURAL_LFG_MATRIX // V2.8 SLOT_LOCKED</span>
             </div>
             <h1 className="text-3xl font-black text-white tracking-tight">LFG Board</h1>
             <p className="text-sm text-slate-400 mt-1">
-              Automated slot-locked secure party channels. Only authorized team members can access chat.
+              Automated slot-locked secure party channels. Instant real-time squad communication.
             </p>
           </div>
 
           {user && (
             <button 
               onClick={() => setIsModalOpen(true)}
-              className="px-5 py-2.5 rounded bg-violet-600 hover:bg-violet-500 text-white font-bold text-sm transition-colors flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(139,92,246,0.2)] cursor-pointer"
+              className="px-5 py-2.5 rounded bg-violet-600 hover:bg-violet-500 text-white font-bold text-sm transition-colors flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(139,92,246,0.3)] cursor-pointer"
             >
               <Plus className="w-4 h-4" /> Deploy LFG Node
             </button>
@@ -319,7 +323,7 @@ export default function LfgBoardPage() {
         </div>
 
         {/* Filter Bar */}
-        <div className="flex flex-wrap items-center gap-4 mb-6 p-4 rounded-xl bg-[#121216] border border-white/10">
+        <div className="flex flex-wrap items-center gap-4 mb-6 p-4 rounded-xl bg-[#121216] border border-white/10 shadow-lg">
           <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
             <Filter className="w-4 h-4 text-violet-400" /> Filters:
           </div>
@@ -327,7 +331,7 @@ export default function LfgBoardPage() {
           <select 
             value={filterGame} 
             onChange={(e) => setFilterGame(e.target.value)}
-            className="px-3 py-1.5 rounded bg-black/50 border border-white/10 text-xs text-slate-200 font-mono outline-none focus:border-violet-500"
+            className="px-3 py-1.5 rounded bg-black/50 border border-white/10 text-xs text-slate-200 font-mono outline-none focus:border-violet-500 transition-colors"
           >
             <option value="ALL">All Games</option>
             <option value="Valorant">Valorant</option>
@@ -339,7 +343,7 @@ export default function LfgBoardPage() {
           <select 
             value={filterRegion} 
             onChange={(e) => setFilterRegion(e.target.value)}
-            className="px-3 py-1.5 rounded bg-black/50 border border-white/10 text-xs text-slate-200 font-mono outline-none focus:border-violet-500"
+            className="px-3 py-1.5 rounded bg-black/50 border border-white/10 text-xs text-slate-200 font-mono outline-none focus:border-violet-500 transition-colors"
           >
             <option value="ALL">All Regions</option>
             <option value="Asia">Asia</option>
@@ -350,11 +354,11 @@ export default function LfgBoardPage() {
 
         {/* Listings Grid */}
         {loading ? (
-          <div className="text-center py-20 text-slate-500 font-mono text-sm">
+          <div className="text-center py-20 text-violet-400 font-mono text-sm animate-pulse">
             INITIALIZING_MATCHMAKING_NODES...
           </div>
         ) : filteredListings.length === 0 ? (
-          <div className="p-12 rounded-xl bg-[#121216] border border-white/10 text-center max-w-md mx-auto my-12">
+          <div className="p-12 rounded-xl bg-[#121216] border border-white/10 text-center max-w-md mx-auto my-12 shadow-xl">
             <Radio className="w-10 h-10 text-slate-600 mx-auto mb-4" />
             <h3 className="text-white font-bold mb-1">No Active LFG Nodes</h3>
             <p className="text-sm text-slate-400 mb-6">
@@ -363,7 +367,7 @@ export default function LfgBoardPage() {
             {user && (
               <button 
                 onClick={() => setIsModalOpen(true)}
-                className="px-4 py-2 rounded bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs"
+                className="px-4 py-2 rounded bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs shadow-[0_0_15px_rgba(139,92,246,0.2)]"
               >
                 Deploy Node
               </button>
@@ -374,7 +378,7 @@ export default function LfgBoardPage() {
             {filteredListings.map((item) => (
               <div 
                 key={item.id}
-                className="p-6 rounded-xl bg-[#121216] border border-white/10 hover:border-violet-500/40 transition-all flex flex-col justify-between"
+                className="p-6 rounded-xl bg-[#121216] border border-white/10 hover:border-violet-500/40 transition-all flex flex-col justify-between shadow-lg group"
               >
                 <div>
                   <div className="flex items-center justify-between mb-4">
@@ -391,14 +395,20 @@ export default function LfgBoardPage() {
                     </div>
                   </div>
 
-                  <p className="text-slate-300 text-sm mb-4 bg-black/40 p-3 rounded border border-white/5">
+                  <p className="text-slate-300 text-sm mb-4 bg-black/40 p-3 rounded-lg border border-white/5 leading-relaxed">
                     {item.description}
                   </p>
+                  
+                  {item.contact_info && (
+                    <div className="text-xs font-mono text-slate-400 mb-4 bg-violet-950/20 px-3 py-1.5 rounded border border-violet-500/10">
+                      <span className="text-violet-400">Contact:</span> {item.contact_info}
+                    </div>
+                  )}
                 </div>
 
                 <div className="pt-4 border-t border-white/5 flex items-center justify-between">
                   <span className="text-xs font-mono text-slate-400">
-                    Host: @{item.profiles?.username || "operator"}
+                    Host: <span className="text-slate-200">@{item.profiles?.username || "operator"}</span>
                   </span>
                   <div className="flex items-center gap-2">
                     <span className="px-2.5 py-1 rounded bg-white/5 border border-white/10 text-xs font-mono text-slate-300 flex items-center gap-1">
@@ -417,7 +427,7 @@ export default function LfgBoardPage() {
 
                     <button 
                       onClick={() => openChat(item)}
-                      className="px-3 py-1.5 rounded bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer"
+                      className="px-3 py-1.5 rounded bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold transition-colors flex items-center gap-1.5 shadow-[0_0_10px_rgba(139,92,246,0.2)] cursor-pointer"
                     >
                       <MessageSquare className="w-3.5 h-3.5" /> Connect
                     </button>
@@ -428,10 +438,10 @@ export default function LfgBoardPage() {
           </div>
         )}
 
-        {/* Real-time Party Chat Modal with Slot Indicator */}
+        {/* Real-time Party Chat Modal with Refined Messaging */}
         {activeListing && (
-          <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm">
-            <div className="w-full max-w-lg h-[600px] p-6 rounded-xl bg-[#121216] border border-violet-500/40 shadow-2xl flex flex-col justify-between">
+          <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="w-full max-w-lg h-[620px] p-6 rounded-2xl bg-[#121216] border border-violet-500/40 shadow-2xl flex flex-col justify-between">
               
               {/* Chat Header */}
               <div className="flex items-center justify-between pb-4 border-b border-white/10">
@@ -439,20 +449,20 @@ export default function LfgBoardPage() {
                   <h3 className="text-base font-bold text-white flex items-center gap-2">
                     💬 Party Chat: {activeListing.game_title}
                   </h3>
-                  <p className="text-xs font-mono text-slate-400">
-                    Region: {activeListing.region} | Slots Filled: {participantCount} / {activeListing.max_players}
+                  <p className="text-xs font-mono text-violet-400 mt-0.5">
+                    Region: {activeListing.region} | Active Slots Filled: {participantCount} / {activeListing.max_players}
                   </p>
                 </div>
                 <button 
                   onClick={() => setActiveListing(null)}
-                  className="text-slate-400 hover:text-white text-sm font-mono cursor-pointer"
+                  className="text-slate-400 hover:text-white text-xs font-mono px-2.5 py-1 rounded bg-white/5 hover:bg-white/10 transition-colors cursor-pointer"
                 >
                   [CLOSE]
                 </button>
               </div>
 
               {/* Messages Box */}
-              <div className="flex-1 overflow-y-auto my-4 space-y-3 pr-2">
+              <div className="flex-1 overflow-y-auto my-4 space-y-3 pr-2 scrollbar-thin scrollbar-thumb-violet-500/20">
                 {messages.length === 0 ? (
                   <div className="text-center text-xs font-mono text-slate-500 py-20">
                     SECURE_ROOM_INITIALIZED. START_THE_PARTY_CHAT!
@@ -465,16 +475,17 @@ export default function LfgBoardPage() {
                         <span className="text-[10px] font-mono text-slate-400 mb-1 px-1">
                           @{msg.profiles?.username || "operator"}
                         </span>
-                        <div className={`max-w-[80%] p-3 rounded-xl text-sm ${isMe ? 'bg-violet-600 text-white rounded-br-none' : 'bg-black/60 border border-white/10 text-slate-200 rounded-bl-none'}`}>
-                          <p>{msg.message}</p>
+                        <div className={`max-w-[85%] p-3 rounded-2xl text-sm ${isMe ? 'bg-violet-600 text-white rounded-br-none shadow-[0_0_15px_rgba(139,92,246,0.2)]' : 'bg-black/60 border border-white/10 text-slate-200 rounded-bl-none'}`}>
+                          <p className="break-words">{msg.message}</p>
                         </div>
-                        <span className="text-[9px] font-mono text-slate-500 mt-1">
+                        <span className="text-[9px] font-mono text-slate-500 mt-1 px-1">
                           {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </span>
                       </div>
                     );
                   })
                 )}
+                <div ref={messagesEndRef} />
               </div>
 
               {/* Message Input Form */}
@@ -484,13 +495,13 @@ export default function LfgBoardPage() {
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   placeholder="Type secure message to party squad..."
-                  className="flex-1 px-3 py-2 rounded bg-black/50 border border-white/10 text-white text-sm focus:border-violet-500 outline-none"
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-black/50 border border-white/10 text-white text-sm focus:border-violet-500 outline-none transition-colors"
                 />
                 <button 
                   type="submit"
-                  className="px-4 py-2 rounded bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold cursor-pointer"
+                  className="px-4 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold cursor-pointer transition-all flex items-center gap-1.5 shadow-[0_0_15px_rgba(139,92,246,0.2)]"
                 >
-                  Send
+                  <Send className="w-3.5 h-3.5" /> Send
                 </button>
               </form>
 
@@ -500,8 +511,8 @@ export default function LfgBoardPage() {
 
         {/* Deploy LFG Node Modal */}
         {isModalOpen && user && (
-          <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm">
-            <div className="w-full max-w-lg p-6 rounded-xl bg-[#121216] border border-white/10 shadow-2xl">
+          <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="w-full max-w-lg p-6 rounded-2xl bg-[#121216] border border-white/10 shadow-2xl">
               <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
                 <Radio className="w-5 h-5 text-violet-500" /> Deploy Matchmaking Node
               </h2>
@@ -516,7 +527,7 @@ export default function LfgBoardPage() {
                       value={gameTitle}
                       onChange={(e) => setGameTitle(e.target.value)}
                       placeholder="e.g., Valorant"
-                      className="w-full px-3 py-2 rounded bg-black/40 border border-white/10 text-white text-sm focus:border-violet-500 outline-none"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-white/10 text-white text-sm focus:border-violet-500 outline-none transition-colors"
                     />
                   </div>
                   <div>
@@ -527,7 +538,7 @@ export default function LfgBoardPage() {
                       value={region}
                       onChange={(e) => setRegion(e.target.value)}
                       placeholder="e.g., Asia / EU / NA"
-                      className="w-full px-3 py-2 rounded bg-black/40 border border-white/10 text-white text-sm focus:border-violet-500 outline-none"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-white/10 text-white text-sm focus:border-violet-500 outline-none transition-colors"
                     />
                   </div>
                 </div>
@@ -541,7 +552,7 @@ export default function LfgBoardPage() {
                       value={skillTier}
                       onChange={(e) => setSkillTier(e.target.value)}
                       placeholder="e.g., Diamond, Immortal"
-                      className="w-full px-3 py-2 rounded bg-black/40 border border-white/10 text-white text-sm focus:border-violet-500 outline-none"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-white/10 text-white text-sm focus:border-violet-500 outline-none transition-colors"
                     />
                   </div>
                   <div>
@@ -553,7 +564,7 @@ export default function LfgBoardPage() {
                       max={10}
                       value={maxPlayers}
                       onChange={(e) => setMaxPlayers(Number(e.target.value))}
-                      className="w-full px-3 py-2 rounded bg-black/40 border border-white/10 text-white text-sm focus:border-violet-500 outline-none"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-white/10 text-white text-sm focus:border-violet-500 outline-none transition-colors"
                     />
                   </div>
                 </div>
@@ -566,7 +577,7 @@ export default function LfgBoardPage() {
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder="Specify role requirements, mic check status, strategy..."
-                    className="w-full px-3 py-2 rounded bg-black/40 border border-white/10 text-white text-sm focus:border-violet-500 outline-none resize-none"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-white/10 text-white text-sm focus:border-violet-500 outline-none resize-none transition-colors"
                   />
                 </div>
 
@@ -577,8 +588,8 @@ export default function LfgBoardPage() {
                     required
                     value={contactInfo}
                     onChange={(e) => setContactInfo(e.target.value)}
-                    placeholder="e.g., discord.gg/ASTEROID GAMING-CLOUD or #tag"
-                    className="w-full px-3 py-2 rounded bg-black/40 border border-white/10 text-white text-sm focus:border-violet-500 outline-none"
+                    placeholder="e.g., discord.gg/ASTEROID or #tag"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-white/10 text-white text-sm focus:border-violet-500 outline-none transition-colors"
                   />
                 </div>
 
@@ -586,13 +597,13 @@ export default function LfgBoardPage() {
                   <button 
                     type="button"
                     onClick={() => setIsModalOpen(false)}
-                    className="px-4 py-2 rounded bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-bold cursor-pointer"
+                    className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-bold cursor-pointer transition-colors"
                   >
                     Cancel
                   </button>
                   <button 
                     type="submit"
-                    className="px-4 py-2 rounded bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold cursor-pointer"
+                    className="px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold cursor-pointer transition-all shadow-[0_0_15px_rgba(139,92,246,0.2)]"
                   >
                     Publish Node
                   </button>
