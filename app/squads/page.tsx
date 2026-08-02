@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import Navbar from "@/components/Navbar";
 import { createClient } from "@/lib/supabase/client";
-import { Users, Plus, Shield, Gamepad2, UserPlus, UserMinus, Trash2, Sparkles, CheckCircle2, Eye, Crown } from "lucide-react";
+import { Users, Plus, Shield, Gamepad2, UserPlus, UserMinus, Trash2, Sparkles, CheckCircle2, Eye, Crown, Search, Filter, MessageSquare, Send, Clock, X, Check } from "lucide-react";
 
 type Squad = {
   id: string;
@@ -29,17 +29,58 @@ type SquadMember = {
   joined_at: string;
 };
 
+type SquadRequest = {
+  id: string;
+  squad_id: string;
+  user_id: string;
+  status: 'pending' | 'accepted' | 'rejected';
+  created_at: string;
+  profiles?: {
+    username: string;
+    display_name: string;
+  } | null;
+};
+
+type SquadMessage = {
+  id: string;
+  squad_id: string;
+  user_id: string;
+  message: string;
+  created_at: string;
+  profiles?: {
+    username: string;
+    display_name: string;
+  } | null;
+};
+
 export default function FindSquadsPage() {
   const [user, setUser] = useState<any>(null);
   const [squads, setSquads] = useState<Squad[]>([]);
   const [userMemberships, setUserMemberships] = useState<Record<string, boolean>>({});
+  const [userRequests, setUserRequests] = useState<Record<string, string>>({}); // squad_id -> status ('pending'/'accepted'/'rejected')
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   
+  // Search & Filter state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedGameFilter, setSelectedGameFilter] = useState("All");
+  const [activeTab, setActiveTab] = useState<"all" | "mine">("all");
+
   // Members Modal State
   const [activeMembersSquad, setActiveMembersSquad] = useState<Squad | null>(null);
   const [squadMembersList, setSquadMembersList] = useState<SquadMember[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
+
+  // Requests Modal State (For Squad Leaders)
+  const [activeRequestsSquad, setActiveRequestsSquad] = useState<Squad | null>(null);
+  const [squadRequestsList, setSquadRequestsList] = useState<SquadRequest[]>([]);
+  const [loadingRequests, setLoadingRequests] = useState(false);
+
+  // Chat Modal State
+  const [activeChatSquad, setActiveChatSquad] = useState<Squad | null>(null);
+  const [chatMessages, setChatMessages] = useState<SquadMessage[]>([]);
+  const [newMessage, setNewMessage] = useState("");
+  const chatScrollRef = useRef<HTMLDivElement>(null);
 
   // Form state for creating squad
   const [name, setName] = useState("");
@@ -62,6 +103,54 @@ export default function FindSquadsPage() {
     init();
   }, []);
 
+  // Real-time chat listener when chat modal is open
+  useEffect(() => {
+    if (!activeChatSquad) return;
+
+    fetchMessages(activeChatSquad.id);
+
+    const channel = supabase
+      .channel(`squad_chat_${activeChatSquad.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'squad_messages',
+          filter: `squad_id=eq.${activeChatSquad.id}`,
+        },
+        async (payload) => {
+          // Fetch sender profile info for the new message
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('username, display_name')
+            .eq('id', payload.new.user_id)
+            .single();
+
+          const newMsg: SquadMessage = {
+            ...(payload.new as SquadMessage),
+            profiles: profileData,
+          };
+
+          setChatMessages((prev) => [...prev, newMsg]);
+          scrollToBottom();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [activeChatSquad]);
+
+  const scrollToBottom = () => {
+    setTimeout(() => {
+      if (chatScrollRef.current) {
+        chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+      }
+    }, 100);
+  };
+
   async function fetchSquads(currentUserId?: string) {
     const { data, error } = await supabase
       .from("squads")
@@ -72,6 +161,7 @@ export default function FindSquadsPage() {
       setSquads(data as Squad[]);
 
       if (currentUserId) {
+        // Fetch memberships
         const { data: memberships } = await supabase
           .from("squad_members")
           .select("squad_id")
@@ -84,9 +174,36 @@ export default function FindSquadsPage() {
           }
         });
         setUserMemberships(membershipMap);
+
+        // Fetch join requests
+        const { data: requests } = await supabase
+          .from("squad_requests")
+          .select("squad_id, status")
+          .eq("user_id", currentUserId);
+
+        const requestMap: Record<string, string> = {};
+        requests?.forEach((r: any) => {
+          if (r.squad_id) {
+            requestMap[r.squad_id] = r.status;
+          }
+        });
+        setUserRequests(requestMap);
       }
     }
     setLoading(false);
+  }
+
+  async function fetchMessages(squadId: string) {
+    const { data, error } = await supabase
+      .from("squad_messages")
+      .select("*, profiles(username, display_name)")
+      .eq("squad_id", squadId)
+      .order("created_at", { ascending: true });
+
+    if (!error && data) {
+      setChatMessages(data as SquadMessage[]);
+      scrollToBottom();
+    }
   }
 
   async function handleCreateSquad(e: React.FormEvent) {
@@ -123,9 +240,9 @@ export default function FindSquadsPage() {
     fetchSquads(user.id);
   }
 
-  async function handleJoinSquad(squad: Squad) {
+  async function handleRequestToJoin(squad: Squad) {
     if (!user) {
-      alert("Please log in to join a squad.");
+      alert("Please log in to send a join request.");
       return;
     }
 
@@ -134,36 +251,100 @@ export default function FindSquadsPage() {
       return;
     }
 
-    const { count } = await supabase
-      .from("squad_members")
-      .select("*", { count: 'exact', head: true })
-      .eq("squad_id", squad.id);
-
-    const activeCount = count || squad.current_members;
-
-    if (activeCount >= squad.max_slots) {
-      alert(`⚠️ Squad Full! Maximum limit of ${squad.max_slots} slots reached.`);
+    if (squad.current_members >= squad.max_slots) {
+      alert("⚠️ Squad Full! Maximum limit reached.");
       return;
     }
 
-    const { error: joinError } = await supabase.from("squad_members").insert({
+    const { error } = await supabase.from("squad_requests").insert({
       squad_id: squad.id,
-      user_id: user.id
+      user_id: user.id,
+      status: 'pending'
     });
 
-    if (joinError) {
-      alert("Error joining squad: " + joinError.message);
+    if (error) {
+      if (error.code === '23505') {
+        alert("You have already sent a join request to this squad.");
+      } else {
+        alert("Error sending request: " + error.message);
+      }
       return;
     }
 
-    const newCount = activeCount + 1;
+    setUserRequests((prev) => ({ ...prev, [squad.id]: 'pending' }));
+    alert("📨 Join request sent successfully to the squad leader!");
+  }
+
+  async function openRequestsModal(squad: Squad) {
+    setActiveRequestsSquad(squad);
+    setLoadingRequests(true);
+
+    const { data, error } = await supabase
+      .from("squad_requests")
+      .select("id, squad_id, user_id, status, created_at, profiles(username, display_name)")
+      .eq("squad_id", squad.id)
+      .eq("status", "pending");
+
+    if (!error && data) {
+      setSquadRequestsList(data as unknown as SquadRequest[]);
+    } else {
+      setSquadRequestsList([]);
+    }
+    setLoadingRequests(false);
+  }
+
+  async function handleAcceptRequest(req: SquadRequest, squad: Squad) {
+    if (squad.current_members >= squad.max_slots) {
+      alert("⚠️ Cannot accept. Squad is already full!");
+      return;
+    }
+
+    // 1. Update request status to accepted
+    const { error: reqError } = await supabase
+      .from("squad_requests")
+      .update({ status: 'accepted' })
+      .eq("id", req.id);
+
+    if (reqError) {
+      alert("Error accepting request: " + reqError.message);
+      return;
+    }
+
+    // 2. Insert user into squad_members
+    const { error: memberError } = await supabase.from("squad_members").insert({
+      squad_id: squad.id,
+      user_id: req.user_id
+    });
+
+    if (memberError) {
+      alert("Error adding member: " + memberError.message);
+      return;
+    }
+
+    // 3. Increment current_members in squad
+    const newCount = squad.current_members + 1;
     await supabase
       .from("squads")
       .update({ current_members: newCount })
       .eq("id", squad.id);
 
-    setUserMemberships((prev) => ({ ...prev, [squad.id]: true }));
-    fetchSquads(user.id);
+    alert("✅ Request accepted! User has joined the squad.");
+    openRequestsModal(squad);
+    fetchSquads(user?.id);
+  }
+
+  async function handleRejectRequest(reqId: string, squad: Squad) {
+    const { error } = await supabase
+      .from("squad_requests")
+      .update({ status: 'rejected' })
+      .eq("id", reqId);
+
+    if (!error) {
+      alert("Request rejected.");
+      openRequestsModal(squad);
+    } else {
+      alert("Error rejecting request.");
+    }
   }
 
   async function handleLeaveSquad(squad: Squad) {
@@ -186,11 +367,24 @@ export default function FindSquadsPage() {
         .update({ current_members: newCount })
         .eq("id", squad.id);
 
+      // Also clean up request status so they can request again if needed
+      await supabase
+        .from("squad_requests")
+        .delete()
+        .eq("squad_id", squad.id)
+        .eq("user_id", user.id);
+
       setUserMemberships((prev) => {
         const copy = { ...prev };
         delete copy[squad.id];
         return copy;
       });
+      setUserRequests((prev) => {
+        const copy = { ...prev };
+        delete copy[squad.id];
+        return copy;
+      });
+
       fetchSquads(user.id);
       alert("Successfully left the squad.");
     } else {
@@ -238,6 +432,49 @@ export default function FindSquadsPage() {
     setLoadingMembers(false);
   }
 
+  async function handleSendMessage(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newMessage.trim() || !activeChatSquad || !user) return;
+
+    const { error } = await supabase.from("squad_messages").insert({
+      squad_id: activeChatSquad.id,
+      user_id: user.id,
+      message: newMessage.trim(),
+    });
+
+    if (!error) {
+      setNewMessage("");
+    } else {
+      alert("Error sending message: " + error.message);
+    }
+  }
+
+  // Available games list for filter pills
+  const availableGames = useMemo(() => {
+    const gamesSet = new Set<string>();
+    squads.forEach(s => gamesSet.add(s.game));
+    return ["All", ...Array.from(gamesSet)];
+  }, [squads]);
+
+  // Filtered squads
+  const filteredSquads = useMemo(() => {
+    return squads.filter(squad => {
+      const matchesSearch = 
+        squad.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        squad.game.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        squad.rank.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        squad.profiles?.username?.toLowerCase().includes(searchQuery.toLowerCase());
+
+      const matchesGame = selectedGameFilter === "All" || squad.game.toLowerCase() === selectedGameFilter.toLowerCase();
+      
+      const isCreator = squad.created_by === user?.id;
+      const isJoined = userMemberships[squad.id] || isCreator;
+      const matchesTab = activeTab === "all" || (activeTab === "mine" && isJoined);
+
+      return matchesSearch && matchesGame && matchesTab;
+    });
+  }, [squads, searchQuery, selectedGameFilter, activeTab, user, userMemberships]);
+
   return (
     <div className="min-h-screen bg-[#080600] text-slate-100 flex flex-col">
       <Navbar />
@@ -249,13 +486,13 @@ export default function FindSquadsPage() {
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-[#161004] border border-amber-500/50 text-xs font-mono text-amber-300 mb-2 shadow-[0_0_15px_rgba(251,191,36,0.15)]">
               <Sparkles className="w-3.5 h-3.5 text-yellow-400 animate-pulse" />
-              <span>SQUAD_DIRECTORY // GOLDEN_LOBBIES</span>
+              <span>SQUAD_DIRECTORY // SECURE_LOBBIES</span>
             </div>
             <h1 className="text-3xl font-black text-white tracking-tight drop-shadow-[0_0_15px_rgba(251,191,36,0.2)]">
-              Find Squads
+              Find Squads & Chat
             </h1>
             <p className="text-sm text-amber-200/60 mt-1">
-              Discover elite gaming teams, check competitive rank requirements, and deploy team lobbies instantly.
+              Request to join elite gaming squads, get approval from leaders, and unlock secure tactical chat rooms.
             </p>
           </div>
 
@@ -269,17 +506,78 @@ export default function FindSquadsPage() {
           )}
         </div>
 
+        {/* Search, Tabs & Filters Bar */}
+        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 mb-8">
+          <div className="flex items-center gap-2 bg-[#161004] p-1.5 rounded-xl border border-amber-500/30 w-fit">
+            <button
+              onClick={() => setActiveTab("all")}
+              className={`px-4 py-2 rounded-lg text-xs font-extrabold transition-all cursor-pointer ${
+                activeTab === "all"
+                  ? "bg-amber-500 text-black shadow-[0_0_15px_rgba(251,191,36,0.4)]"
+                  : "text-amber-200/70 hover:text-white"
+              }`}
+            >
+              All Lobbies
+            </button>
+            {user && (
+              <button
+                onClick={() => setActiveTab("mine")}
+                className={`px-4 py-2 rounded-lg text-xs font-extrabold transition-all cursor-pointer ${
+                  activeTab === "mine"
+                    ? "bg-amber-500 text-black shadow-[0_0_15px_rgba(251,191,36,0.4)]"
+                    : "text-amber-200/70 hover:text-white"
+                }`}
+              >
+                My Squads
+              </button>
+            )}
+          </div>
+
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-amber-400/60" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by title, game, rank, or leader..."
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#161004] border border-amber-500/30 text-white text-sm focus:border-yellow-400 outline-none transition-colors shadow-inner"
+            />
+          </div>
+        </div>
+
+        {/* Game Filter Pills */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-4 mb-6 scrollbar-none">
+          <span className="text-xs font-mono text-amber-400 flex items-center gap-1 mr-1">
+            <Filter className="w-3.5 h-3.5" /> Games:
+          </span>
+          {availableGames.map((gameName) => (
+            <button
+              key={gameName}
+              onClick={() => setSelectedGameFilter(gameName)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-mono whitespace-nowrap transition-all cursor-pointer ${
+                selectedGameFilter.toLowerCase() === gameName.toLowerCase()
+                  ? "bg-yellow-500/20 border border-yellow-400 text-yellow-300 shadow-[0_0_10px_rgba(251,191,36,0.2)]"
+                  : "bg-[#140e04] border border-amber-500/20 text-amber-200/60 hover:text-amber-300 hover:border-amber-500/40"
+              }`}
+            >
+              {gameName}
+            </button>
+          ))}
+        </div>
+
         {/* Squads Grid */}
         {loading ? (
           <div className="text-center py-20 text-yellow-400 font-mono text-sm animate-pulse">
             SYNCHRONIZING_GOLDEN_SQUADS...
           </div>
-        ) : squads.length === 0 ? (
+        ) : filteredSquads.length === 0 ? (
           <div className="p-12 rounded-xl bg-[#161004] border border-amber-500/40 text-center max-w-md mx-auto my-12 shadow-[0_0_20px_rgba(251,191,36,0.1)]">
             <Gamepad2 className="w-10 h-10 text-yellow-400 mx-auto mb-4 drop-shadow-[0_0_10px_rgba(251,191,36,0.5)]" />
-            <h3 className="text-white font-bold mb-1">No Active Squad Lobbies</h3>
+            <h3 className="text-white font-bold mb-1">No Squad Lobbies Found</h3>
             <p className="text-sm text-amber-200/60 mb-6">
-              No squads found in the database. Initialize a new squad lobby to start recruiting teammates.
+              {searchQuery || selectedGameFilter !== "All" 
+                ? "No squads match your active filters or search query." 
+                : "No squads found in the database. Initialize a new squad lobby to start recruiting teammates."}
             </p>
             {user && (
               <button 
@@ -292,9 +590,12 @@ export default function FindSquadsPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {squads.map((squad) => {
+            {filteredSquads.map((squad) => {
               const isCreator = squad.created_by === user?.id;
               const isJoined = userMemberships[squad.id] || isCreator;
+              const reqStatus = userRequests[squad.id];
+              const isFull = squad.current_members >= squad.max_slots;
+              const slotPercentage = Math.min(100, (squad.current_members / squad.max_slots) * 100);
               
               return (
                 <div 
@@ -326,45 +627,93 @@ export default function FindSquadsPage() {
                         <Eye className="w-3.5 h-3.5" /> Members
                       </button>
                     </div>
+
+                    {/* Slot Progress Bar */}
+                    <div className="mb-4">
+                      <div className="flex justify-between text-[11px] font-mono text-amber-200/70 mb-1">
+                        <span>Squad Capacity</span>
+                        <span>{squad.current_members} / {squad.max_slots}</span>
+                      </div>
+                      <div className="w-full h-1.5 bg-[#080600] rounded-full overflow-hidden border border-amber-500/20">
+                        <div 
+                          className={`h-full transition-all duration-500 ${isFull ? 'bg-red-500' : 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)]'}`}
+                          style={{ width: `${slotPercentage}%` }}
+                        />
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="pt-4 border-t border-amber-500/20 flex items-center justify-between">
-                    <span className="text-xs font-mono text-amber-200/70 flex items-center gap-1.5">
-                      <Users className="w-3.5 h-3.5 text-yellow-400" />
-                      {squad.current_members} / {squad.max_slots} Slots
-                    </span>
+                  <div className="pt-4 border-t border-amber-500/20 flex flex-col gap-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-mono text-amber-200/70 flex items-center gap-1.5">
+                        <Users className="w-3.5 h-3.5 text-yellow-400" />
+                        {isFull ? "Full Lobby" : `${squad.max_slots - squad.current_members} Slots Open`}
+                      </span>
 
-                    <div className="flex items-center gap-2">
-                      {isCreator && (
-                        <button 
-                          onClick={() => handleDeleteSquad(squad.id)}
-                          className="px-2.5 py-1.5 rounded bg-red-950/40 hover:bg-red-600 border border-red-500/40 text-red-400 hover:text-white text-xs font-extrabold transition-all flex items-center gap-1 cursor-pointer"
-                          title="Delete Squad"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {isCreator && (
+                          <>
+                            <button 
+                              onClick={() => openRequestsModal(squad)}
+                              className="px-2.5 py-1.5 rounded bg-amber-950/80 hover:bg-amber-900 border border-amber-500/50 text-amber-300 text-xs font-extrabold transition-all flex items-center gap-1 cursor-pointer"
+                              title="View Join Requests"
+                            >
+                              <Clock className="w-3.5 h-3.5" /> Requests
+                            </button>
+                            <button 
+                              onClick={() => handleDeleteSquad(squad.id)}
+                              className="px-2 py-1.5 rounded bg-red-950/40 hover:bg-red-600 border border-red-500/40 text-red-400 hover:text-white text-xs font-extrabold transition-all flex items-center gap-1 cursor-pointer"
+                              title="Delete Squad"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </>
+                        )}
 
-                      {!isCreator && isJoined ? (
-                        <button 
-                          onClick={() => handleLeaveSquad(squad)}
-                          className="px-3 py-1.5 rounded bg-emerald-950/60 hover:bg-red-950/80 border border-emerald-500/40 hover:border-red-500/60 text-emerald-400 hover:text-red-300 text-xs font-extrabold transition-all flex items-center gap-1.5 cursor-pointer shadow-[0_0_10px_rgba(16,185,129,0.2)]"
-                        >
-                          <UserMinus className="w-3.5 h-3.5" /> Leave
-                        </button>
-                      ) : !isCreator ? (
-                        <button 
-                          onClick={() => handleJoinSquad(squad)}
-                          className="px-3 py-1.5 rounded bg-[#080600] hover:bg-amber-500 border border-amber-500/40 hover:border-amber-400 text-amber-300 hover:text-black text-xs font-extrabold transition-all flex items-center gap-1.5 shadow-[0_0_10px_rgba(251,191,36,0.1)] cursor-pointer"
-                        >
-                          <UserPlus className="w-3.5 h-3.5" /> Join
-                        </button>
-                      ) : (
-                        <span className="px-2.5 py-1.5 rounded bg-yellow-950/40 border border-yellow-500/30 text-yellow-300 text-xs font-extrabold flex items-center gap-1">
-                          <CheckCircle2 className="w-3.5 h-3.5" /> Owner
-                        </span>
-                      )}
+                        {!isCreator && isJoined ? (
+                          <button 
+                            onClick={() => handleLeaveSquad(squad)}
+                            className="px-3 py-1.5 rounded bg-emerald-950/60 hover:bg-red-950/80 border border-emerald-500/40 hover:border-red-500/60 text-emerald-400 hover:text-red-300 text-xs font-extrabold transition-all flex items-center gap-1.5 cursor-pointer shadow-[0_0_10px_rgba(16,185,129,0.2)]"
+                          >
+                            <UserMinus className="w-3.5 h-3.5" /> Leave
+                          </button>
+                        ) : !isCreator && reqStatus === 'pending' ? (
+                          <span className="px-2.5 py-1.5 rounded bg-yellow-950/40 border border-yellow-500/30 text-yellow-300 text-xs font-extrabold flex items-center gap-1 font-mono">
+                            <Clock className="w-3.5 h-3.5 animate-spin" /> Pending Approval
+                          </span>
+                        ) : !isCreator && reqStatus === 'rejected' ? (
+                          <span className="px-2.5 py-1.5 rounded bg-red-950/40 border border-red-500/30 text-red-400 text-xs font-extrabold">
+                            Request Denied
+                          </span>
+                        ) : !isCreator ? (
+                          <button 
+                            onClick={() => handleRequestToJoin(squad)}
+                            disabled={isFull}
+                            className={`px-3 py-1.5 rounded text-xs font-extrabold transition-all flex items-center gap-1.5 ${
+                              isFull 
+                                ? 'bg-gray-800 text-gray-500 border border-gray-700 cursor-not-allowed' 
+                                : 'bg-[#080600] hover:bg-amber-500 border border-amber-500/40 hover:border-amber-400 text-amber-300 hover:text-black shadow-[0_0_10px_rgba(251,191,36,0.1)] cursor-pointer'
+                            }`}
+                          >
+                            <UserPlus className="w-3.5 h-3.5" /> {isFull ? "Full" : "Request Join"}
+                          </button>
+                        ) : (
+                          <span className="px-2.5 py-1.5 rounded bg-yellow-950/40 border border-yellow-500/30 text-yellow-300 text-xs font-extrabold flex items-center gap-1">
+                            <CheckCircle2 className="w-3.5 h-3.5" /> Owner
+                          </span>
+                        )}
+                      </div>
                     </div>
+
+                    {/* Chat Button (Visible only to members & owner) */}
+                    {isJoined && (
+                      <button
+                        onClick={() => setActiveChatSquad(squad)}
+                        className="w-full py-2 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-300 text-xs font-extrabold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-[0_0_10px_rgba(251,191,36,0.15)]"
+                      >
+                        <MessageSquare className="w-4 h-4 text-yellow-400" /> Open Squad Chat Room
+                      </button>
+                    )}
                   </div>
                 </div>
               );
@@ -438,6 +787,165 @@ export default function FindSquadsPage() {
                   })}
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* View Join Requests Modal (For Squad Leader) */}
+        {activeRequestsSquad && (
+          <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm">
+            <div className="w-full max-w-md p-6 rounded-xl bg-[#161004] border border-amber-500/50 shadow-[0_0_30px_rgba(251,191,36,0.2)]">
+              <div className="flex items-center justify-between mb-4 pb-3 border-b border-amber-500/30">
+                <div>
+                  <h3 className="text-lg font-extrabold text-white flex items-center gap-2">
+                    <Clock className="w-5 h-5 text-yellow-400" /> Pending Join Requests
+                  </h3>
+                  <p className="text-xs font-mono text-amber-200/60">
+                    {activeRequestsSquad.name} ({activeRequestsSquad.current_members}/{activeRequestsSquad.max_slots} Slots)
+                  </p>
+                </div>
+                <button 
+                  onClick={() => setActiveRequestsSquad(null)}
+                  className="text-amber-400 hover:text-white text-xs font-mono cursor-pointer"
+                >
+                  [CLOSE]
+                </button>
+              </div>
+
+              {loadingRequests ? (
+                <div className="text-center py-10 text-yellow-400 font-mono text-xs animate-pulse">
+                  FETCHING_REQUESTS...
+                </div>
+              ) : squadRequestsList.length === 0 ? (
+                <div className="text-center py-10 text-amber-200/50 font-mono text-xs">
+                  No pending requests for this squad.
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
+                  {squadRequestsList.map((req) => (
+                    <div 
+                      key={req.id}
+                      className="flex items-center justify-between p-3 rounded bg-[#080600] border border-amber-500/20"
+                    >
+                      <div>
+                        <p className="text-sm font-bold text-white">
+                          @{req.profiles?.username || "operator"}
+                        </p>
+                        <p className="text-[10px] font-mono text-amber-200/50">
+                          {req.profiles?.display_name || "Gamer"}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleAcceptRequest(req, activeRequestsSquad)}
+                          className="p-1.5 rounded bg-emerald-950/80 hover:bg-emerald-600 border border-emerald-500/40 text-emerald-300 hover:text-white transition-all cursor-pointer"
+                          title="Accept"
+                        >
+                          <Check className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleRejectRequest(req.id, activeRequestsSquad)}
+                          className="p-1.5 rounded bg-red-950/80 hover:bg-red-600 border border-red-500/40 text-red-300 hover:text-white transition-all cursor-pointer"
+                          title="Reject"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Squad Chat Modal */}
+        {activeChatSquad && (
+          <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4 backdrop-blur-md">
+            <div className="w-full max-w-2xl h-[80vh] flex flex-col rounded-xl bg-[#140e04] border border-amber-500/50 shadow-[0_0_40px_rgba(251,191,36,0.25)] overflow-hidden">
+              {/* Chat Header */}
+              <div className="flex items-center justify-between px-6 py-4 bg-[#1a1205] border-b border-amber-500/30">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-amber-500/20 border border-amber-500/40">
+                    <MessageSquare className="w-5 h-5 text-yellow-400" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-white text-base">
+                      {activeChatSquad.name} // Tactical Chat Room
+                    </h3>
+                    <p className="text-xs font-mono text-amber-200/60">
+                      Game: {activeChatSquad.game} • {activeChatSquad.current_members} Operators Connected
+                    </p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setActiveChatSquad(null)}
+                  className="p-2 rounded-lg bg-amber-950/50 hover:bg-amber-900 text-amber-300 border border-amber-500/30 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Chat Messages Body */}
+              <div ref={chatScrollRef} className="flex-1 overflow-y-auto p-6 space-y-4 bg-[#0a0701]">
+                {chatMessages.length === 0 ? (
+                  <div className="text-center py-20 text-amber-200/40 font-mono text-xs">
+                    No tactical transmissions yet. Start the conversation below!
+                  </div>
+                ) : (
+                  chatMessages.map((msg) => {
+                    const isMe = msg.user_id === user?.id;
+                    const isLeader = msg.user_id === activeChatSquad.created_by;
+
+                    return (
+                      <div 
+                        key={msg.id}
+                        className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs font-bold text-amber-300">
+                            @{msg.profiles?.username || "operator"}
+                          </span>
+                          {isLeader && (
+                            <span className="px-1.5 py-0.5 rounded bg-yellow-950/80 border border-yellow-500/40 text-[9px] font-mono text-yellow-300 flex items-center gap-0.5">
+                              <Crown className="w-2.5 h-2.5" /> LEADER
+                            </span>
+                          )}
+                          <span className="text-[10px] font-mono text-amber-200/40">
+                            {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+
+                        <div className={`p-3 rounded-xl max-w-md text-sm ${
+                          isMe 
+                            ? 'bg-amber-500 text-black font-medium shadow-[0_0_15px_rgba(251,191,36,0.2)] rounded-tr-none' 
+                            : 'bg-[#1a1205] text-slate-100 border border-amber-500/30 rounded-tl-none'
+                        }`}>
+                          {msg.message}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Chat Input Bar */}
+              <form onSubmit={handleSendMessage} className="p-4 bg-[#1a1205] border-t border-amber-500/30 flex items-center gap-3">
+                <input 
+                  type="text"
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  placeholder="Type a tactical message to your squad..."
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-[#080600] border border-amber-500/30 text-white text-sm focus:border-yellow-400 outline-none shadow-inner"
+                />
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-sm transition-all flex items-center gap-2 shadow-[0_0_15px_rgba(251,191,36,0.4)] cursor-pointer"
+                >
+                  <Send className="w-4 h-4 text-black" /> Send
+                </button>
+              </form>
             </div>
           </div>
         )}
