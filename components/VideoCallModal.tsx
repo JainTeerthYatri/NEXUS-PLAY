@@ -30,10 +30,13 @@ export default function VideoCallModal({ currentUser, targetFriend, isCaller, on
   const roomCallId = [currentUser.id, targetFriend.id].sort().join("_");
   const roomChannel = `call_${roomCallId}`;
 
+  // Multiple STUN servers for faster and robust connection routing
   const servers = {
     iceServers: [
       { urls: "stun:stun.l.google.com:19302" },
       { urls: "stun:stun1.l.google.com:19302" },
+      { urls: "stun:stun2.l.google.com:19302" },
+      { urls: "stun:stun3.l.google.com:19302" },
     ],
   };
 
@@ -99,7 +102,20 @@ export default function VideoCallModal({ currentUser, targetFriend, isCaller, on
 
   const setupWebRTC = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      // Optimized constraints for smooth, instant video loading without lag
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { 
+          width: { ideal: 640 }, 
+          height: { ideal: 480 },
+          frameRate: { ideal: 24 } 
+        }, 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        } 
+      });
+      
       setLocalStream(stream);
       
       if (localVideoRef.current) {
@@ -174,7 +190,6 @@ export default function VideoCallModal({ currentUser, targetFriend, isCaller, on
 
   const toggleScreenShare = async () => {
     try {
-      // Check if browser supports screen sharing (Mobile browsers don't support getDisplayMedia)
       if (!navigator.mediaDevices || !(navigator.mediaDevices as any).getDisplayMedia) {
         alert("Screen sharing is not supported on mobile browsers. Please use a desktop browser.");
         return;
@@ -237,7 +252,6 @@ export default function VideoCallModal({ currentUser, targetFriend, isCaller, on
 
   const cleanupAndClose = () => {
     if (localStream) {
-      localStream.getTracks().exports?.forEach((track: any) => track.stop());
       localStream.getTracks().forEach((track) => track.stop());
     }
     if (peerConnectionRef.current) {
