@@ -429,7 +429,7 @@ export default function LfgBoardPage() {
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-[#121216] border border-violet-500/30 text-xs font-mono text-violet-400 mb-2 shadow-[0_0_10px_rgba(139,92,246,0.1)]">
               <Radio className="w-3.5 h-3.5 animate-pulse" />
-              <span>NEURAL_LFG_MATRIX // V3.0 SECURE_NODES</span>
+              <span>NEURAL_LFG_MATRIX // SECURE_NODES</span>
             </div>
             <h1 className="text-3xl font-black text-white tracking-tight">LFG Board</h1>
             <p className="text-sm text-slate-400 mt-1">
