@@ -415,7 +415,6 @@ export default function FindSquadsPage() {
 
     const kickedUsername = userProfile?.username || "operator";
 
-    // Asteroid Bot Notification for Kick
     await supabase.from("squad_messages").insert({
       squad_id: squad.id,
       user_id: currentUser.id,
@@ -809,9 +808,10 @@ export default function FindSquadsPage() {
           </div>
         )}
 
+        {/* Member Roster Modal (Width increased to max-w-xl for long names) */}
         {activeMembersSquad && (
           <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm">
-            <div className="w-full max-w-md p-6 rounded-xl bg-[#161004] border border-amber-500/50 shadow-[0_0_30px_rgba(251,191,36,0.2)]">
+            <div className="w-full max-w-xl p-6 rounded-xl bg-[#161004] border border-amber-500/50 shadow-[0_0_30px_rgba(251,191,36,0.2)]">
               <div className="flex items-center justify-between mb-4 pb-3 border-b border-amber-500/30">
                 <div>
                   <h3 className="text-lg font-extrabold text-white flex items-center gap-2">
@@ -848,23 +848,23 @@ export default function FindSquadsPage() {
                         key={idx}
                         className="flex items-center justify-between p-3 rounded bg-[#080600] border border-amber-500/20"
                       >
-                        <div className="flex items-center gap-2.5">
+                        <div className="flex items-center gap-2.5 truncate mr-2">
                           {isLeader ? (
-                            <Crown className="w-4 h-4 text-yellow-400 drop-shadow-[0_0_6px_rgba(250,204,21,0.8)]" />
+                            <Crown className="w-4 h-4 text-yellow-400 shrink-0 drop-shadow-[0_0_6px_rgba(250,204,21,0.8)]" />
                           ) : (
-                            <div className="w-2 h-2 rounded-full bg-amber-500" />
+                            <div className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
                           )}
-                          <div>
-                            <p className="text-sm font-bold text-white">
+                          <div className="truncate">
+                            <p className="text-sm font-bold text-white truncate">
                               @{m.profiles?.username || "operator"}
                             </p>
-                            <p className="text-[10px] font-mono text-amber-200/50">
+                            <p className="text-[10px] font-mono text-amber-200/50 truncate">
                               {m.profiles?.display_name || "Squad Member"}
                             </p>
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 shrink-0">
                           <span className={`px-2 py-0.5 rounded text-[10px] font-mono ${
                             isLeader 
                               ? 'bg-yellow-950/80 border border-yellow-500/50 text-yellow-300' 
