@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import Navbar from "@/components/Navbar";
 import { createClient } from "@/lib/supabase/client";
-import { Radio, Plus, Globe, MessageSquare, Filter, Trash2, Users, Send, Search, Eye, ShieldAlert, Sparkles } from "lucide-react";
+import { Radio, Plus, Globe, MessageSquare, Filter, Trash2, Users, Send, Search, Eye, Crown } from "lucide-react";
 
 type LfgListing = {
   id: string;
@@ -186,13 +186,11 @@ export default function LfgBoardPage() {
 
     const membersMap: LfgMember[] = [];
 
-    // Add host first
     membersMap.push({
       user_id: item.user_id,
       profiles: item.profiles ? { username: item.profiles.username, display_name: item.profiles.display_name } : { username: "host", display_name: "Host" },
     });
 
-    // Fetch participants explicitly
     const { data: participantsData, error: partError } = await supabase
       .from("lfg_participants")
       .select("user_id, joined_at")
@@ -372,7 +370,6 @@ export default function LfgBoardPage() {
 
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full">
         
-        {/* Header Section */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 pb-6 border-b border-white/10">
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-[#121216] border border-violet-500/30 text-xs font-mono text-violet-400 mb-2 shadow-[0_0_10px_rgba(139,92,246,0.1)]">
@@ -381,7 +378,7 @@ export default function LfgBoardPage() {
             </div>
             <h1 className="text-3xl font-black text-white tracking-tight">LFG Board</h1>
             <p className="text-sm text-slate-400 mt-1">
-              Automated slot-locked secure party channels with live real-time member roster tracking.
+              Automated slot-locked secure party channels with live real-time member tracking.
             </p>
           </div>
 
@@ -395,7 +392,6 @@ export default function LfgBoardPage() {
           )}
         </div>
 
-        {/* Filter & Search Bar */}
         <div className="flex flex-wrap items-center justify-between gap-4 mb-8 p-4 rounded-2xl bg-[#121216] border border-white/10 shadow-lg">
           <div className="flex flex-wrap items-center gap-4 flex-1">
             <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
@@ -439,7 +435,6 @@ export default function LfgBoardPage() {
           </div>
         </div>
 
-        {/* Listings Grid */}
         {loading ? (
           <div className="text-center py-20 text-violet-400 font-mono text-sm animate-pulse">
             INITIALIZING_MATCHMAKING_NODES...
@@ -473,7 +468,6 @@ export default function LfgBoardPage() {
                   className="p-6 rounded-2xl bg-[#121216] border border-white/10 hover:border-violet-500/50 transition-all flex flex-col justify-between shadow-xl group"
                 >
                   <div className="space-y-4">
-                    {/* Top Badges */}
                     <div className="flex items-center justify-between gap-2">
                       <span className="px-3 py-1 rounded-lg bg-violet-950/60 border border-violet-500/30 text-xs font-mono text-violet-400 font-semibold">
                         {item.game_title}
@@ -488,7 +482,6 @@ export default function LfgBoardPage() {
                       </div>
                     </div>
 
-                    {/* Host & Roster button */}
                     <div className="flex items-center justify-between pt-1">
                       <p className="text-xs text-slate-400 font-mono">
                         Host: <span className="text-slate-200 font-bold">@{item.profiles?.username || "operator"}</span>
@@ -498,16 +491,14 @@ export default function LfgBoardPage() {
                         onClick={() => openLfgMembersModal(item)}
                         className="text-xs text-violet-400 hover:text-violet-300 font-mono flex items-center gap-1 bg-violet-950/30 px-2.5 py-1 rounded-lg border border-violet-500/20 transition-all cursor-pointer"
                       >
-                        <Eye className="w-3.5 h-3.5" /> Roster ({currentCount})
+                        <Eye className="w-3.5 h-3.5" /> Members ({currentCount})
                       </button>
                     </div>
 
-                    {/* Description Box */}
                     <p className="text-slate-300 text-sm bg-black/40 p-3.5 rounded-xl border border-white/5 leading-relaxed min-h-[72px]">
                       {item.description}
                     </p>
                     
-                    {/* Progress Capacity Bar */}
                     <div className="bg-black/40 p-3 rounded-xl border border-white/5">
                       <div className="flex justify-between items-center text-xs font-mono mb-2">
                         <span className="text-slate-400 flex items-center gap-1.5">
@@ -526,7 +517,6 @@ export default function LfgBoardPage() {
                     </div>
                   </div>
 
-                  {/* Card Footer Actions */}
                   <div className="pt-5 mt-5 border-t border-white/5 flex items-center justify-between gap-3">
                     <span className="text-[11px] font-mono text-slate-500 truncate">
                       ID: {item.id.slice(0, 8)}
@@ -556,14 +546,13 @@ export default function LfgBoardPage() {
           </div>
         )}
 
-        {/* Members Roster Modal */}
         {activeMembersListing && (
           <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm">
             <div className="w-full max-w-md p-6 rounded-2xl bg-[#121216] border border-violet-500/40 shadow-2xl">
               <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/10">
                 <div>
                   <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                    <Users className="w-5 h-5 text-violet-400" /> {activeMembersListing.game_title} Roster
+                    <Users className="w-5 h-5 text-violet-400" /> {activeMembersListing.game_title} Members
                   </h3>
                   <p className="text-xs font-mono text-slate-400">
                     Region: {activeMembersListing.region} | Slots: {participantCounts[activeMembersListing.id] || 1}/{activeMembersListing.max_players}
@@ -579,7 +568,7 @@ export default function LfgBoardPage() {
 
               {loadingLfgMembers ? (
                 <div className="text-center py-10 text-violet-400 font-mono text-xs animate-pulse">
-                  FETCHING_ROSTER...
+                  FETCHING_MEMBERS...
                 </div>
               ) : lfgMembersList.length === 0 ? (
                 <div className="text-center py-10 text-slate-500 font-mono text-xs">
@@ -596,7 +585,7 @@ export default function LfgBoardPage() {
                       >
                         <div className="flex items-center gap-2.5">
                           {isHost ? (
-                            <div className="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)]" />
+                            <Crown className="w-4 h-4 text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.8)]" />
                           ) : (
                             <div className="w-2.5 h-2.5 rounded-full bg-violet-500" />
                           )}
@@ -626,7 +615,6 @@ export default function LfgBoardPage() {
           </div>
         )}
 
-        {/* Live Chat Modal */}
         {activeListing && (
           <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="w-full max-w-lg h-[450px] p-6 rounded-2xl bg-[#121216] border border-violet-500/40 shadow-2xl flex flex-col justify-between">
@@ -694,7 +682,6 @@ export default function LfgBoardPage() {
           </div>
         )}
 
-        {/* Deploy LFG Node Modal */}
         {isModalOpen && user && (
           <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="w-full max-w-lg p-6 rounded-2xl bg-[#121216] border border-white/10 shadow-2xl">
