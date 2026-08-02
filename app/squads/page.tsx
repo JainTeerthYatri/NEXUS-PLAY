@@ -229,6 +229,20 @@ export default function FindSquadsPage() {
       user_id: user.id
     });
 
+    const { data: creatorProfile } = await supabase
+      .from("profiles")
+      .select("username")
+      .eq("id", user.id)
+      .single();
+
+    const creatorUsername = creatorProfile?.username || "commander";
+
+    await supabase.from("squad_messages").insert({
+      squad_id: newSquad.id,
+      user_id: user.id,
+      message: `[ASTEROID_BOT] Squad '${name}' has been successfully deployed by @${creatorUsername}! Welcome to the tactical hub, operator.`,
+    });
+
     setIsModalOpen(false);
     setName("");
     setUserMemberships((prev) => ({ ...prev, [newSquad.id]: true }));
@@ -289,6 +303,9 @@ export default function FindSquadsPage() {
   }
 
   async function handleAcceptRequest(req: SquadRequest, squad: Squad) {
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    if (!currentUser) return;
+
     if (squad.current_members >= squad.max_slots) {
       alert("⚠️ Cannot accept. Squad is already full!");
       return;
@@ -328,11 +345,11 @@ export default function FindSquadsPage() {
 
     const joinedUsername = userProfile?.username || "operator";
 
-    // Asteroid Bot Notification for Join
+    // FIXED: Using currentUser.id (Leader's ID) so RLS policy passes successfully!
     await supabase.from("squad_messages").insert({
       squad_id: squad.id,
-      user_id: req.user_id,
-      message: `[ASTEROID_BOT] This is to inform you all that @${joinedUsername} has joined the '${squad.name}' squad, so welcome them in the group!`,
+      user_id: currentUser.id,
+      message: `[ASTEROID_BOT] This is to inform you all that @${joinedUsername} has joined the '${squad.name}' squad, so welcome them warmly in the group!`,
     });
 
     alert("✅ Request accepted! User has joined the squad.");
@@ -390,7 +407,6 @@ export default function FindSquadsPage() {
 
       const leavingUsername = userProfile?.username || "operator";
 
-      // Asteroid Bot Notification for Leave
       await supabase.from("squad_messages").insert({
         squad_id: squad.id,
         user_id: user.id,
