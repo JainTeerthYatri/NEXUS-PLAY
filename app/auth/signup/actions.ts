@@ -4,7 +4,9 @@ import { headers } from "next/headers";
 import { authRatelimit } from "@/lib/ratelimit";
 import { createClient } from "@/lib/supabase/server";
 
-export async function handleSignupAction(formData: FormData) {
+export async function handleSignupAction(
+  formData: FormData
+): Promise<{ error?: string; success?: boolean }> {
   // 1. Get client IP address for rate limiting
   const headersList = await headers();
   const ip = headersList.get("x-forwarded-for") ?? "127.0.0.1";
@@ -33,14 +35,13 @@ export async function handleSignupAction(formData: FormData) {
 
   const supabase = await createClient();
 
-  // 4. Supabase Sign Up 
-  // Yeh data object trigger ke through seedha teri 'profiles' table me jayega
+  // 4. Supabase Sign Up
   const { error } = await supabase.auth.signUp({
     email,
     password,
     options: {
       data: {
-        username: username,
+        username,
         display_name: displayName,
       },
     },
