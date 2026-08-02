@@ -50,10 +50,10 @@ export default function SignupPage() {
     <div className="min-h-screen bg-[#0a0a0c] text-slate-100 flex flex-col justify-center items-center p-4">
       <div className="w-full max-w-md p-8 rounded-xl bg-[#121216] border border-white/10 shadow-2xl relative overflow-hidden">
         
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-1 bg-gradient-to-r from-transparent via-red-500 to-transparent"></div>
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-1 bg-gradient-to-r from-transparent via-fuchsia-500 to-transparent"></div>
 
         <div className="text-center mb-8">
-          <div className="inline-flex p-3 rounded-xl bg-red-600/10 border border-red-500/30 text-red-500 mb-3">
+          <div className="inline-flex p-3 rounded-xl bg-fuchsia-600/10 border border-fuchsia-500/30 text-fuchsia-500 mb-3">
             <UserPlus className="w-6 h-6" />
           </div>
           <h1 className="text-2xl font-black text-white tracking-tight">Create Operator Profile</h1>
@@ -61,7 +61,7 @@ export default function SignupPage() {
         </div>
 
         {errorMsg && (
-          <div className="mb-6 p-3 rounded bg-red-950/60 border border-red-500/30 text-red-400 text-xs font-mono">
+          <div className="mb-6 p-3 rounded bg-fuchsia-950/60 border border-fuchsia-500/30 text-fuchsia-300 text-xs font-mono">
             {errorMsg}
           </div>
         )}
@@ -78,7 +78,7 @@ export default function SignupPage() {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="operator_x"
-                className="w-full pl-10 pr-3 py-2 rounded bg-black/40 border border-white/10 text-white text-sm focus:border-red-500 outline-none transition-colors [&:-webkit-autofill]:!bg-black [&:-webkit-autofill]:!text-white [&:-webkit-autofill]:[-webkit-box-shadow:0_0_0_1000px_#121216_inset]"
+                className="w-full pl-10 pr-3 py-2 rounded bg-black/40 border border-white/10 text-white text-sm focus:border-fuchsia-500 outline-none transition-colors [&:-webkit-autofill]:!bg-black [&:-webkit-autofill]:!text-white [&:-webkit-autofill]:[-webkit-box-shadow:0_0_0_1000px_#121216_inset]"
               />
             </div>
           </div>
@@ -94,7 +94,7 @@ export default function SignupPage() {
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
                 placeholder="ASTEROID GAMING-CLOUD Operator"
-                className="w-full pl-10 pr-3 py-2 rounded bg-black/40 border border-white/10 text-white text-sm focus:border-red-500 outline-none transition-colors [&:-webkit-autofill]:!bg-black [&:-webkit-autofill]:!text-white [&:-webkit-autofill]:[-webkit-box-shadow:0_0_0_1000px_#121216_inset]"
+                className="w-full pl-10 pr-3 py-2 rounded bg-black/40 border border-white/10 text-white text-sm focus:border-fuchsia-500 outline-none transition-colors [&:-webkit-autofill]:!bg-black [&:-webkit-autofill]:!text-white [&:-webkit-autofill]:[-webkit-box-shadow:0_0_0_1000px_#121216_inset]"
               />
             </div>
           </div>
@@ -110,7 +110,7 @@ export default function SignupPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="operator@nexusplay.com"
-                className="w-full pl-10 pr-3 py-2 rounded bg-black/40 border border-white/10 text-white text-sm focus:border-red-500 outline-none transition-colors [&:-webkit-autofill]:!bg-black [&:-webkit-autofill]:!text-white [&:-webkit-autofill]:[-webkit-box-shadow:0_0_0_1000px_#121216_inset]"
+                className="w-full pl-10 pr-3 py-2 rounded bg-black/40 border border-white/10 text-white text-sm focus:border-fuchsia-500 outline-none transition-colors [&:-webkit-autofill]:!bg-black [&:-webkit-autofill]:!text-white [&:-webkit-autofill]:[-webkit-box-shadow:0_0_0_1000px_#121216_inset]"
               />
             </div>
           </div>
@@ -126,7 +126,7 @@ export default function SignupPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full pl-10 pr-3 py-2 rounded bg-black/40 border border-white/10 text-white text-sm focus:border-red-500 outline-none transition-colors [&:-webkit-autofill]:!bg-black [&:-webkit-autofill]:!text-white [&:-webkit-autofill]:[-webkit-box-shadow:0_0_0_1000px_#121216_inset]"
+                className="w-full pl-10 pr-3 py-2 rounded bg-black/40 border border-white/10 text-white text-sm focus:border-fuchsia-500 outline-none transition-colors [&:-webkit-autofill]:!bg-black [&:-webkit-autofill]:!text-white [&:-webkit-autofill]:[-webkit-box-shadow:0_0_0_1000px_#121216_inset]"
               />
             </div>
           </div>
@@ -139,10 +139,10 @@ export default function SignupPage() {
                 name="acceptTerms"
                 checked={acceptTerms}
                 onChange={(e) => setAcceptTerms(e.target.checked)}
-                className="mt-0.5 rounded border-white/20 bg-black/50 text-red-600 focus:ring-0 cursor-pointer"
+                className="mt-0.5 rounded border-white/20 bg-black/50 text-fuchsia-600 focus:ring-0 cursor-pointer"
               />
               <span>
-                I agree to the <Link href="/terms" target="_blank" className="text-red-400 underline hover:text-red-300">Terms & Conditions</Link> and platform rules. <span className="text-red-500">*</span>
+                I agree to the <Link href="/terms" target="_blank" className="text-fuchsia-400 underline hover:text-fuchsia-300">Terms & Conditions</Link> and platform rules. <span className="text-fuchsia-500">*</span>
               </span>
             </label>
 
@@ -152,10 +152,10 @@ export default function SignupPage() {
                 name="acceptCookies"
                 checked={acceptCookies}
                 onChange={(e) => setAcceptCookies(e.target.checked)}
-                className="mt-0.5 rounded border-white/20 bg-black/50 text-red-600 focus:ring-0 cursor-pointer"
+                className="mt-0.5 rounded border-white/20 bg-black/50 text-fuchsia-600 focus:ring-0 cursor-pointer"
               />
               <span>
-                I accept the use of <Link href="/cookies" target="_blank" className="text-red-400 underline hover:text-red-300">Cookies & Privacy Policy</Link> for session tracking. <span className="text-red-500">*</span>
+                I accept the use of <Link href="/cookies" target="_blank" className="text-fuchsia-400 underline hover:text-fuchsia-300">Cookies & Privacy Policy</Link> for session tracking. <span className="text-fuchsia-500">*</span>
               </span>
             </label>
           </div>
@@ -163,7 +163,7 @@ export default function SignupPage() {
           <button 
             type="submit"
             disabled={loading || !acceptTerms || !acceptCookies}
-            className="w-full py-2.5 rounded bg-red-600 hover:bg-red-500 text-white font-bold text-sm transition-colors flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(239,68,68,0.2)] disabled:opacity-50 disabled:cursor-not-allowed mt-4 cursor-pointer"
+            className="w-full py-2.5 rounded bg-fuchsia-600 hover:bg-fuchsia-500 text-white font-bold text-sm transition-colors flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(217,70,239,0.3)] disabled:opacity-50 disabled:cursor-not-allowed mt-4 cursor-pointer"
           >
             <span>{loading ? "Registering..." : "Register Profile"}</span>
             <ArrowRight className="w-4 h-4" />
@@ -172,7 +172,7 @@ export default function SignupPage() {
 
         <div className="mt-6 pt-6 border-t border-white/5 text-center text-xs text-slate-400 font-mono">
           Already have an operator profile?{" "}
-          <Link href="/auth/login" className="text-red-400 hover:underline font-bold">
+          <Link href="/auth/login" className="text-fuchsia-400 hover:underline font-bold">
             Login
           </Link>
         </div>
