@@ -30,7 +30,7 @@ export default function SignupPage() {
     setLoading(true);
 
     const formData = new FormData(e.currentTarget);
-    const result = await handleSignupAction(formData);
+    const result = (await handleSignupAction(formData)) as { error?: string; success?: boolean };
 
     if (result?.error) {
       const finalError = 
