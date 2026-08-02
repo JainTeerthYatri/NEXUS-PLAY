@@ -57,32 +57,27 @@ export default function FindSquadsPage() {
   const [user, setUser] = useState<any>(null);
   const [squads, setSquads] = useState<Squad[]>([]);
   const [userMemberships, setUserMemberships] = useState<Record<string, boolean>>({});
-  const [userRequests, setUserRequests] = useState<Record<string, string>>({}); // squad_id -> status ('pending'/'accepted'/'rejected')
+  const [userRequests, setUserRequests] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   
-  // Search & Filter state
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedGameFilter, setSelectedGameFilter] = useState("All");
   const [activeTab, setActiveTab] = useState<"all" | "mine">("all");
 
-  // Members Modal State
   const [activeMembersSquad, setActiveMembersSquad] = useState<Squad | null>(null);
   const [squadMembersList, setSquadMembersList] = useState<SquadMember[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
 
-  // Requests Modal State (For Squad Leaders)
   const [activeRequestsSquad, setActiveRequestsSquad] = useState<Squad | null>(null);
   const [squadRequestsList, setSquadRequestsList] = useState<SquadRequest[]>([]);
   const [loadingRequests, setLoadingRequests] = useState(false);
 
-  // Chat Modal State
   const [activeChatSquad, setActiveChatSquad] = useState<Squad | null>(null);
   const [chatMessages, setChatMessages] = useState<SquadMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const chatScrollRef = useRef<HTMLDivElement>(null);
 
-  // Form state for creating squad
   const [name, setName] = useState("");
   const [game, setGame] = useState("Valorant");
   const [rank, setRank] = useState("Diamond");
@@ -103,7 +98,6 @@ export default function FindSquadsPage() {
     init();
   }, []);
 
-  // Real-time chat listener when chat modal is open
   useEffect(() => {
     if (!activeChatSquad) return;
 
@@ -120,7 +114,6 @@ export default function FindSquadsPage() {
           filter: `squad_id=eq.${activeChatSquad.id}`,
         },
         async (payload) => {
-          // Fetch sender profile info for the new message
           const { data: profileData } = await supabase
             .from('profiles')
             .select('username, display_name')
@@ -161,7 +154,6 @@ export default function FindSquadsPage() {
       setSquads(data as Squad[]);
 
       if (currentUserId) {
-        // Fetch memberships
         const { data: memberships } = await supabase
           .from("squad_members")
           .select("squad_id")
@@ -175,7 +167,6 @@ export default function FindSquadsPage() {
         });
         setUserMemberships(membershipMap);
 
-        // Fetch join requests
         const { data: requests } = await supabase
           .from("squad_requests")
           .select("squad_id, status")
@@ -299,7 +290,6 @@ export default function FindSquadsPage() {
       return;
     }
 
-    // 1. Update request status to accepted
     const { error: reqError } = await supabase
       .from("squad_requests")
       .update({ status: 'accepted' })
@@ -310,7 +300,6 @@ export default function FindSquadsPage() {
       return;
     }
 
-    // 2. Insert user into squad_members
     const { error: memberError } = await supabase.from("squad_members").insert({
       squad_id: squad.id,
       user_id: req.user_id
@@ -321,7 +310,6 @@ export default function FindSquadsPage() {
       return;
     }
 
-    // 3. Increment current_members in squad
     const newCount = squad.current_members + 1;
     await supabase
       .from("squads")
@@ -367,7 +355,6 @@ export default function FindSquadsPage() {
         .update({ current_members: newCount })
         .eq("id", squad.id);
 
-      // Also clean up request status so they can request again if needed
       await supabase
         .from("squad_requests")
         .delete()
@@ -449,14 +436,12 @@ export default function FindSquadsPage() {
     }
   }
 
-  // Available games list for filter pills
   const availableGames = useMemo(() => {
     const gamesSet = new Set<string>();
     squads.forEach(s => gamesSet.add(s.game));
     return ["All", ...Array.from(gamesSet)];
   }, [squads]);
 
-  // Filtered squads
   const filteredSquads = useMemo(() => {
     return squads.filter(squad => {
       const matchesSearch = 
@@ -481,7 +466,6 @@ export default function FindSquadsPage() {
 
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full">
         
-        {/* Header Section */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 pb-6 border-b border-amber-500/30">
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-[#161004] border border-amber-500/50 text-xs font-mono text-amber-300 mb-2 shadow-[0_0_15px_rgba(251,191,36,0.15)]">
@@ -506,7 +490,6 @@ export default function FindSquadsPage() {
           )}
         </div>
 
-        {/* Search, Tabs & Filters Bar */}
         <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 mb-8">
           <div className="flex items-center gap-2 bg-[#161004] p-1.5 rounded-xl border border-amber-500/30 w-fit">
             <button
@@ -545,7 +528,6 @@ export default function FindSquadsPage() {
           </div>
         </div>
 
-        {/* Game Filter Pills */}
         <div className="flex items-center gap-2 overflow-x-auto pb-4 mb-6 scrollbar-none">
           <span className="text-xs font-mono text-amber-400 flex items-center gap-1 mr-1">
             <Filter className="w-3.5 h-3.5" /> Games:
@@ -565,7 +547,6 @@ export default function FindSquadsPage() {
           ))}
         </div>
 
-        {/* Squads Grid */}
         {loading ? (
           <div className="text-center py-20 text-yellow-400 font-mono text-sm animate-pulse">
             SYNCHRONIZING_GOLDEN_SQUADS...
@@ -628,7 +609,6 @@ export default function FindSquadsPage() {
                       </button>
                     </div>
 
-                    {/* Slot Progress Bar */}
                     <div className="mb-4">
                       <div className="flex justify-between text-[11px] font-mono text-amber-200/70 mb-1">
                         <span>Squad Capacity</span>
@@ -705,7 +685,6 @@ export default function FindSquadsPage() {
                       </div>
                     </div>
 
-                    {/* Chat Button (Visible only to members & owner) */}
                     {isJoined && (
                       <button
                         onClick={() => setActiveChatSquad(squad)}
@@ -721,7 +700,6 @@ export default function FindSquadsPage() {
           </div>
         )}
 
-        {/* View Members Modal */}
         {activeMembersSquad && (
           <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm">
             <div className="w-full max-w-md p-6 rounded-xl bg-[#161004] border border-amber-500/50 shadow-[0_0_30px_rgba(251,191,36,0.2)]">
@@ -791,7 +769,6 @@ export default function FindSquadsPage() {
           </div>
         )}
 
-        {/* View Join Requests Modal (For Squad Leader) */}
         {activeRequestsSquad && (
           <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm">
             <div className="w-full max-w-md p-6 rounded-xl bg-[#161004] border border-amber-500/50 shadow-[0_0_30px_rgba(251,191,36,0.2)]">
@@ -860,11 +837,9 @@ export default function FindSquadsPage() {
           </div>
         )}
 
-        {/* Squad Chat Modal */}
         {activeChatSquad && (
           <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4 backdrop-blur-md">
-            <div className="w-full max-w-2xl h-[80vh] flex flex-col rounded-xl bg-[#140e04] border border-amber-500/50 shadow-[0_0_40px_rgba(251,191,36,0.25)] overflow-hidden">
-              {/* Chat Header */}
+            <div className="w-full max-w-2xl h-[450px] flex flex-col rounded-xl bg-[#140e04] border border-amber-500/50 shadow-[0_0_40px_rgba(251,191,36,0.25)] overflow-hidden">
               <div className="flex items-center justify-between px-6 py-4 bg-[#1a1205] border-b border-amber-500/30">
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-amber-500/20 border border-amber-500/40">
@@ -887,7 +862,6 @@ export default function FindSquadsPage() {
                 </button>
               </div>
 
-              {/* Chat Messages Body */}
               <div ref={chatScrollRef} className="flex-1 overflow-y-auto p-6 space-y-4 bg-[#0a0701]">
                 {chatMessages.length === 0 ? (
                   <div className="text-center py-20 text-amber-200/40 font-mono text-xs">
@@ -930,7 +904,6 @@ export default function FindSquadsPage() {
                 )}
               </div>
 
-              {/* Chat Input Bar */}
               <form onSubmit={handleSendMessage} className="p-4 bg-[#1a1205] border-t border-amber-500/30 flex items-center gap-3">
                 <input 
                   type="text"
@@ -950,7 +923,6 @@ export default function FindSquadsPage() {
           </div>
         )}
 
-        {/* Create Squad Modal */}
         {isModalOpen && user && (
           <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm">
             <div className="w-full max-w-md p-6 rounded-xl bg-[#161004] border border-amber-500/50 shadow-[0_0_30px_rgba(251,191,36,0.2)]">
