@@ -33,7 +33,6 @@ export default function SignupPage() {
     const result = await handleSignupAction(formData);
 
     if (result?.error) {
-      // Safely parse error to guarantee it displays text instead of {}
       const finalError = 
         typeof result.error === "string" 
           ? result.error 
