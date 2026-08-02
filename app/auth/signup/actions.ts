@@ -33,21 +33,20 @@ export async function handleSignupAction(formData: FormData) {
 
   const supabase = await createClient();
 
-  // 4. Supabase Sign Up
+  // 4. Supabase Sign Up 
+  // Yeh data object trigger ke through seedha teri 'profiles' table me jayega
   const { error } = await supabase.auth.signUp({
     email,
     password,
     options: {
       data: {
-        username,
+        username: username,
         display_name: displayName,
-        accept_cookies: acceptCookies,
       },
     },
   });
 
   if (error) {
-    // Safely extract the error message string to prevent empty objects {} or type issues
     const errorMsg = 
       typeof error === "string" 
         ? error 
