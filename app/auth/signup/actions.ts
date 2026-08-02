@@ -47,7 +47,13 @@ export async function handleSignupAction(formData: FormData) {
   });
 
   if (error) {
-    return { error: error.message };
+    // Safely extract the error message string to prevent empty objects `{}`
+    const errorMsg = 
+      typeof error === "string" 
+        ? error 
+        : error?.message || error?.error_description || "An unexpected database or auth error occurred.";
+    
+    return { error: errorMsg };
   }
 
   return { success: true };
