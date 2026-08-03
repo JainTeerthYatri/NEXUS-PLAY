@@ -144,7 +144,7 @@ export default function LfgBoardPage() {
         .from("lfg_participants")
         .select("*", { count: 'exact', head: true })
         .eq("listing_id", item.id);
-      countsMap[item.id] = (count || 0) + 1;
+      countsMap[item.id] = count || 0;
     }
     setParticipantCounts(countsMap);
   }
@@ -171,22 +171,34 @@ export default function LfgBoardPage() {
       return;
     }
 
-    const { error } = await supabase.from("lfg_listings").insert({
-      user_id: user.id,
-      game_title: gameTitle,
-      region,
-      skill_tier: skillTier,
-      max_players: Number(maxPlayers),
-      description,
-    });
+    const { data: listingData, error } = await supabase
+      .from("lfg_listings")
+      .insert({
+        user_id: user.id,
+        game_title: gameTitle,
+        region,
+        skill_tier: skillTier,
+        max_players: Number(maxPlayers),
+        description,
+      })
+      .select()
+      .single();
 
-    if (!error) {
-      setIsModalOpen(false);
-      setDescription("");
-      fetchListings();
-    } else {
+    if (error) {
       alert("Error publishing listing: " + error.message);
+      return;
     }
+
+    if (listingData) {
+      await supabase.from("lfg_participants").insert({
+        listing_id: listingData.id,
+        user_id: user.id,
+      });
+    }
+
+    setIsModalOpen(false);
+    setDescription("");
+    fetchListings();
   }
 
   async function handleDeleteListing(id: string) {
@@ -284,39 +296,35 @@ export default function LfgBoardPage() {
 
     const membersMap: LfgMember[] = [];
 
-    membersMap.push({
-      user_id: item.user_id,
-      profiles: item.profiles ? { username: item.profiles.username, display_name: item.profiles.display_name } : { username: "host", display_name: "Host" },
-    });
-
     const { data: participantsData, error: partError } = await supabase
       .from("lfg_participants")
       .select("user_id, joined_at")
       .eq("listing_id", item.id);
 
     if (!partError && participantsData && participantsData.length > 0) {
-      const userIds = participantsData.map((p: any) => p.user_id).filter((id: string) => id !== item.user_id);
+      const userIds = participantsData.map((p: any) => p.user_id);
       
-      if (userIds.length > 0) {
-        const { data: profilesData } = await supabase
-          .from("profiles")
-          .select("id, username, display_name")
-          .in("id", userIds);
+      const { data: profilesData } = await supabase
+        .from("profiles")
+        .select("id, username, display_name")
+        .in("id", userIds);
 
-        const profileMap = new Map();
-        profilesData?.forEach((prof: any) => profileMap.set(prof.id, prof));
+      const profileMap = new Map();
+      profilesData?.forEach((prof: any) => profileMap.set(prof.id, prof));
 
-        participantsData.forEach((p: any) => {
-          if (p.user_id !== item.user_id) {
-            const prof = profileMap.get(p.user_id);
-            membersMap.push({
-              user_id: p.user_id,
-              profiles: prof ? { username: prof.username, display_name: prof.display_name } : { username: "operator", display_name: "Member" },
-              joined_at: p.joined_at,
-            });
-          }
+      participantsData.forEach((p: any) => {
+        const prof = profileMap.get(p.user_id);
+        membersMap.push({
+          user_id: p.user_id,
+          profiles: prof ? { username: prof.username, display_name: prof.display_name } : { username: "operator", display_name: "Member" },
+          joined_at: p.joined_at,
         });
-      }
+      });
+    } else {
+      membersMap.push({
+        user_id: item.user_id,
+        profiles: item.profiles ? { username: item.profiles.username, display_name: item.profiles.display_name } : { username: "host", display_name: "Host" },
+      });
     }
 
     setLfgMembersList(membersMap);
@@ -357,9 +365,8 @@ export default function LfgBoardPage() {
       .eq("listing_id", item.id);
 
     const currentJoined = count || 0;
-    const totalCurrentMembers = currentJoined + 1;
 
-    if (totalCurrentMembers >= item.max_players) {
+    if (currentJoined >= item.max_players) {
       alert(`⚠️ Party Full! Maximum limit of ${item.max_players} players reached.`);
       return;
     }
