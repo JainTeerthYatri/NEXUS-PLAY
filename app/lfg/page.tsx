@@ -13,7 +13,6 @@ type LfgListing = {
   skill_tier: string;
   max_players: number;
   description: string;
-  contact_info: string;
   created_at: string;
   profiles?: {
     username: string;
@@ -68,7 +67,6 @@ export default function LfgBoardPage() {
   const [skillTier, setSkillTier] = useState("Ascendant");
   const [maxPlayers, setMaxPlayers] = useState(5);
   const [description, setDescription] = useState("");
-  const [contactInfo, setContactInfo] = useState("");
 
   const supabase = createClient();
 
@@ -180,13 +178,11 @@ export default function LfgBoardPage() {
       skill_tier: skillTier,
       max_players: Number(maxPlayers),
       description,
-      contact_info: contactInfo,
     });
 
     if (!error) {
       setIsModalOpen(false);
       setDescription("");
-      setContactInfo("");
       fetchListings();
     } else {
       alert("Error publishing listing: " + error.message);
@@ -476,8 +472,7 @@ export default function LfgBoardPage() {
     const matchesSearch = searchQuery === "" || 
       item.game_title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.skill_tier.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (item.contact_info && item.contact_info.toLowerCase().includes(searchQuery.toLowerCase()));
+      item.skill_tier.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesGame && matchesRegion && matchesSearch;
   });
 
@@ -546,7 +541,7 @@ export default function LfgBoardPage() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search game, tier, contact info..."
+              placeholder="Search game, tier, requirements..."
               className="w-full pl-10 pr-4 py-2 rounded-xl bg-black/50 border border-white/10 text-xs text-white placeholder:text-slate-500 outline-none focus:border-violet-500 transition-colors"
             />
           </div>
@@ -612,15 +607,9 @@ export default function LfgBoardPage() {
                       </button>
                     </div>
 
-                    <p className="text-slate-300 text-sm bg-black/40 p-3.5 rounded-xl border border-white/5 leading-relaxed min-h-[64px]">
+                    <p className="text-slate-300 text-sm bg-black/40 p-3.5 rounded-xl border border-white/5 leading-relaxed min-h-[72px]">
                       {item.description}
                     </p>
-
-                    {item.contact_info && (
-                      <div className="text-xs font-mono text-violet-300 bg-violet-950/20 px-3 py-2 rounded-xl border border-violet-500/20">
-                        <span className="text-slate-400">Contact:</span> {item.contact_info}
-                      </div>
-                    )}
                     
                     <div className="bg-black/40 p-3 rounded-xl border border-white/5">
                       <div className="flex justify-between items-center text-xs font-mono mb-2">
@@ -915,18 +904,6 @@ export default function LfgBoardPage() {
                       className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-white/10 text-white text-sm focus:border-violet-500 outline-none transition-colors"
                     />
                   </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-mono text-slate-400 mb-1">Contact Info (Discord / In-Game ID)</label>
-                  <input 
-                    type="text" 
-                    required
-                    value={contactInfo}
-                    onChange={(e) => setContactInfo(e.target.value)}
-                    placeholder="e.g., Discord: username#0000 or IGN"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-white/10 text-white text-sm focus:border-violet-500 outline-none transition-colors"
-                  />
                 </div>
 
                 <div>
