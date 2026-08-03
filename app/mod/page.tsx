@@ -351,7 +351,7 @@ export default function ModDashboardExtended() {
   async function handleDeleteSquad(squadId: string) {
     if (!confirm("⚠️ Delete this squad and all its secure chat history?")) return;
     
-    await supabase.from("chat_messages").delete().eq("squad_id", squadId);
+    await supabase.from("squad_messages").delete().eq("squad_id", squadId);
     const { error } = await supabase.from("squads").delete().eq("id", squadId);
 
     if (!error) {
@@ -363,25 +363,34 @@ export default function ModDashboardExtended() {
     }
   }
 
-  // Inspect Chat History
+  // Inspect Chat History (Using correct table per type)
   async function openChatInspector(type: "lfg" | "squad", item: LfgListing | Squad) {
     setInspectingItem({ type, data: item });
+    const tableName = type === "lfg" ? "chat_messages" : "squad_messages";
     const queryField = type === "lfg" ? "listing_id" : "squad_id";
-    const { data } = await supabase
-      .from("chat_messages")
+    
+    const { data, error } = await supabase
+      .from(tableName)
       .select("*, profiles(username)")
       .eq(queryField, item.id)
       .order("created_at", { ascending: true });
+
+    if (error) {
+      console.error(`Error loading ${type} chat:`, error.message);
+    }
 
     setChatMessages(data || []);
   }
 
   async function handleDeleteMessage(msgId: string) {
     if (!confirm("Permanently erase this chat payload?")) return;
-    const { error } = await supabase.from("chat_messages").delete().eq("id", msgId);
+    const tableName = inspectingItem?.type === "squad" ? "squad_messages" : "chat_messages";
+    const { error } = await supabase.from(tableName).delete().eq("id", msgId);
     if (!error) {
       await logAdminAction("DELETE_MESSAGE", msgId, "Deleted individual chat message");
       setChatMessages((prev) => prev.filter(m => m.id !== msgId));
+    } else {
+      alert("Failed to delete message: " + error.message);
     }
   }
 
