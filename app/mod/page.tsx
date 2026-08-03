@@ -781,7 +781,7 @@ export default function ModDashboardExtended() {
         {/* Chat Inspector Modal */}
         {inspectingItem && (
           <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-md">
-            <div className="w-full max-w-xl h-[680px] p-6 rounded-2xl bg-[#121216] border border-red-500/40 shadow-2xl flex flex-col justify-between">
+            <div className="w-full max-w-xl h-[450px] p-6 rounded-2xl bg-[#121216] border border-red-500/40 shadow-2xl flex flex-col justify-between">
               <div className="flex items-center justify-between pb-4 border-b border-white/15">
                 <div className="flex items-center gap-2">
                   <ShieldAlert className="w-5 h-5 text-red-500" />
