@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import Navbar from "@/components/Navbar";
 import { createClient } from "@/lib/supabase/client";
-import { Radio, Plus, Globe, MessageSquare, Filter, Trash2, Users, Send, Search, Eye, Crown, Bot, LogOut } from "lucide-react";
+import { Radio, Plus, Globe, MessageSquare, Filter, Trash2, Users, Send, Search, Eye, Crown, Bot, LogOut, UserX } from "lucide-react";
 
 type LfgListing = {
   id: string;
@@ -108,6 +108,31 @@ export default function LfgBoardPage() {
       supabase.removeChannel(channel);
     };
   }, [listings]);
+
+  // Real-time synchronization for members modal
+  useEffect(() => {
+    if (!activeMembersListing) return;
+
+    const channel = supabase
+      .channel(`lfg-members-${activeMembersListing.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'lfg_participants',
+          filter: `listing_id=eq.${activeMembersListing.id}`,
+        },
+        () => {
+          openLfgMembersModal(activeMembersListing);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [activeMembersListing]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -219,6 +244,39 @@ export default function LfgBoardPage() {
     setActiveListing(null);
     setActiveMembersListing(null);
     fetchListings();
+  }
+
+  async function handleKickMember(memberUserId: string) {
+    if (!activeMembersListing) return;
+    if (!confirm("Are you sure you want to kick this operator from the squad?")) return;
+
+    const { error } = await supabase
+      .from("lfg_participants")
+      .delete()
+      .eq("listing_id", activeMembersListing.id)
+      .eq("user_id", memberUserId);
+
+    if (error) {
+      alert("Error kicking member: " + error.message);
+      return;
+    }
+
+    const { data: kickedProfile } = await supabase
+      .from("profiles")
+      .select("username")
+      .eq("id", memberUserId)
+      .single();
+
+    const kickedUsername = kickedProfile?.username || "operator";
+
+    await supabase.from("chat_messages").insert({
+      listing_id: activeMembersListing.id,
+      sender_id: user.id,
+      message: `[ASTEROID_BOT] Notice: @${kickedUsername} has been removed from the squad by the host.`,
+    });
+
+    await openLfgMembersModal(activeMembersListing);
+    await fetchParticipantCounts(listings);
   }
 
   async function openLfgMembersModal(item: LfgListing) {
@@ -634,6 +692,9 @@ export default function LfgBoardPage() {
                   <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1">
                     {lfgMembersList.map((m, idx) => {
                       const isHost = m.user_id === activeMembersListing.user_id;
+                      const isMe = user && m.user_id === user.id;
+                      const canKick = user && user.id === activeMembersListing.user_id && !isHost;
+
                       return (
                         <div 
                           key={idx}
@@ -647,7 +708,7 @@ export default function LfgBoardPage() {
                             )}
                             <div>
                               <p className="text-sm font-bold text-white flex items-center gap-1.5">
-                                @{m.profiles?.username || "operator"}
+                                @{m.profiles?.username || "operator"} {isMe && "(You)"}
                               </p>
                               <p className="text-[10px] font-mono text-slate-400">
                                 {m.profiles?.display_name || (isHost ? "Host / Leader" : "Party Member")}
@@ -655,13 +716,25 @@ export default function LfgBoardPage() {
                             </div>
                           </div>
 
-                          <span className={`px-2.5 py-0.5 rounded text-[10px] font-mono ${
-                            isHost 
-                              ? 'bg-amber-950/80 border border-amber-500/40 text-amber-300 font-bold' 
-                              : 'bg-violet-950/60 border border-violet-500/30 text-violet-300'
-                          }`}>
-                            {isHost ? "HOST" : "MEMBER"}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className={`px-2.5 py-0.5 rounded text-[10px] font-mono ${
+                              isHost 
+                                ? 'bg-amber-950/80 border border-amber-500/40 text-amber-300 font-bold' 
+                                : 'bg-violet-950/60 border border-violet-500/30 text-violet-300'
+                            }`}>
+                              {isHost ? "HOST" : "MEMBER"}
+                            </span>
+
+                            {canKick && (
+                              <button 
+                                onClick={() => handleKickMember(m.user_id)}
+                                className="p-1.5 rounded bg-red-950/40 hover:bg-red-900/60 border border-red-500/30 text-red-400 transition-colors cursor-pointer"
+                                title="Kick Member"
+                              >
+                                <UserX className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
                         </div>
                       );
                     })}
