@@ -81,12 +81,12 @@ export default function UploadClipPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#060b14] text-slate-100 flex flex-col">
+    <div className="min-h-[100dvh] bg-[#060b14] text-slate-100 flex flex-col">
       <Navbar />
 
-      <main className="flex-1 max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full space-y-8">
+      <main className="flex-1 max-w-3xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-10 w-full space-y-6 sm:space-y-8">
         
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           <Link 
             href="/clips"
             className="inline-flex items-center gap-2 text-xs font-mono text-cyan-400 hover:text-cyan-300 transition-colors"
@@ -99,14 +99,14 @@ export default function UploadClipPage() {
               <Video className="w-3.5 h-3.5 text-cyan-400" />
               <span>STUDIO_MATRIX // UPLOAD_SHORT</span>
             </div>
-            <h1 className="text-3xl font-black text-white tracking-tight">Upload Short Reel</h1>
-            <p className="text-sm text-slate-400 mt-1">
+            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">Upload Short Reel</h1>
+            <p className="text-xs sm:text-sm text-slate-400 mt-1">
               Broadcast your vertical gameplay clip. <span className="text-cyan-400 font-bold">Max file size: 2MB.</span> Earn +25 XP upon deployment.
             </p>
           </div>
         </div>
 
-        <div className="p-8 rounded-2xl bg-[#0b1324] border border-cyan-500/40 shadow-[0_0_30px_rgba(6,182,212,0.1)] relative overflow-hidden">
+        <div className="p-4 sm:p-8 rounded-2xl bg-[#0b1324] border border-cyan-500/40 shadow-[0_0_30px_rgba(6,182,212,0.1)] relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/5 rounded-full blur-3xl pointer-events-none"></div>
 
           {errorMessage && (
@@ -115,7 +115,7 @@ export default function UploadClipPage() {
             </div>
           )}
 
-          <form onSubmit={handleUpload} className="space-y-6">
+          <form onSubmit={handleUpload} className="space-y-5 sm:space-y-6">
             
             {/* Title Input */}
             <div className="space-y-2">
@@ -128,7 +128,7 @@ export default function UploadClipPage() {
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g. 1v4 Clutch Ace on Ascent B-Site"
                 required
-                className="w-full px-4 py-3 rounded-lg bg-[#060b14] border border-cyan-500/30 text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 font-mono text-sm shadow-inner"
+                className="w-full px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-lg bg-[#060b14] border border-cyan-500/30 text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 font-mono text-xs sm:text-sm shadow-inner"
               />
             </div>
 
@@ -147,7 +147,7 @@ export default function UploadClipPage() {
                   onChange={(e) => setGameTitle(e.target.value)}
                   placeholder="e.g. Valorant, Counter-Strike 2, Apex Legends"
                   required
-                  className="w-full pl-10 pr-4 py-3 rounded-lg bg-[#060b14] border border-cyan-500/30 text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 font-mono text-sm shadow-inner"
+                  className="w-full pl-10 pr-4 py-2.5 sm:py-3 rounded-lg bg-[#060b14] border border-cyan-500/30 text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 font-mono text-xs sm:text-sm shadow-inner"
                 />
               </div>
             </div>
@@ -157,7 +157,7 @@ export default function UploadClipPage() {
               <label className="block text-xs font-mono text-cyan-400 uppercase tracking-wider">
                 Vertical Video File (MP4 / WebM) <span className="text-cyan-500">*</span>
               </label>
-              <div className="p-6 rounded-xl bg-[#060b14] border border-dashed border-cyan-500/40 text-center hover:border-cyan-500 transition-colors relative cursor-pointer">
+              <div className="p-4 sm:p-6 rounded-xl bg-[#060b14] border border-dashed border-cyan-500/40 text-center hover:border-cyan-500 transition-colors relative cursor-pointer">
                 <input 
                   type="file"
                   accept="video/mp4,video/webm,video/quicktime"
@@ -166,10 +166,10 @@ export default function UploadClipPage() {
                 />
                 <div className="space-y-2">
                   <Upload className="w-8 h-8 text-cyan-400 mx-auto opacity-80" />
-                  <p className="text-sm font-bold text-white">
+                  <p className="text-xs sm:text-sm font-bold text-white truncate px-2">
                     {file ? `${file.name} (${(file.size / (1024 * 1024)).toFixed(2)} MB)` : "Drop vertical short video here (Max 2MB)"}
                   </p>
-                  <p className="text-xs font-mono text-amber-400/90">Strict Limit: File must be under 2MB</p>
+                  <p className="text-[11px] sm:text-xs font-mono text-amber-400/90">Strict Limit: File must be under 2MB</p>
                 </div>
               </div>
             </div>
@@ -178,7 +178,7 @@ export default function UploadClipPage() {
             <button
               type="submit"
               disabled={uploading}
-              className="w-full py-3.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-sm tracking-wider uppercase transition-all shadow-[0_0_25px_rgba(6,182,212,0.4)] flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              className="w-full py-3 sm:py-3.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs sm:text-sm tracking-wider uppercase transition-all shadow-[0_0_25px_rgba(6,182,212,0.4)] flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
             >
               {uploading ? (
                 <>
