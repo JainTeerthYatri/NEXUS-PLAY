@@ -15,7 +15,8 @@ import {
   ShieldAlert, 
   Menu, 
   X,
-  MessageSquare
+  MessageSquare,
+  Lightbulb
 } from "lucide-react";
 
 export default function Navbar() {
@@ -23,7 +24,7 @@ export default function Navbar() {
   const [role, setRole] = useState<string>("member");
   const [loadingRole, setLoadingRole] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  
+   
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
@@ -140,6 +141,17 @@ export default function Navbar() {
 
         {/* Right Section: Icon-only Controls & Mobile Hamburger Toggle */}
         <div className="flex items-center gap-2.5">
+          {/* Icon-only Suggestions Button (Visible to everyone) */}
+          <Link 
+            href="/suggestions"
+            className={`p-2 rounded bg-[#0b1324] border transition-all flex items-center justify-center ${
+              isActive('/suggestions') ? 'border-amber-500 text-amber-300 bg-amber-500/10 shadow-[0_0_10px_rgba(245,158,11,0.3)]' : 'border-cyan-500/30 text-slate-400 hover:text-amber-300 hover:border-amber-500/60'
+            }`}
+            title="Suggestions"
+          >
+            <Lightbulb className="w-4 h-4 text-amber-400" />
+          </Link>
+
           {user ? (
             <div className="flex items-center gap-2">
               {/* Icon-only Dashboard */}
@@ -263,39 +275,50 @@ export default function Navbar() {
             ASTEROID Gaming-Cloud
           </Link>
 
-          {user && (
-            <div className="pt-2 border-t border-cyan-500/20 space-y-2">
-              <Link 
-                href="/dashboard" 
-                onClick={() => setMobileMenuOpen(false)}
-                className={`block px-3 py-2 rounded text-xs font-mono transition-all ${
-                  isActive('/dashboard') ? 'bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 font-bold' : 'text-slate-300 hover:bg-white/5'
-                }`}
-              >
-                Dashboard
-              </Link>
-              <Link 
-                href="/settings" 
-                onClick={() => setMobileMenuOpen(false)}
-                className={`block px-3 py-2 rounded text-xs font-mono transition-all ${
-                  isActive('/settings') ? 'bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 font-bold' : 'text-slate-300 hover:bg-white/5'
-                }`}
-              >
-                Settings
-              </Link>
-              {!loadingRole && (role === "owner" || role === "moderator") && (
+          <div className="pt-2 border-t border-cyan-500/20 space-y-2">
+            <Link 
+              href="/suggestions" 
+              onClick={() => setMobileMenuOpen(false)}
+              className={`block px-3 py-2 rounded text-xs font-mono transition-all ${
+                isActive('/suggestions') ? 'bg-amber-500/20 border border-amber-500/40 text-amber-300 font-bold' : 'text-slate-300 hover:bg-white/5'
+              }`}
+            >
+              Suggestions
+            </Link>
+            {user && (
+              <>
                 <Link 
-                  href="/mod" 
+                  href="/dashboard" 
                   onClick={() => setMobileMenuOpen(false)}
                   className={`block px-3 py-2 rounded text-xs font-mono transition-all ${
-                    isActive('/mod') ? 'bg-red-950/60 border border-red-500/30 text-red-400 font-bold' : 'text-red-400 hover:bg-red-950/20'
+                    isActive('/dashboard') ? 'bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 font-bold' : 'text-slate-300 hover:bg-white/5'
                   }`}
                 >
-                  Mod Panel
+                  Dashboard
                 </Link>
-              )}
-            </div>
-          )}
+                <Link 
+                  href="/settings" 
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`block px-3 py-2 rounded text-xs font-mono transition-all ${
+                    isActive('/settings') ? 'bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 font-bold' : 'text-slate-300 hover:bg-white/5'
+                  }`}
+                >
+                  Settings
+                </Link>
+                {!loadingRole && (role === "owner" || role === "moderator") && (
+                  <Link 
+                    href="/mod" 
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`block px-3 py-2 rounded text-xs font-mono transition-all ${
+                      isActive('/mod') ? 'bg-red-950/60 border border-red-500/30 text-red-400 font-bold' : 'text-red-400 hover:bg-red-950/20'
+                    }`}
+                  >
+                    Mod Panel
+                  </Link>
+                )}
+              </>
+            )}
+          </div>
         </div>
       )}
     </nav>
