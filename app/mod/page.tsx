@@ -430,26 +430,26 @@ export default function ModDashboardExtended() {
   if (!isAuthorized) return null;
 
   return (
-    <div className="min-h-screen bg-[#0a0a0c] text-slate-100 flex flex-col font-sans">
+    <div className="min-h-[100dvh] bg-[#0a0a0c] text-slate-100 flex flex-col font-sans">
       <Navbar />
 
-      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full">
+      <main className="flex-1 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-10 w-full">
         {/* Header Section */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 pb-6 border-b border-white/10">
-          <div className="flex items-center gap-3">
-            <div className="p-3 rounded-xl bg-red-600/10 border border-red-500/30 text-red-500 shadow-lg shadow-red-500/10">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-8 pb-6 border-b border-white/10">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="p-3 rounded-xl bg-red-600/10 border border-red-500/30 text-red-500 shadow-lg shadow-red-500/10 shrink-0">
               <ShieldAlert className="w-6 h-6 animate-pulse" />
             </div>
-            <div>
-              <h1 className="text-3xl font-black text-white tracking-tight flex items-center gap-2">
-                Command Center <span className="text-red-500 text-sm font-mono px-2 py-0.5 rounded bg-red-950/55 border border-red-500/30">v2.4 SECURE</span>
+            <div className="min-w-0">
+              <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight flex items-center gap-2 flex-wrap">
+                <span className="truncate">Command Center</span> <span className="text-red-500 text-xs sm:text-sm font-mono px-2 py-0.5 rounded bg-red-950/55 border border-red-500/30 shrink-0">v2.4 SECURE</span>
               </h1>
-              <p className="text-sm text-slate-400 mt-1">Full administrative matrix, audit trails, and moderation tooling active.</p>
+              <p className="text-xs sm:text-sm text-slate-400 mt-1 truncate">Full administrative matrix, audit trails, and moderation tooling active.</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 w-full md:w-auto">
-            <div className="relative w-full md:w-72">
+          <div className="flex items-center gap-2 sm:gap-3 w-full lg:w-auto">
+            <div className="relative w-full lg:w-72">
               <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" />
               <input 
                 type="text"
@@ -461,7 +461,7 @@ export default function ModDashboardExtended() {
             </div>
             <button 
               onClick={() => window.location.reload()}
-              className="p-2.5 rounded-lg bg-[#121216] border border-white/10 hover:border-white/30 text-slate-400 hover:text-white transition-colors cursor-pointer"
+              className="p-2.5 rounded-lg bg-[#121216] border border-white/10 hover:border-white/30 text-slate-400 hover:text-white transition-colors cursor-pointer shrink-0"
               title="Refresh Database Cache"
             >
               <RefreshCw className="w-4 h-4" />
@@ -472,41 +472,41 @@ export default function ModDashboardExtended() {
         {/* Stats Grid Overview */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
           <div className="p-4 rounded-xl bg-[#121216] border border-white/10 flex items-center gap-4 shadow-xl">
-            <div className="p-3 rounded-lg bg-violet-600/10 text-violet-400 border border-violet-500/20"><Users className="w-5 h-5" /></div>
-            <div>
-              <p className="text-xs font-mono text-slate-400">Total Operators</p>
+            <div className="p-3 rounded-lg bg-violet-600/10 text-violet-400 border border-violet-500/20 shrink-0"><Users className="w-5 h-5" /></div>
+            <div className="min-w-0">
+              <p className="text-xs font-mono text-slate-400 truncate">Total Operators</p>
               <h3 className="text-xl font-black text-white">{profiles.length}</h3>
             </div>
           </div>
 
           <div className="p-4 rounded-xl bg-[#121216] border border-white/10 flex items-center gap-4 shadow-xl">
-            <div className="p-3 rounded-lg bg-red-600/10 text-red-400 border border-red-500/20"><Shield className="w-5 h-5" /></div>
-            <div>
-              <p className="text-xs font-mono text-slate-400">Owners / Mods</p>
+            <div className="p-3 rounded-lg bg-red-600/10 text-red-400 border border-red-500/20 shrink-0"><Shield className="w-5 h-5" /></div>
+            <div className="min-w-0">
+              <p className="text-xs font-mono text-slate-400 truncate">Owners / Mods</p>
               <h3 className="text-xl font-black text-white">{profiles.filter(p => p.role === "owner" || p.role === "moderator").length}</h3>
             </div>
           </div>
 
           <div className="p-4 rounded-xl bg-[#121216] border border-white/10 flex items-center gap-4 shadow-xl">
-            <div className="p-3 rounded-lg bg-amber-600/10 text-amber-400 border border-amber-500/20"><Radio className="w-5 h-5" /></div>
-            <div>
-              <p className="text-xs font-mono text-slate-400">Active Nodes</p>
+            <div className="p-3 rounded-lg bg-amber-600/10 text-amber-400 border border-amber-500/20 shrink-0"><Radio className="w-5 h-5" /></div>
+            <div className="min-w-0">
+              <p className="text-xs font-mono text-slate-400 truncate">Active Nodes</p>
               <h3 className="text-xl font-black text-white">{listings.length + squads.length}</h3>
             </div>
           </div>
 
           <div className="p-4 rounded-xl bg-[#121216] border border-white/10 flex items-center gap-4 shadow-xl">
-            <div className="p-3 rounded-lg bg-rose-600/10 text-rose-400 border border-rose-500/20"><Ban className="w-5 h-5" /></div>
-            <div>
-              <p className="text-xs font-mono text-slate-400">Banned Accounts</p>
+            <div className="p-3 rounded-lg bg-rose-600/10 text-rose-400 border border-rose-500/20 shrink-0"><Ban className="w-5 h-5" /></div>
+            <div className="min-w-0">
+              <p className="text-xs font-mono text-slate-400 truncate">Banned Accounts</p>
               <h3 className="text-xl font-black text-white">{totalBanned}</h3>
             </div>
           </div>
 
-          <div className="p-4 rounded-xl bg-[#121216] border border-white/10 flex items-center gap-4 shadow-xl">
-            <div className="p-3 rounded-lg bg-orange-600/10 text-orange-400 border border-orange-500/20"><Flag className="w-5 h-5" /></div>
-            <div>
-              <p className="text-xs font-mono text-slate-400">Pending Reports</p>
+          <div className="p-4 rounded-xl bg-[#121216] border border-white/10 flex items-center gap-4 shadow-xl sm:col-span-2 lg:col-span-1">
+            <div className="p-3 rounded-lg bg-orange-600/10 text-orange-400 border border-orange-500/20 shrink-0"><Flag className="w-5 h-5" /></div>
+            <div className="min-w-0">
+              <p className="text-xs font-mono text-slate-400 truncate">Pending Reports</p>
               <h3 className="text-xl font-black text-white">{pendingReportsCount}</h3>
             </div>
           </div>
@@ -516,46 +516,46 @@ export default function ModDashboardExtended() {
         <div className="flex items-center gap-2 mb-6 border-b border-white/10 pb-4 flex-wrap">
           <button
             onClick={() => setActiveTab("users")}
-            className={`px-4 py-2 rounded-lg font-mono text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+            className={`px-3.5 sm:px-4 py-2 rounded-lg font-mono text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
               activeTab === "users" ? "bg-red-600 text-white shadow-lg shadow-red-600/20" : "bg-[#121216] text-slate-400 hover:text-white border border-white/10"
             }`}
           >
-            <Users className="w-4 h-4" /> Operator Security ({profiles.length})
+            <Users className="w-4 h-4 shrink-0" /> Operator Security ({profiles.length})
           </button>
           <button
             onClick={() => setActiveTab("lfg")}
-            className={`px-4 py-2 rounded-lg font-mono text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+            className={`px-3.5 sm:px-4 py-2 rounded-lg font-mono text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
               activeTab === "lfg" ? "bg-red-600 text-white shadow-lg shadow-red-600/20" : "bg-[#121216] text-slate-400 hover:text-white border border-white/10"
             }`}
           >
-            <Radio className="w-4 h-4" /> LFG Matrix ({listings.length})
+            <Radio className="w-4 h-4 shrink-0" /> LFG Matrix ({listings.length})
           </button>
           <button
             onClick={() => setActiveTab("squads")}
-            className={`px-4 py-2 rounded-lg font-mono text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+            className={`px-3.5 sm:px-4 py-2 rounded-lg font-mono text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
               activeTab === "squads" ? "bg-red-600 text-white shadow-lg shadow-red-600/20" : "bg-[#121216] text-slate-400 hover:text-white border border-white/10"
             }`}
           >
-            <Gamepad2 className="w-4 h-4" /> Squad Chats ({squads.length})
+            <Gamepad2 className="w-4 h-4 shrink-0" /> Squad Chats ({squads.length})
           </button>
           <button
             onClick={() => setActiveTab("reports")}
-            className={`px-4 py-2 rounded-lg font-mono text-xs font-bold transition-all cursor-pointer flex items-center gap-2 relative ${
+            className={`px-3.5 sm:px-4 py-2 rounded-lg font-mono text-xs font-bold transition-all cursor-pointer flex items-center gap-2 relative ${
               activeTab === "reports" ? "bg-red-600 text-white shadow-lg shadow-red-600/20" : "bg-[#121216] text-slate-400 hover:text-white border border-white/10"
             }`}
           >
-            <Flag className="w-4 h-4" /> Reports 
+            <Flag className="w-4 h-4 shrink-0" /> Reports 
             {pendingReportsCount > 0 && (
               <span className="ml-1 px-1.5 py-0.2 rounded-full bg-orange-500 text-white text-[10px] font-black">{pendingReportsCount}</span>
             )}
           </button>
           <button
             onClick={() => setActiveTab("logs")}
-            className={`px-4 py-2 rounded-lg font-mono text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+            className={`px-3.5 sm:px-4 py-2 rounded-lg font-mono text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
               activeTab === "logs" ? "bg-red-600 text-white shadow-lg shadow-red-600/20" : "bg-[#121216] text-slate-400 hover:text-white border border-white/10"
             }`}
           >
-            <Terminal className="w-4 h-4" /> Audit Trails ({auditLogs.length})
+            <Terminal className="w-4 h-4 shrink-0" /> Audit Trails ({auditLogs.length})
           </button>
         </div>
 
@@ -567,93 +567,97 @@ export default function ModDashboardExtended() {
           </div>
         ) : activeTab === "users" ? (
           <div className="bg-[#121216] border border-white/10 rounded-xl overflow-hidden shadow-2xl">
-            <div className="p-4 border-b border-white/10 font-mono text-xs text-slate-400 uppercase tracking-wider grid grid-cols-12 gap-4">
-              <div className="col-span-4">Operator / Username</div>
-              <div className="col-span-3">Display Name</div>
-              <div className="col-span-5">Security Clearance & Sanctions</div>
-            </div>
-
-            <div className="divide-y divide-white/5">
-              {filteredProfiles.map((profile) => (
-                <div key={profile.id} className="p-4 grid grid-cols-12 gap-4 items-center text-sm hover:bg-white/[0.02] transition-colors">
-                  <div className="col-span-4 font-mono text-violet-400 font-bold flex items-center gap-2 flex-wrap">
-                    <span>@{profile.username || "unknown"}</span>
-                    {profile.is_banned && (
-                      <span className="px-2 py-0.5 rounded bg-red-950 text-red-400 border border-red-500/30 text-[10px] font-mono tracking-wider font-black">BANNED</span>
-                    )}
-                    {profile.id === currentUserId && (
-                      <span className="px-1.5 py-0.5 rounded bg-violet-950 text-violet-300 text-[10px] font-mono">(YOU)</span>
-                    )}
-                  </div>
-                  <div className="col-span-3 text-slate-300 truncate">
-                    {profile.display_name || "N/A"}
-                  </div>
-                  <div className="col-span-5 flex items-center gap-2 flex-wrap">
-                    <select
-                      value={profile.role || "member"}
-                      disabled={currentUserRole !== "owner" && profile.role === "owner"}
-                      onChange={(e) => handleLocalRoleChange(profile.id, e.target.value)}
-                      className="px-3 py-1.5 rounded-lg bg-black/50 border border-white/10 text-white text-xs font-mono outline-none cursor-pointer focus:border-red-500 disabled:opacity-50"
-                    >
-                      <option value="member">Member</option>
-                      <option value="moderator">Moderator</option>
-                      <option value="owner">Owner</option>
-                    </select>
-
-                    <button
-                      onClick={() => handleSaveRole(profile.id, profile.role)}
-                      disabled={savingId === profile.id || cooldown}
-                      className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer disabled:opacity-50 shadow-md"
-                    >
-                      <Save className="w-3.5 h-3.5" /> Save
-                    </button>
-
-                    {successId === profile.id && (
-                      <span className="text-emerald-400 text-xs font-mono flex items-center gap-1">
-                        <Check className="w-3.5 h-3.5" /> Saved
-                      </span>
-                    )}
-
-                    {profile.is_banned ? (
-                      <button
-                        onClick={() => handlePardonUser(profile.id, profile.username)}
-                        disabled={savingId === profile.id}
-                        className="px-3 py-1.5 rounded-lg bg-emerald-950 hover:bg-emerald-900 border border-emerald-500/30 text-emerald-300 text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer"
-                      >
-                        <Unlock className="w-3.5 h-3.5" /> Pardon
-                      </button>
-                    ) : profile.role !== "owner" && profile.id !== currentUserId && (
-                      <button
-                        onClick={() => setSelectedUserForBan(profile)}
-                        disabled={savingId === profile.id}
-                        className="px-3 py-1.5 rounded-lg bg-rose-950 hover:bg-rose-900 border border-rose-500/30 text-rose-300 text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer"
-                      >
-                        <Lock className="w-3.5 h-3.5" /> Ban
-                      </button>
-                    )}
-                  </div>
+            <div className="w-full overflow-x-auto">
+              <div className="min-w-[700px]">
+                <div className="p-4 border-b border-white/10 font-mono text-xs text-slate-400 uppercase tracking-wider grid grid-cols-12 gap-4">
+                  <div className="col-span-4">Operator / Username</div>
+                  <div className="col-span-3">Display Name</div>
+                  <div className="col-span-5">Security Clearance & Sanctions</div>
                 </div>
-              ))}
+
+                <div className="divide-y divide-white/5">
+                  {filteredProfiles.map((profile) => (
+                    <div key={profile.id} className="p-4 grid grid-cols-12 gap-4 items-center text-sm hover:bg-white/[0.02] transition-colors">
+                      <div className="col-span-4 font-mono text-violet-400 font-bold flex items-center gap-2 flex-wrap min-w-0">
+                        <span className="truncate">@{profile.username || "unknown"}</span>
+                        {profile.is_banned && (
+                          <span className="px-2 py-0.5 rounded bg-red-950 text-red-400 border border-red-500/30 text-[10px] font-mono tracking-wider font-black shrink-0">BANNED</span>
+                        )}
+                        {profile.id === currentUserId && (
+                          <span className="px-1.5 py-0.5 rounded bg-violet-950 text-violet-300 text-[10px] font-mono shrink-0">(YOU)</span>
+                        )}
+                      </div>
+                      <div className="col-span-3 text-slate-300 truncate">
+                        {profile.display_name || "N/A"}
+                      </div>
+                      <div className="col-span-5 flex items-center gap-2 flex-wrap">
+                        <select
+                          value={profile.role || "member"}
+                          disabled={currentUserRole !== "owner" && profile.role === "owner"}
+                          onChange={(e) => handleLocalRoleChange(profile.id, e.target.value)}
+                          className="px-3 py-1.5 rounded-lg bg-black/50 border border-white/10 text-white text-xs font-mono outline-none cursor-pointer focus:border-red-500 disabled:opacity-50"
+                        >
+                          <option value="member">Member</option>
+                          <option value="moderator">Moderator</option>
+                          <option value="owner">Owner</option>
+                        </select>
+
+                        <button
+                          onClick={() => handleSaveRole(profile.id, profile.role)}
+                          disabled={savingId === profile.id || cooldown}
+                          className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer disabled:opacity-50 shadow-md shrink-0"
+                        >
+                          <Save className="w-3.5 h-3.5 shrink-0" /> Save
+                        </button>
+
+                        {successId === profile.id && (
+                          <span className="text-emerald-400 text-xs font-mono flex items-center gap-1 shrink-0">
+                            <Check className="w-3.5 h-3.5 shrink-0" /> Saved
+                          </span>
+                        )}
+
+                        {profile.is_banned ? (
+                          <button
+                            onClick={() => handlePardonUser(profile.id, profile.username)}
+                            disabled={savingId === profile.id}
+                            className="px-3 py-1.5 rounded-lg bg-emerald-950 hover:bg-emerald-900 border border-emerald-500/30 text-emerald-300 text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer shrink-0"
+                          >
+                            <Unlock className="w-3.5 h-3.5 shrink-0" /> Pardon
+                          </button>
+                        ) : profile.role !== "owner" && profile.id !== currentUserId && (
+                          <button
+                            onClick={() => setSelectedUserForBan(profile)}
+                            disabled={savingId === profile.id}
+                            className="px-3 py-1.5 rounded-lg bg-rose-950 hover:bg-rose-900 border border-rose-500/30 text-rose-300 text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer shrink-0"
+                          >
+                            <Lock className="w-3.5 h-3.5 shrink-0" /> Ban
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         ) : activeTab === "lfg" ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {filteredListings.map((item) => (
-              <div key={item.id} className="p-5 rounded-xl bg-[#121216] border border-white/10 flex flex-col justify-between shadow-xl hover:border-white/20 transition-all">
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="px-2.5 py-1 rounded-md bg-violet-950/60 text-xs font-mono text-violet-400 border border-violet-500/20 font-bold">{item.game_title}</span>
-                    <span className="px-2.5 py-1 rounded-md bg-emerald-950/60 text-xs font-mono text-emerald-400 border border-emerald-500/20"><Globe className="w-3 h-3 inline mr-1" /> {item.region}</span>
+              <div key={item.id} className="p-4 sm:p-5 rounded-xl bg-[#121216] border border-white/10 flex flex-col justify-between shadow-xl hover:border-white/20 transition-all">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <span className="px-2.5 py-1 rounded-md bg-violet-950/60 text-xs font-mono text-violet-400 border border-violet-500/20 font-bold truncate max-w-[150px]">{item.game_title}</span>
+                    <span className="px-2.5 py-1 rounded-md bg-emerald-950/60 text-xs font-mono text-emerald-400 border border-emerald-500/20 shrink-0"><Globe className="w-3 h-3 inline mr-1" /> {item.region}</span>
                   </div>
-                  <p className="text-slate-300 text-sm mb-3 bg-black/40 p-3 rounded-lg border border-white/5 leading-relaxed">{item.description}</p>
-                  <div className="text-xs font-mono text-slate-500 mb-4">Host: <span className="text-slate-300">@{item.profiles?.username}</span> | Slots: {item.max_players}</div>
+                  <p className="text-slate-300 text-xs sm:text-sm mb-3 bg-black/40 p-3 rounded-lg border border-white/5 leading-relaxed break-words">{item.description}</p>
+                  <div className="text-xs font-mono text-slate-500 mb-4 truncate">Host: <span className="text-slate-300 truncate">@{item.profiles?.username}</span> | Slots: {item.max_players}</div>
                 </div>
-                <div className="pt-3 border-t border-white/5 flex items-center justify-between">
-                  <button onClick={() => openChatInspector("lfg", item)} className="px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-lg shadow-violet-600/20">
-                    <Eye className="w-3.5 h-3.5" /> Inspect LFG Chat
+                <div className="pt-3 border-t border-white/5 flex items-center justify-between gap-2 flex-wrap">
+                  <button onClick={() => openChatInspector("lfg", item)} className="px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-lg shadow-violet-600/20 shrink-0">
+                    <Eye className="w-3.5 h-3.5 shrink-0" /> Inspect LFG Chat
                   </button>
-                  <button onClick={() => handleDeleteLfgListing(item.id)} className="px-3 py-1.5 rounded-lg bg-red-950 hover:bg-red-900 border border-red-500/30 text-red-300 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer">
-                    <Trash2 className="w-3.5 h-3.5" /> Purge Node
+                  <button onClick={() => handleDeleteLfgListing(item.id)} className="px-3 py-1.5 rounded-lg bg-red-950 hover:bg-red-900 border border-red-500/30 text-red-300 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0">
+                    <Trash2 className="w-3.5 h-3.5 shrink-0" /> Purge Node
                   </button>
                 </div>
               </div>
@@ -662,19 +666,19 @@ export default function ModDashboardExtended() {
         ) : activeTab === "squads" ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {filteredSquads.map((squad) => (
-              <div key={squad.id} className="p-5 rounded-xl bg-[#121216] border border-white/10 flex flex-col justify-between shadow-xl hover:border-white/20 transition-all">
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="px-2.5 py-1 rounded-md bg-indigo-950/60 text-xs font-mono text-indigo-400 font-bold border border-indigo-500/20">{squad.name}</span>
+              <div key={squad.id} className="p-4 sm:p-5 rounded-xl bg-[#121216] border border-white/10 flex flex-col justify-between shadow-xl hover:border-white/20 transition-all">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <span className="px-2.5 py-1 rounded-md bg-indigo-950/60 text-xs font-mono text-indigo-400 font-bold border border-indigo-500/20 truncate max-w-[200px]">{squad.name}</span>
                   </div>
-                  <div className="text-xs font-mono text-slate-400 mb-4 bg-black/30 p-2.5 rounded-lg border border-white/5">Squad Leader: <span className="text-violet-400 font-bold">@{squad.profiles?.username}</span></div>
+                  <div className="text-xs font-mono text-slate-400 mb-4 bg-black/30 p-2.5 rounded-lg border border-white/5 truncate">Squad Leader: <span className="text-violet-400 font-bold truncate">@{squad.profiles?.username}</span></div>
                 </div>
-                <div className="pt-3 border-t border-white/5 flex items-center justify-between">
-                  <button onClick={() => openChatInspector("squad", squad)} className="px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-lg shadow-violet-600/20">
-                    <Eye className="w-3.5 h-3.5" /> Inspect Squad Chat
+                <div className="pt-3 border-t border-white/5 flex items-center justify-between gap-2 flex-wrap">
+                  <button onClick={() => openChatInspector("squad", squad)} className="px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-lg shadow-violet-600/20 shrink-0">
+                    <Eye className="w-3.5 h-3.5 shrink-0" /> Inspect Squad Chat
                   </button>
-                  <button onClick={() => handleDeleteSquad(squad.id)} className="px-3 py-1.5 rounded-lg bg-red-950 hover:bg-red-900 border border-red-500/30 text-red-300 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer">
-                    <Trash2 className="w-3.5 h-3.5" /> Delete Squad
+                  <button onClick={() => handleDeleteSquad(squad.id)} className="px-3 py-1.5 rounded-lg bg-red-950 hover:bg-red-900 border border-red-500/30 text-red-300 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0">
+                    <Trash2 className="w-3.5 h-3.5 shrink-0" /> Delete Squad
                   </button>
                 </div>
               </div>
@@ -682,80 +686,88 @@ export default function ModDashboardExtended() {
           </div>
         ) : activeTab === "reports" ? (
           <div className="bg-[#121216] border border-white/10 rounded-xl overflow-hidden shadow-2xl">
-            <div className="p-4 border-b border-white/10 font-mono text-xs text-slate-400 uppercase tracking-wider grid grid-cols-12 gap-4">
-              <div className="col-span-3">Reporter</div>
-              <div className="col-span-2">Target Type</div>
-              <div className="col-span-4">Reason / Details</div>
-              <div className="col-span-3 text-right">Moderator Verdict</div>
-            </div>
+            <div className="w-full overflow-x-auto">
+              <div className="min-w-[700px]">
+                <div className="p-4 border-b border-white/10 font-mono text-xs text-slate-400 uppercase tracking-wider grid grid-cols-12 gap-4">
+                  <div className="col-span-3">Reporter</div>
+                  <div className="col-span-2">Target Type</div>
+                  <div className="col-span-4">Reason / Details</div>
+                  <div className="col-span-3 text-right">Moderator Verdict</div>
+                </div>
 
-            <div className="divide-y divide-white/5">
-              {reports.length === 0 ? (
-                <div className="text-center py-16 text-slate-500 font-mono text-xs">NO_COMMUNITY_REPORTS_PENDING</div>
-              ) : (
-                reports.map((report) => (
-                  <div key={report.id} className="p-4 grid grid-cols-12 gap-4 items-center text-sm hover:bg-white/[0.02] transition-colors">
-                    <div className="col-span-3 font-mono text-violet-400 font-bold">@{report.profiles?.username || "unknown"}</div>
-                    <div className="col-span-2 font-mono text-xs uppercase text-amber-400">{report.target_type}</div>
-                    <div className="col-span-4 text-slate-300">{report.reason}</div>
-                    <div className="col-span-3 flex items-center justify-end gap-2">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase ${
-                        report.status === "pending" ? "bg-amber-950 text-amber-400 border border-amber-500/30" :
-                        report.status === "resolved" ? "bg-emerald-950 text-emerald-400 border border-emerald-500/30" :
-                        "bg-slate-800 text-slate-400"
-                      }`}>{report.status}</span>
+                <div className="divide-y divide-white/5">
+                  {reports.length === 0 ? (
+                    <div className="text-center py-16 text-slate-500 font-mono text-xs">NO_COMMUNITY_REPORTS_PENDING</div>
+                  ) : (
+                    reports.map((report) => (
+                      <div key={report.id} className="p-4 grid grid-cols-12 gap-4 items-center text-sm hover:bg-white/[0.02] transition-colors">
+                        <div className="col-span-3 font-mono text-violet-400 font-bold truncate">@{report.profiles?.username || "unknown"}</div>
+                        <div className="col-span-2 font-mono text-xs uppercase text-amber-400 truncate">{report.target_type}</div>
+                        <div className="col-span-4 text-slate-300 break-words">{report.reason}</div>
+                        <div className="col-span-3 flex items-center justify-end gap-2 flex-wrap">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase shrink-0 ${
+                            report.status === "pending" ? "bg-amber-950 text-amber-400 border border-amber-500/30" :
+                            report.status === "resolved" ? "bg-emerald-950 text-emerald-400 border border-emerald-500/30" :
+                            "bg-slate-800 text-slate-400"
+                          }`}>{report.status}</span>
 
-                      {report.status === "pending" && (
-                        <>
-                          <button onClick={() => handleUpdateReportStatus(report.id, "resolved")} className="p-1.5 rounded bg-emerald-950 hover:bg-emerald-900 text-emerald-400 transition-colors" title="Resolve">
-                            <CheckCircle2 className="w-4 h-4" />
-                          </button>
-                          <button onClick={() => handleUpdateReportStatus(report.id, "dismissed")} className="p-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors" title="Dismiss">
-                            <XCircle className="w-4 h-4" />
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                ))
-              )}
+                          {report.status === "pending" && (
+                            <div className="flex items-center gap-1 shrink-0">
+                              <button onClick={() => handleUpdateReportStatus(report.id, "resolved")} className="p-1.5 rounded bg-emerald-950 hover:bg-emerald-900 text-emerald-400 transition-colors cursor-pointer" title="Resolve">
+                                <CheckCircle2 className="w-4 h-4" />
+                              </button>
+                              <button onClick={() => handleUpdateReportStatus(report.id, "dismissed")} className="p-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors cursor-pointer" title="Dismiss">
+                                <XCircle className="w-4 h-4" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         ) : (
           <div className="bg-[#121216] border border-white/10 rounded-xl overflow-hidden shadow-2xl font-mono text-xs">
-            <div className="p-4 border-b border-white/10 text-slate-400 uppercase tracking-wider grid grid-cols-12 gap-4">
-              <div className="col-span-3">Timestamp</div>
-              <div className="col-span-3">Moderator</div>
-              <div className="col-span-2 text-amber-400">Action Type</div>
-              <div className="col-span-4">Details</div>
-            </div>
+            <div className="w-full overflow-x-auto">
+              <div className="min-w-[700px]">
+                <div className="p-4 border-b border-white/10 text-slate-400 uppercase tracking-wider grid grid-cols-12 gap-4">
+                  <div className="col-span-3">Timestamp</div>
+                  <div className="col-span-3">Moderator</div>
+                  <div className="col-span-2 text-amber-400">Action Type</div>
+                  <div className="col-span-4">Details</div>
+                </div>
 
-            <div className="divide-y divide-white/5">
-              {auditLogs.length === 0 ? (
-                <div className="text-center py-16 text-slate-500">NO_AUDIT_TRAIL_RECORDS_FOUND</div>
-              ) : (
-                auditLogs.map((log) => (
-                  <div key={log.id} className="p-4 grid grid-cols-12 gap-4 items-center text-slate-300 hover:bg-white/[0.02]">
-                    <div className="col-span-3 text-slate-500">{new Date(log.created_at).toLocaleString()}</div>
-                    <div className="col-span-3 text-violet-400 font-bold">@{log.profiles?.username || "system"}</div>
-                    <div className="col-span-2 text-amber-300 font-bold">{log.action_type}</div>
-                    <div className="col-span-4 text-slate-400 truncate">{log.details}</div>
-                  </div>
-                ))
-              )}
+                <div className="divide-y divide-white/5">
+                  {auditLogs.length === 0 ? (
+                    <div className="text-center py-16 text-slate-500">NO_AUDIT_TRAIL_RECORDS_FOUND</div>
+                  ) : (
+                    auditLogs.map((log) => (
+                      <div key={log.id} className="p-4 grid grid-cols-12 gap-4 items-center text-slate-300 hover:bg-white/[0.02]">
+                        <div className="col-span-3 text-slate-500 truncate">{new Date(log.created_at).toLocaleString()}</div>
+                        <div className="col-span-3 text-violet-400 font-bold truncate">@{log.profiles?.username || "system"}</div>
+                        <div className="col-span-2 text-amber-300 font-bold truncate">{log.action_type}</div>
+                        <div className="col-span-4 text-slate-400 break-words">{log.details}</div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         )}
 
         {/* Ban Reason Modal Dialog */}
         {selectedUserForBan && (
-          <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-md">
-            <div className="w-full max-w-md p-6 rounded-2xl bg-[#121216] border border-red-500/40 shadow-2xl flex flex-col gap-4">
-              <div className="flex items-center justify-between pb-3 border-b border-white/10">
-                <div className="flex items-center gap-2 text-red-500 font-bold text-base">
-                  <Lock className="w-5 h-5" /> Ban Operator @{selectedUserForBan.username}
+          <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-3 sm:p-4 backdrop-blur-md overflow-y-auto">
+            <div className="w-full max-w-md p-5 sm:p-6 rounded-2xl bg-[#121216] border border-red-500/40 shadow-2xl flex flex-col gap-4">
+              <div className="flex items-center justify-between pb-3 border-b border-white/10 gap-2">
+                <div className="flex items-center gap-2 text-red-500 font-bold text-sm sm:text-base truncate">
+                  <Lock className="w-5 h-5 shrink-0" /> <span className="truncate">Ban Operator @{selectedUserForBan.username}</span>
                 </div>
-                <button onClick={() => setSelectedUserForBan(null)} className="text-slate-400 hover:text-white text-xs font-mono cursor-pointer">[ESC]</button>
+                <button onClick={() => setSelectedUserForBan(null)} className="text-slate-400 hover:text-white text-xs font-mono cursor-pointer shrink-0">[ESC]</button>
               </div>
 
               <div>
@@ -769,7 +781,7 @@ export default function ModDashboardExtended() {
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2">
+              <div className="flex items-center justify-end gap-2 pt-2 flex-wrap">
                 <button 
                   onClick={() => setSelectedUserForBan(null)}
                   className="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-mono text-white transition-colors cursor-pointer"
@@ -789,14 +801,14 @@ export default function ModDashboardExtended() {
 
         {/* Chat Inspector Modal */}
         {inspectingItem && (
-          <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-md">
-            <div className="w-full max-w-xl h-[450px] p-6 rounded-2xl bg-[#121216] border border-red-500/40 shadow-2xl flex flex-col justify-between">
-              <div className="flex items-center justify-between pb-4 border-b border-white/15">
-                <div className="flex items-center gap-2">
-                  <ShieldAlert className="w-5 h-5 text-red-500" />
-                  <h3 className="text-base font-bold text-white">Chat Inspector // {inspectingItem.type.toUpperCase()}</h3>
+          <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-3 sm:p-4 backdrop-blur-md overflow-y-auto">
+            <div className="w-full max-w-xl h-[85vh] sm:h-[450px] p-4 sm:p-6 rounded-2xl bg-[#121216] border border-red-500/40 shadow-2xl flex flex-col justify-between">
+              <div className="flex items-center justify-between pb-4 border-b border-white/15 gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <ShieldAlert className="w-5 h-5 text-red-500 shrink-0" />
+                  <h3 className="text-sm sm:text-base font-bold text-white truncate">Chat Inspector // {inspectingItem.type.toUpperCase()}</h3>
                 </div>
-                <button onClick={() => setInspectingItem(null)} className="text-slate-400 hover:text-white text-xs font-mono cursor-pointer">[CLOSE]</button>
+                <button onClick={() => setInspectingItem(null)} className="text-slate-400 hover:text-white text-xs font-mono cursor-pointer shrink-0">[CLOSE]</button>
               </div>
 
               <div className="flex-1 overflow-y-auto my-4 space-y-3 pr-2">
@@ -805,9 +817,9 @@ export default function ModDashboardExtended() {
                 ) : (
                   chatMessages.map((msg) => (
                     <div key={msg.id} className="p-3 rounded-xl bg-black/50 border border-white/10 flex items-start justify-between gap-3 group">
-                      <div>
-                        <span className="text-xs font-mono text-violet-400 font-bold">@{msg.profiles?.username || "unknown"}</span>
-                        <p className="text-sm text-slate-200 mt-1 leading-relaxed">{msg.message}</p>
+                      <div className="min-w-0 flex-1">
+                        <span className="text-xs font-mono text-violet-400 font-bold truncate block">@{msg.profiles?.username || "unknown"}</span>
+                        <p className="text-xs sm:text-sm text-slate-200 mt-1 leading-relaxed break-words">{msg.message}</p>
                         <span className="text-[10px] font-mono text-slate-500 mt-1 block">{new Date(msg.created_at).toLocaleTimeString()}</span>
                       </div>
                       <button 
@@ -815,7 +827,7 @@ export default function ModDashboardExtended() {
                         className="p-1.5 rounded-lg bg-red-950 hover:bg-red-900 text-red-400 transition-colors cursor-pointer shrink-0"
                         title="Delete Message"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Trash2 className="w-3.5 h-3.5 shrink-0" />
                       </button>
                     </div>
                   ))
@@ -823,11 +835,11 @@ export default function ModDashboardExtended() {
                 <div ref={chatEndRef} />
               </div>
 
-              <div className="pt-3 border-t border-white/10 flex items-center justify-between">
-                <span className="text-xs font-mono text-slate-500">Total Logged Messages: {chatMessages.length}</span>
+              <div className="pt-3 border-t border-white/10 flex items-center justify-between gap-2 flex-wrap">
+                <span className="text-xs font-mono text-slate-500 truncate">Total Logged Messages: {chatMessages.length}</span>
                 <button 
                   onClick={() => setInspectingItem(null)}
-                  className="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-mono text-white transition-colors cursor-pointer"
+                  className="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-mono text-white transition-colors cursor-pointer shrink-0"
                 >
                   Exit Inspector
                 </button>
