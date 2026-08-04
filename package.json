@@ -9,7 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "nodemailer": "^9.0.3",
+    "nodemailer": "^6.9.0",
     "@supabase/ssr": "^0.12.4",
     "@supabase/supabase-js": "^2.111.0",
     "@upstash/ratelimit": "^2.0.8",
