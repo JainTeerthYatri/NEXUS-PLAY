@@ -3,7 +3,8 @@ import nodemailer from "nodemailer";
 
 export async function POST(req: Request) {
   try {
-    const { email, suggestions } = await req.json();
+    const body = await req.json();
+    const { email, suggestions } = body;
 
     if (!email || !suggestions || !Array.isArray(suggestions)) {
       return NextResponse.json(
@@ -21,7 +22,7 @@ export async function POST(req: Request) {
     });
 
     const formattedSuggestions = suggestions
-      .map((s, index) => `Suggestion #${index + 1}:\n${s}\n`)
+      .map((s: string, index: number) => `Suggestion #${index + 1}:\n${s}\n`)
       .join("\n-----------------------------------\n\n");
 
     const mailOptions = {
@@ -34,10 +35,10 @@ export async function POST(req: Request) {
     await transporter.sendMail(mailOptions);
 
     return NextResponse.json({ success: true, message: "Suggestion sent successfully!" });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error sending email:", error);
     return NextResponse.json(
-      { error: "Failed to send email." },
+      { error: error.message || "Failed to send email." },
       { status: 500 }
     );
   }
