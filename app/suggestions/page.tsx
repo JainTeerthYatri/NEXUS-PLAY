@@ -80,7 +80,6 @@ export default function SuggestionPage() {
   const [isLockedOut, setIsLockedOut] = useState(false);
   const [lockoutTimer, setLockoutTimer] = useState<string>("");
 
-  // Check for active lockout on load and handle Ctrl+V tracking
   useEffect(() => {
     const lockoutUntil = localStorage.getItem("site_lockout_until");
     if (lockoutUntil) {
@@ -97,8 +96,8 @@ export default function SuggestionPage() {
       const now = Date.now();
       const recentPastes = pasteTimestamps.filter(t => now - t < 60000);
       
-      if (recentPastes.length >= 3) { // 4th paste triggers block
-        const lockoutTime = now + 30 * 60 * 1000; // 30 minutes
+      if (recentPastes.length >= 3) { 
+        const lockoutTime = now + 30 * 60 * 1000; 
         localStorage.setItem("site_lockout_until", lockoutTime.toString());
         setIsLockedOut(true);
         startCountdown(lockoutTime);
@@ -127,7 +126,6 @@ export default function SuggestionPage() {
     }, 1000);
   }
 
-  // Add suggestion box (Max 4)
   function handleAddBox() {
     if (suggestions.length < 4) {
       setSuggestions([...suggestions, ""]);
@@ -136,7 +134,6 @@ export default function SuggestionPage() {
     }
   }
 
-  // Remove suggestion box
   function handleRemoveBox(index: number) {
     if (suggestions.length > 1) {
       const updated = suggestions.filter((_, i) => i !== index);
@@ -144,14 +141,12 @@ export default function SuggestionPage() {
     }
   }
 
-  // Handle typing inside dynamic boxes
   function handleBoxChange(index: number, value: string) {
     const updated = [...suggestions];
     updated[index] = value;
     setSuggestions(updated);
   }
 
-  // Submit suggestions to API
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!email.trim() || suggestions.some(s => !s.trim())) {
@@ -160,6 +155,7 @@ export default function SuggestionPage() {
     }
 
     setLoading(true);
+    setSuccessMessage("");
 
     try {
       const response = await fetch("/api/send-suggestion", {
@@ -168,12 +164,14 @@ export default function SuggestionPage() {
         body: JSON.stringify({ email, suggestions }),
       });
 
+      const data = await response.json();
+
       if (response.ok) {
         setSuccessMessage("Your suggestion has been transferred successfully to the team and they will see your suggestion and they will reply as soon as possible and implement if they acknowledge it.");
         setEmail("");
         setSuggestions([""]);
       } else {
-        alert("Failed to send suggestion. Please try again.");
+        alert(data.error || "Failed to send suggestion. Please try again.");
       }
     } catch (error) {
       console.error("Error submitting suggestions:", error);
@@ -183,7 +181,6 @@ export default function SuggestionPage() {
     }
   }
 
-  // If locked out due to spamming
   if (isLockedOut) {
     return (
       <div className="min-h-screen bg-[#0a0a0c] text-slate-100 flex flex-col items-center justify-center p-4 font-sans relative">
@@ -204,7 +201,6 @@ export default function SuggestionPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0c] text-slate-100 flex flex-col font-sans relative overflow-x-hidden">
-      {/* Background Matrix Effect */}
       <MatrixRainBackground />
 
       <div className="relative z-10 flex flex-col flex-1">
@@ -229,7 +225,6 @@ export default function SuggestionPage() {
           )}
 
           <form onSubmit={handleSubmit} className="p-6 sm:p-8 rounded-2xl bg-[#121216]/90 border border-white/10 shadow-2xl flex flex-col gap-6 backdrop-blur-md">
-            {/* Step 1: Email Input */}
             <div>
               <label className="block text-xs font-mono text-slate-400 mb-2">Your Contact Email ID *</label>
               <input 
@@ -245,7 +240,6 @@ export default function SuggestionPage() {
 
             <hr className="border-white/10" />
 
-            {/* Step 2: Dynamic Suggestion Boxes (Max 4) */}
             <div className="flex flex-col gap-4">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-mono text-slate-400 uppercase tracking-wider">
