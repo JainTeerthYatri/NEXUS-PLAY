@@ -2,7 +2,7 @@
 import { useEffect, useState, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import Navbar from "@/components/Navbar";
-import { Send, Sparkles, MessageSquare, Globe, UserPlus, Check, Trash2, ShieldCheck, Reply, X, Search, ShieldAlert, Lock, Phone, Video, PhoneOff, Mic, MicOff, VideoOff, Monitor, MonitorOff } from "lucide-react";
+import { Send, Sparkles, MessageSquare, Globe, UserPlus, Check, Trash2, ShieldCheck, Reply, X, Search, ShieldAlert, Lock, Phone, Video, PhoneOff, Mic, MicOff, VideoOff, Monitor, MonitorOff, Menu, ArrowLeft } from "lucide-react";
 
 // --- E2EE Alphanumeric Crypto Helpers using Web Crypto API ---
 async function getSharedKey(userId1: string, userId2: string) {
@@ -89,6 +89,9 @@ export default function AsteroidChatPage() {
   
   const [replyingTo, setReplyingTo] = useState<any>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; msg: any } | null>(null);
+
+  // --- Mobile Sidebar View Toggle ---
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   // --- WebRTC Call & Screen Share States ---
   const [isInCall, setIsInCall] = useState(false);
@@ -712,24 +715,42 @@ export default function AsteroidChatPage() {
   return (
     <div className="min-h-screen bg-[#020803] text-slate-100 flex flex-col relative">
       <Navbar />
-      <main className="flex-1 max-w-6xl mx-auto px-4 py-4 w-full flex flex-col">
+      <main className="flex-1 max-w-6xl mx-auto px-2 sm:px-4 py-2 sm:py-4 w-full flex flex-col">
         
-        <div className="mb-4 pb-3 border-b border-emerald-500/30 flex items-center justify-between">
+        <div className="mb-3 sm:mb-4 pb-2.5 sm:pb-3 border-b border-emerald-500/30 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <div className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-emerald-400 animate-pulse" />
-            <h1 className="text-lg font-black text-white tracking-tight">ASTEROID GAMING-CLOUD // SECURE COMMS</h1>
+            <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400 animate-pulse shrink-0" />
+            <h1 className="text-sm sm:text-lg font-black text-white tracking-tight truncate">ASTEROID GAMING-CLOUD // SECURE COMMS</h1>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-mono text-emerald-400 bg-emerald-950/60 px-3 py-1 rounded border border-emerald-500/40 flex items-center gap-1">
+          <div className="flex items-center justify-between sm:justify-end gap-2">
+            <span className="text-[10px] sm:text-xs font-mono text-emerald-400 bg-emerald-950/60 px-2.5 py-1 rounded border border-emerald-500/40 flex items-center gap-1">
               <Lock className="w-3 h-3" /> E2EE ACTIVE (HEX)
             </span>
+            {/* Mobile Sidebar Toggle Button */}
+            <button
+              onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
+              className="md:hidden p-1.5 bg-emerald-950 border border-emerald-500/50 text-emerald-400 rounded cursor-pointer flex items-center gap-1 text-xs font-mono"
+            >
+              <Menu className="w-4 h-4" /> Channels
+            </button>
           </div>
         </div>
 
-        <div className="flex flex-col md:flex-row h-[calc(100vh-140px)] min-h-[500px] rounded-xl bg-[#061408] border border-emerald-500/40 shadow-xl overflow-hidden relative">
+        <div className="flex flex-col md:flex-row h-[calc(100vh-160px)] sm:h-[calc(100vh-140px)] min-h-[450px] rounded-xl bg-[#061408] border border-emerald-500/40 shadow-xl overflow-hidden relative">
           
-          {/* Left Sidebar */}
-          <div className="w-full md:w-64 bg-[#030d04] border-r border-emerald-500/30 flex flex-col shrink-0 h-48 md:h-full">
+          {/* Left Sidebar (Responsive drawer on mobile, static on desktop) */}
+          <div className={`
+            absolute md:relative inset-y-0 left-0 z-30 w-72 md:w-64 bg-[#030d04] border-r border-emerald-500/30 flex flex-col shrink-0 h-full transition-transform duration-300 ease-in-out
+            ${mobileSidebarOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full md:translate-x-0"}
+          `}>
+            {/* Mobile Header Inside Sidebar */}
+            <div className="md:hidden p-2.5 bg-[#040f05] border-b border-emerald-500/30 flex items-center justify-between">
+              <span className="text-xs font-mono font-bold text-emerald-400">CHANNELS & FRIENDS</span>
+              <button onClick={() => setMobileSidebarOpen(false)} className="p-1 text-slate-400 hover:text-white">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
             <form onSubmit={handleSearchProfiles} className="p-2 border-b border-emerald-500/20 flex gap-1">
               <input
                 type="text"
@@ -738,13 +759,13 @@ export default function AsteroidChatPage() {
                 onChange={(e) => setFriendUsernameInput(e.target.value)}
                 className="w-full px-2 py-1.5 rounded bg-[#020803] border border-emerald-500/30 text-xs text-white focus:outline-none focus:border-emerald-400"
               />
-              <button type="submit" className="p-1.5 bg-emerald-500 hover:bg-emerald-400 text-black rounded cursor-pointer">
+              <button type="submit" className="p-1.5 bg-emerald-500 hover:bg-emerald-400 text-black rounded cursor-pointer shrink-0">
                 <Search className="w-4 h-4" />
               </button>
             </form>
 
             {searchResults.length > 0 && (
-              <div className="p-2 bg-[#020a04] border-b border-emerald-500/30 max-h-36 overflow-y-auto">
+              <div className="p-2 bg-[#020a04] border-b border-emerald-500/35 max-h-36 overflow-y-auto">
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-[10px] font-mono text-emerald-300 font-bold uppercase">Search Results</span>
                   <button onClick={() => setSearchResults([])} className="text-[10px] text-slate-400 hover:text-white">Close</button>
@@ -767,8 +788,8 @@ export default function AsteroidChatPage() {
 
             <div className="p-2">
               <button
-                onClick={() => setActiveTab("global")}
-                className={`w-full flex items-center gap-2 px-3 py-1.5 rounded text-xs font-bold ${
+                onClick={() => { setActiveTab("global"); setMobileSidebarOpen(false); }}
+                className={`w-full flex items-center gap-2 px-3 py-2 md:py-1.5 rounded text-xs font-bold ${
                   activeTab === "global" ? "bg-emerald-500 text-black" : "text-slate-300 hover:bg-emerald-500/10"
                 }`}
               >
@@ -801,12 +822,12 @@ export default function AsteroidChatPage() {
                 friends.map((f) => (
                   <button
                     key={f.id}
-                    onClick={() => setActiveTab(f.id)}
-                    className={`w-full flex items-center gap-2 px-3 py-1.5 rounded text-xs ${
+                    onClick={() => { setActiveTab(f.id); setMobileSidebarOpen(false); }}
+                    className={`w-full flex items-center gap-2 px-3 py-2 md:py-1.5 rounded text-xs ${
                       activeTab === f.id ? "bg-emerald-500/20 border border-emerald-500/50 text-emerald-300 font-bold" : "text-slate-400 hover:bg-emerald-500/10"
                     }`}
                   >
-                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
                     <span className="truncate">@{f.username}</span>
                   </button>
                 ))
@@ -814,16 +835,24 @@ export default function AsteroidChatPage() {
             </div>
           </div>
 
+          {/* Backdrop for mobile drawer */}
+          {mobileSidebarOpen && (
+            <div 
+              onClick={() => setMobileSidebarOpen(false)} 
+              className="fixed inset-0 bg-black/60 z-20 md:hidden"
+            />
+          )}
+
           {/* Right Chat Area */}
           <div className="flex-1 flex flex-col min-w-0 bg-[#061408] h-full">
-            <div className="px-4 py-2.5 bg-[#040f05] border-b border-emerald-500/30 flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-2">
-                <MessageSquare className="w-4 h-4 text-emerald-400" />
-                <span className="font-bold text-xs text-white">
+            <div className="px-3 sm:px-4 py-2.5 bg-[#040f05] border-b border-emerald-500/30 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2 truncate pr-2">
+                <MessageSquare className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span className="font-bold text-xs text-white truncate">
                   {activeTab === "global" ? "global-network" : `@${activeFriendObj?.username || "operator"}`}
                 </span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0">
                 {activeTab !== "global" && (
                   <div className="flex items-center gap-1.5">
                     <button
@@ -858,7 +887,7 @@ export default function AsteroidChatPage() {
               ref={chatContainerRef}
               tabIndex={0}
               onScroll={handleScroll}
-              className="flex-1 p-4 overflow-y-auto flex flex-col gap-3 focus:outline-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+              className="flex-1 p-3 sm:p-4 overflow-y-auto flex flex-col gap-3 focus:outline-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
             >
               {messages.length === 0 ? (
                 <div className="text-center py-16 text-emerald-200/40 font-mono text-xs">
@@ -876,10 +905,13 @@ export default function AsteroidChatPage() {
                         e.preventDefault();
                         setContextMenu({ x: e.clientX, y: e.clientY, msg });
                       }}
+                      onClick={() => {
+                        // For touch device context menu alternative or quick tap if needed, keep standard context menu
+                      }}
                       className={`flex flex-col group relative ${isMe ? "items-end" : "items-start"}`}
                     >
                       <span className="text-[10px] font-mono text-emerald-200/60 mb-0.5 px-1">@{name || "operator"}</span>
-                      <div className="flex items-center gap-2 max-w-[75%]">
+                      <div className="flex items-center gap-2 max-w-[85%] sm:max-w-[75%]">
                         <div className={`px-3 py-2 text-xs font-medium break-words rounded-lg shadow ${isMe ? "bg-emerald-500 text-black rounded-tr-none" : "bg-[#081f0b] border border-emerald-500/30 text-white rounded-tl-none"}`}>
                           {msg.reply_message && (
                             <div className="mb-1.5 p-1.5 rounded bg-black/20 border-l-2 border-emerald-300 text-[10px] opacity-90">
@@ -903,11 +935,11 @@ export default function AsteroidChatPage() {
             {/* Replying Banner */}
             {replyingTo && (
               <div className="px-3 py-1.5 bg-[#071a09] border-t border-emerald-500/30 flex items-center justify-between text-xs text-emerald-200 shrink-0">
-                <div className="flex items-center gap-2 truncate">
+                <div className="flex items-center gap-2 truncate pr-2">
                   <Reply className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                   <span className="truncate">Replying to <strong className="text-emerald-400">@{replyingTo.user_id === currentUser?.id || replyingTo.sender_id === currentUser?.id ? "You" : activeFriendObj?.username}</strong>: {replyingTo.message}</span>
                 </div>
-                <button onClick={() => setReplyingTo(null)} className="p-1 hover:text-white cursor-pointer"><X className="w-3.5 h-3.5" /></button>
+                <button onClick={() => setReplyingTo(null)} className="p-1 hover:text-white cursor-pointer shrink-0"><X className="w-3.5 h-3.5" /></button>
               </div>
             )}
 
@@ -918,10 +950,10 @@ export default function AsteroidChatPage() {
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
                 placeholder={activeTab === "global" ? "Type message..." : `Secure message @${activeFriendObj?.username}...`}
-                className="flex-1 px-3 py-2 rounded bg-[#020803] border border-emerald-500/30 text-white text-xs focus:border-emerald-400 outline-none"
+                className="flex-1 px-3 py-2.5 md:py-2 rounded bg-[#020803] border border-emerald-500/30 text-white text-xs focus:border-emerald-400 outline-none"
               />
-              <button type="submit" className="px-4 py-2 rounded bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-xs flex items-center gap-1 cursor-pointer">
-                <Send className="w-3.5 h-3.5" /> Send
+              <button type="submit" className="px-4 py-2.5 md:py-2 rounded bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-xs flex items-center gap-1 cursor-pointer shrink-0">
+                <Send className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Send</span>
               </button>
             </form>
           </div>
@@ -947,15 +979,15 @@ export default function AsteroidChatPage() {
 
       {/* --- Active Call & Screen Share Overlay --- */}
       {isInCall && (
-        <div className="fixed inset-0 bg-black/90 z-50 flex flex-col items-center justify-center p-4">
-          <div className="relative w-full max-w-4xl h-[70vh] bg-[#020803] border border-emerald-500/50 rounded-xl overflow-hidden flex items-center justify-center shadow-2xl">
+        <div className="fixed inset-0 bg-black/90 z-50 flex flex-col items-center justify-center p-2 sm:p-4">
+          <div className="relative w-full max-w-4xl h-[65vh] sm:h-[70vh] bg-[#020803] border border-emerald-500/50 rounded-xl overflow-hidden flex items-center justify-center shadow-2xl">
             <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover" />
-            <div className="absolute bottom-4 right-4 w-40 h-28 bg-black border border-emerald-500 rounded-lg overflow-hidden shadow-lg">
+            <div className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 w-32 h-24 sm:w-40 sm:h-28 bg-black border border-emerald-500 rounded-lg overflow-hidden shadow-lg">
               <video ref={localVideoRef} autoPlay playsInline muted className={`w-full h-full object-cover ${isVideoOff && !isScreenSharing ? 'hidden' : ''}`} />
               {isVideoOff && !isScreenSharing && <div className="w-full h-full flex items-center justify-center text-[10px] text-emerald-400 font-mono">Camera Off</div>}
             </div>
           </div>
-          <div className="flex items-center gap-4 mt-6">
+          <div className="flex items-center gap-3 sm:gap-4 mt-4 sm:mt-6 flex-wrap justify-center">
             <button onClick={toggleMute} className={`p-3 rounded-full border border-emerald-500 ${isMuted ? 'bg-red-600 text-white' : 'bg-emerald-950 text-emerald-400'} cursor-pointer`} title={isMuted ? "Unmute Mic" : "Mute Mic"}>
               {isMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
             </button>
