@@ -1,3 +1,4 @@
+// components/navbar.tsx[cite: 7]
 "use client";
 
 import { useEffect, useState } from "react";
@@ -83,15 +84,15 @@ export default function Navbar() {
     <nav className="border-b border-cyan-500/20 bg-[#060b14]/90 backdrop-blur-md sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2 sm:gap-4">
         
-        {/* Left Section: Brand Logo & Core Links */}
+        {/* Left Section: Brand Logo & Laptop/PC Core Links */}
         <div className="flex items-center gap-4 sm:gap-6 min-w-0">
           <Link href="/" className="flex items-center gap-2 font-black text-white text-sm sm:text-lg tracking-wider shrink-0 truncate">
             <span className="w-3 h-3 bg-red-600 rounded-sm inline-block shadow-[0_0_10px_rgba(239,68,68,0.8)] shrink-0"></span>
             <span className="truncate">ASTEROID<span className="text-red-500">GAMING CLOUD</span></span>
           </Link>
 
-          {/* Desktop Core Links */}
-          <div className="hidden md:flex items-center gap-1.5 pl-4 border-l border-cyan-500/20">
+          {/* Laptop & PC Core Links (Hidden on Tablet and Mobile - accessible via hamburger) */}
+          <div className="hidden lg:flex items-center gap-1.5 pl-4 border-l border-cyan-500/20">
             <Link 
               href="/squads" 
               className={`px-3 py-1.5 rounded text-xs font-mono transition-all flex items-center gap-1.5 ${
@@ -139,12 +140,13 @@ export default function Navbar() {
           </div>
         </div>
 
-        {/* Right Section: Icon-only Controls & Mobile Hamburger Toggle */}
+        {/* Right Section: Tablet & PC Icon-only Controls + Mobile/Tablet Hamburger Toggle */}
         <div className="flex items-center gap-2 shrink-0">
-          {/* Icon-only Suggestions Button (Visible to everyone) */}
+          
+          {/* Icon-only Suggestions Button (Visible on Tablet and PC outside; hidden on mobile outside so it's inside hamburger) */}
           <Link 
             href="/suggestions"
-            className={`p-2 rounded bg-[#0b1324] border transition-all flex items-center justify-center ${
+            className={`hidden md:flex p-2 rounded bg-[#0b1324] border transition-all items-center justify-center ${
               isActive('/suggestions') ? 'border-amber-500 text-amber-300 bg-amber-500/10 shadow-[0_0_10px_rgba(245,158,11,0.3)]' : 'border-cyan-500/30 text-slate-400 hover:text-amber-300 hover:border-amber-500/60'
             }`}
             title="Suggestions"
@@ -153,7 +155,7 @@ export default function Navbar() {
           </Link>
 
           {user ? (
-            <div className="flex items-center gap-2">
+            <div className="hidden md:flex items-center gap-2">
               {/* Icon-only Dashboard */}
               <Link 
                 href="/dashboard"
@@ -198,7 +200,7 @@ export default function Navbar() {
               </button>
             </div>
           ) : (
-            <div className="flex items-center gap-2">
+            <div className="hidden md:flex items-center gap-2">
               <Link 
                 href="/auth/login" 
                 className="px-3 sm:px-4 py-2 rounded bg-[#0b1324] hover:bg-cyan-500/10 border border-cyan-500/30 text-slate-200 text-xs font-bold transition-colors font-mono"
@@ -214,10 +216,10 @@ export default function Navbar() {
             </div>
           )}
 
-          {/* Mobile Hamburger Menu Toggle Button */}
+          {/* Hamburger Menu Toggle Button (Visible on Mobile and Tablet; hidden on Laptop and PC via lg:hidden) */}
           <button 
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 rounded bg-[#0b1324] border border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 transition-colors cursor-pointer shrink-0"
+            className="lg:hidden p-2 rounded bg-[#0b1324] border border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 transition-colors cursor-pointer shrink-0"
             title="Toggle Menu"
           >
             {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -226,9 +228,10 @@ export default function Navbar() {
 
       </div>
 
-      {/* Mobile Dropdown Menu */}
+      {/* Mobile & Tablet Dropdown Menu (Hamburger Menu Content) */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-cyan-500/20 bg-[#060b14]/95 backdrop-blur-xl px-4 py-4 space-y-2 max-h-[85vh] overflow-y-auto">
+        <div className="lg:hidden border-t border-cyan-500/20 bg-[#060b14]/95 backdrop-blur-xl px-4 py-4 space-y-2 max-h-[85vh] overflow-y-auto">
+          {/* Core Navigation Links */}
           <Link 
             href="/squads" 
             onClick={() => setMobileMenuOpen(false)}
@@ -275,6 +278,7 @@ export default function Navbar() {
             ASTEROID Gaming-Cloud
           </Link>
 
+          {/* Action / Moderator / Auth Links (Includes everything for mobile, and suggestions/auth for tablet) */}
           <div className="pt-2 border-t border-cyan-500/20 space-y-2">
             <Link 
               href="/suggestions" 
@@ -285,12 +289,13 @@ export default function Navbar() {
             >
               Suggestions
             </Link>
-            {user && (
+
+            {user ? (
               <>
                 <Link 
                   href="/dashboard" 
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`block px-3 py-2 rounded text-xs font-mono transition-all ${
+                  className={`block md:hidden px-3 py-2 rounded text-xs font-mono transition-all ${
                     isActive('/dashboard') ? 'bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 font-bold' : 'text-slate-300 hover:bg-white/5'
                   }`}
                 >
@@ -299,7 +304,7 @@ export default function Navbar() {
                 <Link 
                   href="/settings" 
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`block px-3 py-2 rounded text-xs font-mono transition-all ${
+                  className={`block md:hidden px-3 py-2 rounded text-xs font-mono transition-all ${
                     isActive('/settings') ? 'bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 font-bold' : 'text-slate-300 hover:bg-white/5'
                   }`}
                 >
@@ -309,14 +314,40 @@ export default function Navbar() {
                   <Link 
                     href="/mod" 
                     onClick={() => setMobileMenuOpen(false)}
-                    className={`block px-3 py-2 rounded text-xs font-mono transition-all ${
+                    className={`block md:hidden px-3 py-2 rounded text-xs font-mono transition-all ${
                       isActive('/mod') ? 'bg-red-950/60 border border-red-500/30 text-red-400 font-bold' : 'text-red-400 hover:bg-red-950/20'
                     }`}
                   >
                     Mod Panel
                   </Link>
                 )}
+                <button 
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    handleSignOut();
+                  }}
+                  className="w-full text-left block md:hidden px-3 py-2 rounded text-xs font-mono text-red-400 hover:bg-red-950/20 transition-all cursor-pointer"
+                >
+                  Sign Out
+                </button>
               </>
+            ) : (
+              <div className="pt-2 flex flex-col gap-2 md:hidden">
+                <Link 
+                  href="/auth/login" 
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block px-3 py-2 rounded bg-[#0b1324] border border-cyan-500/30 text-slate-200 text-xs font-bold text-center font-mono"
+                >
+                  Login
+                </Link>
+                <Link 
+                  href="/auth/signup" 
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block px-3 py-2 rounded bg-red-600 text-white text-xs font-bold text-center font-mono shadow-[0_0_15px_rgba(239,68,68,0.3)]"
+                >
+                  Sign Up
+                </Link>
+              </div>
             )}
           </div>
         </div>
