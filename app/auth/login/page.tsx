@@ -5,12 +5,14 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Lock, Mail, ArrowRight } from "lucide-react";
 import { handleLoginAction } from "./actions";
+import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   
   const router = useRouter();
+  const supabase = createClient();
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -24,6 +26,22 @@ export default function LoginPage() {
       setErrorMsg(result.error);
       setLoading(false);
     } else {
+      // ── LOGGING SYSTEM INTEGRATION ──
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await supabase.from("audit_logs").insert({
+            moderator_id: user.id,
+            action_type: "USER_LOGIN",
+            target_id: user.id,
+            details: `User ${user.email || 'operator'} logged into the platform successfully.`
+          });
+        }
+      } catch (err) {
+        console.error("Failed to insert login audit log:", err);
+      }
+      // ────────────────────────────────
+
       router.push("/");
       router.refresh();
     }
