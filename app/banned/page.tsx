@@ -9,6 +9,20 @@ export default function BannedPage() {
   const supabase = createClient();
 
   async function handleLogout() {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from("audit_logs").insert({
+          moderator_id: user.id,
+          action_type: "SESSION_DISCONNECT_BANNED",
+          target_id: user.id,
+          details: `Banned user ${user.email || user.id} disconnected their session from the ban page.`
+        });
+      }
+    } catch (err) {
+      console.error("Failed to insert log on disconnect:", err);
+    }
+
     await supabase.auth.signOut();
     router.push("/");
   }
