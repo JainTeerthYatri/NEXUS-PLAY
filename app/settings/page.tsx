@@ -1,4 +1,4 @@
-// app/settings/page.tsx[cite: 12]
+// app/settings/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -106,7 +106,7 @@ export default function SettingsPage() {
       <div className="min-h-[100dvh] bg-[#060b14] text-slate-100 flex flex-col">
         <Navbar />
         <div className="flex-1 flex items-center justify-center font-mono text-xs sm:text-sm text-cyan-400 animate-pulse px-4 text-center">
-          LOADING_OPERATOR_SETTINGS...[cite: 12]
+          LOADING_OPERATOR_SETTINGS...
         </div>
       </div>
     );
@@ -120,11 +120,11 @@ export default function SettingsPage() {
         <div className="pb-6 border-b border-cyan-500/20">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-[#0b1324] border border-cyan-500/40 text-xs font-mono text-cyan-400 mb-2 shadow-[0_0_15px_rgba(6,182,212,0.15)]">
             <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-            <span>SYSTEM_CONFIG // SETTINGS[cite: 12]</span>
+            <span>SYSTEM_CONFIG // SETTINGS</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">Operator Settings[cite: 12]</h1>
+          <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">Operator Settings</h1>
           <p className="text-xs sm:text-sm text-slate-400 mt-1">
-            Configure your broadcast identity, visual telemetry avatar, and bio parameters.[cite: 12]
+            Configure your broadcast identity, visual telemetry avatar, and bio parameters.
           </p>
         </div>
 
@@ -140,12 +140,12 @@ export default function SettingsPage() {
             </div>
 
             <div className="space-y-2 text-center sm:text-left flex-1">
-              <h3 className="text-xs sm:text-sm font-mono font-bold text-white uppercase tracking-wider">Visual Telemetry Avatar[cite: 12]</h3>
-              <p className="text-xs text-slate-400">Upload a graphic profile insignia (PNG, JPG, WebP).[cite: 12]</p>
+              <h3 className="text-xs sm:text-sm font-mono font-bold text-white uppercase tracking-wider">Visual Telemetry Avatar</h3>
+              <p className="text-xs text-slate-400">Upload a graphic profile insignia (PNG, JPG, WebP).</p>
               
               <label className="inline-flex items-center gap-2 px-4 py-2 rounded bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/50 text-cyan-300 text-xs font-mono font-bold cursor-pointer transition-all">
                 {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                <span>{uploading ? "Uploading telemetry..." : "Select Avatar"}[cite: 12]</span>
+                <span>{uploading ? "Uploading telemetry..." : "Select Avatar"}</span>
                 <input type="file" accept="image/*" onChange={handleAvatarUpload} disabled={uploading} className="hidden" />
               </label>
             </div>
@@ -154,12 +154,12 @@ export default function SettingsPage() {
           {/* Text Fields Form */}
           <div className="p-4 sm:p-6 rounded-2xl bg-[#0b1324] border border-cyan-500/30 space-y-4 shadow-[0_0_20px_rgba(6,182,212,0.08)]">
             <h3 className="text-xs sm:text-sm font-mono font-bold text-white uppercase tracking-wider mb-4 border-b border-cyan-500/20 pb-2">
-              Identity Parameters[cite: 12]
+              Identity Parameters
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-mono text-cyan-400/80 mb-1">Display Name[cite: 12]</label>
+                <label className="block text-xs font-mono text-cyan-400/80 mb-1">Display Name</label>
                 <input
                   type="text"
                   value={displayName}
@@ -171,7 +171,7 @@ export default function SettingsPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-mono text-cyan-400/80 mb-1">Username Handle (@)[cite: 12]</label>
+                <label className="block text-xs font-mono text-cyan-400/80 mb-1">Username Handle (@)</label>
                 <input
                   type="text"
                   value={username}
@@ -184,7 +184,7 @@ export default function SettingsPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-mono text-cyan-400/80 mb-1">Broadcast Bio[cite: 12]</label>
+              <label className="block text-xs font-mono text-cyan-400/80 mb-1">Broadcast Bio</label>
               <textarea
                 value={bio}
                 onChange={(e) => setBio(e.target.value)}
@@ -203,7 +203,7 @@ export default function SettingsPage() {
               className="w-full sm:w-auto px-6 py-2.5 rounded bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-extrabold text-xs font-mono transition-all flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(6,182,212,0.4)] cursor-pointer disabled:opacity-50"
             >
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              <span>{saving ? "SAVING..." : "SAVE SPECS"}[cite: 12]</span>
+              <span>{saving ? "SAVING..." : "SAVE SPECS"}</span>
             </button>
           </div>
         </form>
