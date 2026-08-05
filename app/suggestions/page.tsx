@@ -183,7 +183,7 @@ export default function SuggestionPage() {
 
   if (isLockedOut) {
     return (
-      <div className="min-h-[100dvh] bg-[#0a0a0c] text-slate-100 flex flex-col items-center justify-center p-4 font-sans relative">
+      <div className="min-h-[100dvh] bg-[#0a0a0c] text-slate-100 flex flex-col items-center justify-center p-3 sm:p-4 font-sans relative">
         <MatrixRainBackground />
         <div className="max-w-md w-full p-6 sm:p-8 rounded-2xl bg-[#121216]/90 border border-red-500/40 text-center shadow-2xl relative z-10 backdrop-blur-md">
           <ShieldAlert className="w-16 h-16 text-red-500 mx-auto mb-4 animate-pulse" />
@@ -206,8 +206,8 @@ export default function SuggestionPage() {
       <div className="relative z-10 flex flex-col flex-1">
         <Navbar />
 
-        <main className="flex-1 max-w-3xl mx-auto px-3 sm:px-6 py-8 sm:py-12 w-full">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-8 pb-6 border-b border-white/10">
+        <main className="flex-1 max-w-3xl mx-auto px-3 sm:px-6 py-6 sm:py-12 w-full">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6 sm:mb-8 pb-6 border-b border-white/10">
             <div className="p-3 rounded-xl bg-emerald-600/10 border border-emerald-500/30 text-emerald-400 w-fit shrink-0">
               <Lightbulb className="w-6 h-6" />
             </div>
@@ -224,7 +224,7 @@ export default function SuggestionPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="p-5 sm:p-8 rounded-2xl bg-[#121216]/90 border border-white/10 shadow-2xl flex flex-col gap-6 backdrop-blur-md">
+          <form onSubmit={handleSubmit} className="p-4 sm:p-8 rounded-2xl bg-[#121216]/90 border border-white/10 shadow-2xl flex flex-col gap-6 backdrop-blur-md">
             <div>
               <label className="block text-xs font-mono text-slate-400 mb-2">Your Contact Email ID *</label>
               <input 
@@ -257,7 +257,7 @@ export default function SuggestionPage() {
               </div>
 
               {suggestions.map((suggestion, index) => (
-                <div key={index} className="flex items-center gap-3">
+                <div key={index} className="flex items-center gap-2 sm:gap-3">
                   <textarea
                     rows={2}
                     value={suggestion}
