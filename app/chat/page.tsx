@@ -648,6 +648,20 @@ export default function AsteroidChatPage() {
 
     if (!error) {
       setMessages((prev) => prev.filter((m) => m.id !== msgId));
+
+      // --- LOGGING FOR MESSAGE DELETION ---
+      if (currentUser) {
+        try {
+          await supabase.from("audit_logs").insert({
+            moderator_id: currentUser.id,
+            action_type: isModerator && diffMinutes > 5 ? "MOD_DELETE_MESSAGE" : "DELETE_MESSAGE",
+            target_id: msgId,
+            details: `Message deleted in ${activeTab === "global" ? "global network chat" : "direct message"} by ${isModerator ? "moderator/user" : "user"}.`
+          });
+        } catch (logErr) {
+          console.error("Failed to insert message deletion audit log:", logErr);
+        }
+      }
     }
   };
 
@@ -684,6 +698,18 @@ export default function AsteroidChatPage() {
       alert("Secure friend request transmitted!");
       setSearchResults([]);
       setFriendUsernameInput("");
+
+      // --- LOGGING FOR FRIEND REQUEST ---
+      try {
+        await supabase.from("audit_logs").insert({
+          moderator_id: currentUser.id,
+          action_type: "SEND_FRIEND_REQUEST",
+          target_id: targetUserId,
+          details: `User sent a friend request to target operator ID: ${targetUserId}.`
+        });
+      } catch (logErr) {
+        console.error("Failed to insert friend request audit log:", logErr);
+      }
     }
   };
 
@@ -697,6 +723,20 @@ export default function AsteroidChatPage() {
     if (!error) {
       fetchFriendsAndRequests(currentUser.id);
       alert("Friend link established!");
+
+      // --- LOGGING FOR FRIEND REQUEST ACCEPTANCE ---
+      if (currentUser) {
+        try {
+          await supabase.from("audit_logs").insert({
+            moderator_id: currentUser.id,
+            action_type: "ACCEPT_FRIEND_REQUEST",
+            target_id: senderId,
+            details: `User accepted friend request from operator ID: ${senderId}.`
+          });
+        } catch (logErr) {
+          console.error("Failed to insert friend request acceptance audit log:", logErr);
+        }
+      }
     }
   };
 
@@ -707,6 +747,20 @@ export default function AsteroidChatPage() {
     if (!error) {
       setMessages([]);
       alert("Global network chat has been completely purged.");
+
+      // --- LOGGING FOR GLOBAL CHAT PURGE ---
+      if (currentUser) {
+        try {
+          await supabase.from("audit_logs").insert({
+            moderator_id: currentUser.id,
+            action_type: "PURGE_GLOBAL_CHAT",
+            target_id: "global_network",
+            details: `Moderator purged the entire global network chat.`
+          });
+        } catch (logErr) {
+          console.error("Failed to insert global chat purge audit log:", logErr);
+        }
+      }
     }
   };
 
@@ -720,7 +774,7 @@ export default function AsteroidChatPage() {
         <div className="mb-3 sm:mb-4 pb-2.5 sm:pb-3 border-b border-emerald-500/30 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <div className="flex items-center gap-2">
             <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400 animate-pulse shrink-0" />
-            <h1 className="text-sm sm:text-lg font-black text-white tracking-tight truncate">ASTEROID GAMING-CLOUD // SECURE COMMS</h1>
+            <h1 className="text-sm sm:text-lg font-black text-white tracking-tight">ASTEROID GAMING-CLOUD // SECURE COMMS</h1>
           </div>
           <div className="flex items-center justify-between sm:justify-end gap-2">
             <span className="text-[10px] sm:text-xs font-mono text-emerald-400 bg-emerald-950/60 px-2.5 py-1 rounded border border-emerald-500/40 flex items-center gap-1">
@@ -1022,3 +1076,4 @@ export default function AsteroidChatPage() {
     </div>
   );
 }
+```[cite: 7]
