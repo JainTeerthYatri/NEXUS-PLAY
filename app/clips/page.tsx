@@ -113,6 +113,21 @@ export default function ShortsFeedPage() {
       setClips(clips.filter(c => c.id !== clipId));
       setActionMessage("SUCCESS: Short telemetry purged from database.");
       setTimeout(() => setActionMessage(null), 3000);
+
+      // ── LOGGING SYSTEM INTEGRATION ──
+      if (user) {
+        try {
+          await supabase.from("audit_logs").insert({
+            moderator_id: user.id,
+            action_type: isOwnerOrAdmin && !isOwner ? "ADMIN_DELETE_CLIP" : "DELETE_CLIP",
+            target_id: clipId,
+            details: `Clip (ID: ${clipId}) was deleted by user/admin ${user.email || user.id}.`
+          });
+        } catch (logErr) {
+          console.error("Failed to insert clip deletion audit log:", logErr);
+        }
+      }
+      // ────────────────────────────────
     } else {
       console.error("Delete error:", error.message);
       setActionMessage("ERROR: Failed to delete clip.");
