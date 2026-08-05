@@ -1,24 +1,19 @@
-export async function insertAuditLog(
-  supabase: any, 
-  moderatorId: string, 
-  actionType: string, 
-  targetId: string, 
-  details: string
+// lib/logger.ts
+export async function logUserAction(
+  supabase: any,
+  userId: string,       // Chahe member ho ya mod, user ki ID yahan aayegi
+  actionType: string,   // Jaise: 'USER_LOGIN', 'CREATE_SQUAD', 'DELETE_CLIP', etc.
+  targetId: string,     // Jis item par action hua uska ID (ya 'N/A')
+  details: string       // Full description
 ) {
   try {
-    const { error } = await supabase
-      .from('audit_logs')
-      .insert({
-        moderator_id: moderatorId,
-        action_type: actionType,
-        target_id: targetId,
-        details: details
-      });
-
-    if (error) {
-      console.error("Failed to insert audit log:", error.message);
-    }
+    await supabase.from('audit_logs').insert({
+      moderator_id: userId, // Aapke table column ka naam moderator_id hai, isliye yahan user ki id jayegi
+      action_type: actionType,
+      target_id: targetId,
+      details: details
+    });
   } catch (err) {
-    console.error("Error in audit logging:", err);
+    console.error("Audit log error:", err);
   }
 }
