@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { UserPlus, Mail, Lock, User, AtSign, ArrowRight } from "lucide-react";
 import { handleSignupAction } from "./actions";
+import { createClient } from "@/lib/supabase/client";
 
 export default function SignupPage() {
   const [email, setEmail] = useState("");
@@ -17,6 +18,7 @@ export default function SignupPage() {
   const [errorMsg, setErrorMsg] = useState("");
   
   const router = useRouter();
+  const supabase = createClient();
 
   async function handleSignup(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -41,6 +43,22 @@ export default function SignupPage() {
       setErrorMsg(finalError);
       setLoading(false);
     } else {
+      // ── LOGGING SYSTEM INTEGRATION ──
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await supabase.from("audit_logs").insert({
+            moderator_id: user.id,
+            action_type: "USER_SIGNUP",
+            target_id: user.id,
+            details: `New operator profile created for user ${user.email} (Username: ${username}).`
+          });
+        }
+      } catch (err) {
+        console.error("Failed to insert signup audit log:", err);
+      }
+      // ────────────────────────────────
+
       router.push("/");
       router.refresh();
     }
