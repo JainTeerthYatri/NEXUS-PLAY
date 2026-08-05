@@ -58,7 +58,7 @@ export default function UploadClipPage() {
         .getPublicUrl(filePath);
 
       // 2. Insert record into database clips table
-      const { error: dbError } = await supabase
+      const { data: insertedClip, error: dbError } = await supabase
         .from("clips")
         .insert({
           user_id: user.id,
@@ -66,12 +66,27 @@ export default function UploadClipPage() {
           game_title: gameTitle.trim(),
           video_url: videoUrl,
           upvotes_count: 0,
-        });
+        })
+        .select()
+        .single();
 
       if (dbError) throw dbError;
 
       // 3. Reward +25 XP for uploading a highlight reel
       await addOperatorXp(user.id, 25);
+
+      // ── LOGGING SYSTEM INTEGRATION ──
+      try {
+        await supabase.from("audit_logs").insert({
+          moderator_id: user.id,
+          action_type: "UPLOAD_CLIP",
+          target_id: insertedClip?.id || user.id,
+          details: `User uploaded a new short clip titled "${title.trim()}" for game "${gameTitle.trim()}".`
+        });
+      } catch (logErr) {
+        console.error("Failed to insert clip upload audit log:", logErr);
+      }
+      // ────────────────────────────────
 
       router.push("/clips");
     } catch (err: any) {
