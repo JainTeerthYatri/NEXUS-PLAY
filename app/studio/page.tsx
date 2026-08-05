@@ -1,18 +1,39 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
+import { createClient } from "@/lib/supabase/client";
 import { 
-  Cpu, Layers, Terminal, Play, Settings, Sparkles, 
-  Box, RefreshCw, CheckCircle2, Code, Server, 
-  Sliders, Shield, Zap, Layout, Monitor, Smartphone, Tablet
+  Sparkles, ShieldAlert, Cpu, Terminal, Zap, 
+  CheckCircle2, Lock, ArrowRight, Layout, Code
 } from "lucide-react";
 
 export default function StudioPage() {
-  const [activeTab, setActiveTab] = useState<"canvas" | "code" | "logs">("canvas");
+  const [userRole, setUserRole] = useState<string>("member");
+  const [loading, setLoading] = useState(true);
   const [isBuilding, setIsBuilding] = useState(false);
   const [buildSuccess, setBuildSuccess] = useState(false);
-  const [devicePreview, setDevicePreview] = useState<"pc" | "tablet" | "mobile">("pc");
+
+  const supabase = createClient();
+
+  useEffect(() => {
+    async function checkUserRole() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", user.id)
+          .single();
+        
+        if (profile?.role) {
+          setUserRole(profile.role);
+        }
+      }
+      setLoading(false);
+    }
+    checkUserRole();
+  }, [supabase]);
 
   const handleTriggerBuild = () => {
     setIsBuilding(true);
@@ -23,6 +44,20 @@ export default function StudioPage() {
     }, 2000);
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-[100dvh] bg-[#020617] text-slate-100 flex flex-col">
+        <Navbar />
+        <div className="flex-1 flex items-center justify-center font-mono text-xs sm:text-sm text-cyan-400 animate-pulse">
+          SYNCHRONIZING_SECURITY_CLEARANCE...
+        </div>
+      </div>
+    );
+  }
+
+  // Check if user has privileged clearance (Owner or Moderator)
+  const isPrivileged = userRole === "owner" || userRole === "moderator";
+
   return (
     <div className="min-h-[100dvh] bg-[#020617] text-slate-100 flex flex-col font-sans selection:bg-cyan-500 selection:text-black relative overflow-x-hidden">
       {/* Background Neon Glow Effects */}
@@ -31,242 +66,127 @@ export default function StudioPage() {
 
       <Navbar />
 
-      <main className="flex-1 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 w-full flex flex-col gap-6 relative z-10">
+      <main className="flex-1 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-10 w-full flex flex-col gap-6 relative z-10">
         
         {/* Studio Header Bar */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 p-4 sm:p-6 rounded-2xl bg-[#0b0f19]/80 border border-cyan-500/30 backdrop-blur-xl shadow-[0_0_30px_rgba(6,182,212,0.1)]">
           <div className="min-w-0">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-xs font-mono text-cyan-400 mb-2 shadow-[0_0_15px_rgba(6,182,212,0.2)]">
               <Sparkles className="w-3.5 h-3.5 text-cyan-400 animate-pulse shrink-0" />
-              <span className="truncate">STUDIO_NEXT // V1.2_RELEASE</span>
+              <span className="truncate">ASTEROID_STUDIO // V1.2_RELEASE</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight flex items-center gap-3">
-              Core Development Studio
+            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+              Asteroid Studio Development
             </h1>
             <p className="text-xs sm:text-sm text-cyan-200/60 mt-1">
-              Neon Blue & Cyan Architecture • Responsive Layout Studio Environment
+              Current User Clearance Level: <span className="text-cyan-400 font-mono uppercase font-bold">{userRole}</span>
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5 flex-wrap">
-            {/* Device Preview Switcher for Responsive Testing */}
-            <div className="flex items-center bg-[#020617] p-1 rounded-xl border border-cyan-500/20">
-              <button
-                onClick={() => setDevicePreview("pc")}
-                className={`p-2 rounded-lg text-xs transition-all cursor-pointer ${devicePreview === 'pc' ? 'bg-cyan-500 text-black shadow-[0_0_10px_rgba(6,182,212,0.4)]' : 'text-slate-400 hover:text-white'}`}
-                title="Desktop View"
-              >
-                <Monitor className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => setDevicePreview("tablet")}
-                className={`p-2 rounded-lg text-xs transition-all cursor-pointer ${devicePreview === 'tablet' ? 'bg-cyan-500 text-black shadow-[0_0_10px_rgba(6,182,212,0.4)]' : 'text-slate-400 hover:text-white'}`}
-                title="Tablet View"
-              >
-                <Tablet className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => setDevicePreview("mobile")}
-                className={`p-2 rounded-lg text-xs transition-all cursor-pointer ${devicePreview === 'mobile' ? 'bg-cyan-500 text-black shadow-[0_0_10px_rgba(6,182,212,0.4)]' : 'text-slate-400 hover:text-white'}`}
-                title="Mobile View"
-              >
-                <Smartphone className="w-4 h-4" />
-              </button>
-            </div>
-
+          {isPrivileged && (
             <button
               onClick={handleTriggerBuild}
               disabled={isBuilding}
-              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black font-extrabold text-xs sm:text-sm transition-all flex items-center gap-2 shadow-[0_0_20px_rgba(6,182,212,0.4)] cursor-pointer disabled:opacity-50 shrink-0"
+              className="w-full lg:w-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black font-extrabold text-xs sm:text-sm transition-all flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(6,182,212,0.4)] cursor-pointer disabled:opacity-50 shrink-0"
             >
               <Zap className={`w-4 h-4 ${isBuilding ? 'animate-spin' : ''}`} />
               {isBuilding ? "Compiling v1.2..." : "Deploy Update"}
             </button>
-          </div>
+          )}
         </div>
 
-        {buildSuccess && (
-          <div className="p-4 rounded-xl bg-cyan-950/60 border border-cyan-500/40 text-cyan-300 flex items-center gap-3 shadow-[0_0_20px_rgba(6,182,212,0.2)] animate-fade-in">
-            <CheckCircle2 className="w-5 h-5 text-cyan-400 shrink-0" />
-            <p className="text-xs sm:text-sm font-mono">
-              Build successful! Studio Next v1.2 Neon Blue + Cyan packages compiled and synchronized across all nodes.
-            </p>
+        {/* CONDITIONAL RENDERING BASED ON ROLE */}
+        {!isPrivileged ? (
+          /* NOTICE CONTAINER FOR MEMBERS */
+          <div className="flex-1 flex items-center justify-center py-12 px-4">
+            <div className="max-w-xl w-full p-6 sm:p-10 rounded-2xl bg-[#0b0f19]/90 border border-cyan-500/40 text-center shadow-[0_0_40px_rgba(6,182,212,0.15)] backdrop-blur-xl relative overflow-hidden space-y-6">
+              <div className="absolute top-0 right-0 w-48 h-48 bg-cyan-500/10 rounded-full blur-2xl pointer-events-none" />
+              
+              <div className="w-16 h-16 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center mx-auto text-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.3)]">
+                <Lock className="w-8 h-8 animate-pulse" />
+              </div>
+
+              <div className="space-y-2">
+                <span className="px-3 py-1 rounded bg-cyan-950/80 border border-cyan-500/40 text-[10px] font-mono text-cyan-300 uppercase">
+                  SECURITY_NOTICE // CLEARANCE_RESTRICTED
+                </span>
+                <h2 className="text-xl sm:text-2xl font-black text-white">
+                  Asteroid Studio Feature Coming Soon
+                </h2>
+                <p className="text-xs sm:text-sm text-slate-300 font-mono leading-relaxed pt-2">
+                  The Asteroid Studio feature is currently under active architecture development and will be launching globally in the **next software update v1.2**. Stay tuned, operators!
+                </p>
+              </div>
+
+              <div className="pt-4 border-t border-cyan-500/20 flex flex-col sm:flex-row items-center justify-center gap-3">
+                <a 
+                  href="/dashboard"
+                  className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-extrabold text-xs transition-all shadow-[0_0_15px_rgba(6,182,212,0.4)] flex items-center justify-center gap-2"
+                >
+                  Return to Dashboard <ArrowRight className="w-4 h-4" />
+                </a>
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* REAL DEVELOPMENT WORKSPACE FOR OWNERS & MODERATORS */
+          <div className="flex flex-col gap-6 animate-fade-in">
+            {buildSuccess && (
+              <div className="p-4 rounded-xl bg-cyan-950/60 border border-cyan-500/40 text-cyan-300 flex items-center gap-3 shadow-[0_0_20px_rgba(6,182,212,0.2)]">
+                <CheckCircle2 className="w-5 h-5 text-cyan-400 shrink-0" />
+                <p className="text-xs sm:text-sm font-mono">
+                  Build successful! Studio Next v1.2 Neon Blue + Cyan packages compiled and synchronized across all administrative nodes.
+                </p>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="p-5 rounded-2xl bg-[#0b0f19]/80 border border-cyan-500/30 backdrop-blur-xl shadow-lg">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-mono text-cyan-400">NODE_STATUS</span>
+                  <Cpu className="w-4 h-4 text-cyan-400" />
+                </div>
+                <h3 className="text-xl font-black text-white">Active Pipeline</h3>
+                <p className="text-xs text-slate-400 mt-1">Real-time compilation tracking enabled for mods/owners.</p>
+              </div>
+
+              <div className="p-5 rounded-2xl bg-[#0b0f19]/80 border border-cyan-500/30 backdrop-blur-xl shadow-lg">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-mono text-blue-400">THEME_ENGINE</span>
+                  <Sparkles className="w-4 h-4 text-blue-400" />
+                </div>
+                <h3 className="text-xl font-black text-white">Neon Blue + Cyan</h3>
+                <p className="text-xs text-slate-400 mt-1">Aesthetic color variables fully injected into workspace.</p>
+              </div>
+
+              <div className="p-5 rounded-2xl bg-[#0b0f19]/80 border border-cyan-500/30 backdrop-blur-xl shadow-lg">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-mono text-emerald-400">ACCESS_LEVEL</span>
+                  <ShieldAlert className="w-4 h-4 text-emerald-400" />
+                </div>
+                <h3 className="text-xl font-black text-white uppercase">{userRole} Override</h3>
+                <p className="text-xs text-slate-400 mt-1">Full development workspace unlocked for your clearance.</p>
+              </div>
+            </div>
+
+            <div className="p-6 sm:p-8 rounded-2xl bg-[#0b0f19]/90 border border-cyan-500/30 backdrop-blur-xl shadow-2xl space-y-4">
+              <div className="flex items-center justify-between pb-4 border-b border-cyan-500/20">
+                <h3 className="font-extrabold text-white text-base flex items-center gap-2">
+                  <Terminal className="w-5 h-5 text-cyan-400" /> Live Architecture Console
+                </h3>
+                <span className="px-2.5 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-xs font-mono text-cyan-400">
+                  DEVELOPMENT_MODE
+                </span>
+              </div>
+              <div className="p-4 rounded-xl bg-[#020617] border border-cyan-500/20 font-mono text-xs text-slate-300 space-y-2">
+                <p className="text-cyan-400">[SYSTEM] User clearance authenticated as <span className="uppercase text-white font-bold">{userRole}</span>.</p>
+                <p className="text-slate-400">[STUDIO] Loading module components for next software update v1.2...</p>
+                <p className="text-blue-400">[RENDER] Visual canvas responsive across mobile, tablet, laptop, and PC devices.</p>
+                <p className="text-emerald-400 font-bold">[READY] All systems functional. Ready for code deployment.</p>
+              </div>
+            </div>
           </div>
         )}
-
-        {/* Main Workspace Grid (Responsive: Mobile stacked, Tablet/PC multi-column) */}
-        <div className={`grid grid-cols-1 lg:grid-cols-12 gap-6 transition-all duration-300 ${
-          devicePreview === 'mobile' ? 'max-w-sm mx-auto w-full' :
-          devicePreview === 'tablet' ? 'max-w-2xl mx-auto w-full' : 'w-full'
-        }`}>
-          
-          {/* Left Sidebar Tools */}
-          <div className="lg:col-span-3 flex flex-col gap-4">
-            <div className="p-4 sm:p-5 rounded-2xl bg-[#0b0f19]/80 border border-cyan-500/30 backdrop-blur-xl shadow-lg">
-              <h2 className="text-xs font-mono text-cyan-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-                <Layers className="w-4 h-4 text-cyan-400" /> Component Library
-              </h2>
-              
-              <div className="space-y-2">
-                {[
-                  { name: "Neon Header Bar", icon: Layout },
-                  { name: "Cyan Matrix Grid", icon: Box },
-                  { name: "Quantum Terminal", icon: Terminal },
-                  { name: "Security Shield Node", icon: Shield },
-                  { name: "Telemetry Metrics", icon: Cpu }
-                ].map((item, idx) => (
-                  <div 
-                    key={idx}
-                    className="p-3 rounded-xl bg-[#020617] border border-cyan-500/20 hover:border-cyan-400 text-xs text-slate-300 flex items-center gap-3 transition-all cursor-pointer group"
-                  >
-                    <item.icon className="w-4 h-4 text-cyan-400 group-hover:scale-110 transition-transform" />
-                    <span className="font-medium group-hover:text-cyan-300 truncate">{item.name}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="p-4 sm:p-5 rounded-2xl bg-[#0b0f19]/80 border border-cyan-500/30 backdrop-blur-xl shadow-lg">
-              <h2 className="text-xs font-mono text-cyan-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-                <Sliders className="w-4 h-4 text-cyan-400" /> Theme Config
-              </h2>
-              <div className="space-y-3 text-xs">
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-400">Primary Accent</span>
-                  <span className="px-2 py-0.5 rounded bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 font-mono">Neon Cyan</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-400">Secondary Accent</span>
-                  <span className="px-2 py-0.5 rounded bg-blue-600/20 border border-blue-500/40 text-blue-300 font-mono">Deep Blue</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-400">Version</span>
-                  <span className="text-white font-mono">v1.2.0-beta</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Center Canvas / Code Viewer */}
-          <div className="lg:col-span-9 flex flex-col gap-4">
-            
-            {/* Navigation Tabs */}
-            <div className="flex items-center gap-2 bg-[#0b0f19]/80 p-1.5 rounded-2xl border border-cyan-500/30 backdrop-blur-xl w-fit">
-              <button
-                onClick={() => setActiveTab("canvas")}
-                className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center gap-2 ${
-                  activeTab === "canvas"
-                    ? "bg-cyan-500 text-black shadow-[0_0_15px_rgba(6,182,212,0.4)]"
-                    : "text-slate-400 hover:text-white"
-                }`}
-              >
-                <Layout className="w-3.5 h-3.5" /> Visual Canvas
-              </button>
-              <button
-                onClick={() => setActiveTab("code")}
-                className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center gap-2 ${
-                  activeTab === "code"
-                    ? "bg-cyan-500 text-black shadow-[0_0_15px_rgba(6,182,212,0.4)]"
-                    : "text-slate-400 hover:text-white"
-                }`}
-              >
-                <Code className="w-3.5 h-3.5" /> Source Code
-              </button>
-              <button
-                onClick={() => setActiveTab("logs")}
-                className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center gap-2 ${
-                  activeTab === "logs"
-                    ? "bg-cyan-500 text-black shadow-[0_0_15px_rgba(6,182,212,0.4)]"
-                    : "text-slate-400 hover:text-white"
-                }`}
-              >
-                <Terminal className="w-3.5 h-3.5" /> Build Logs
-              </button>
-            </div>
-
-            {/* Active Workspace View */}
-            <div className="flex-1 min-h-[400px] p-6 rounded-2xl bg-[#0b0f19]/90 border border-cyan-500/30 backdrop-blur-xl shadow-2xl flex flex-col justify-between">
-              
-              {activeTab === "canvas" && (
-                <div className="space-y-6">
-                  <div className="flex items-center justify-between pb-4 border-b border-cyan-500/20">
-                    <div>
-                      <h3 className="font-extrabold text-white text-base">Studio Workspace Preview</h3>
-                      <p className="text-xs text-cyan-200/60 font-mono">Live rendering in neon blue & cyan environment.</p>
-                    </div>
-                    <span className="px-2.5 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-xs font-mono text-cyan-400">
-                      ONLINE
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="p-4 rounded-xl bg-[#020617] border border-cyan-500/20 hover:border-cyan-400 transition-colors">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-mono text-cyan-400">NODE_01</span>
-                        <Server className="w-4 h-4 text-cyan-400" />
-                      </div>
-                      <h4 className="text-sm font-bold text-white mb-1">Neon Engine v1.2</h4>
-                      <p className="text-xs text-slate-400">Optimized shader pipeline with dual cyan-blue illumination.</p>
-                    </div>
-
-                    <div className="p-4 rounded-xl bg-[#020617] border border-blue-500/20 hover:border-blue-400 transition-colors">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-mono text-blue-400">NODE_02</span>
-                        <Cpu className="w-4 h-4 text-blue-400" />
-                      </div>
-                      <h4 className="text-sm font-bold text-white mb-1">Responsive Grid Matrix</h4>
-                      <p className="text-xs text-slate-400">Seamless fluid resizing across mobile, tablet, and desktop viewports.</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {activeTab === "code" && (
-                <div className="space-y-3 font-mono text-xs">
-                  <div className="flex items-center justify-between text-cyan-400 pb-2 border-b border-cyan-500/20">
-                    <span>app/studio/page.tsx</span>
-                    <span>TypeScript / Tailwind</span>
-                  </div>
-                  <pre className="p-4 rounded-xl bg-[#020617] border border-cyan-500/20 text-cyan-200/90 overflow-x-auto leading-relaxed">
-{`export default function StudioNextV12() {
-  const theme = "neon-blue-cyan";
-  const responsive = ["mobile", "tablet", "pc"];
-  
-  return (
-    <div className="bg-[#020617] text-cyan-400">
-      <StudioWorkspace theme={theme} targets={responsive} />
-    </div>
-  );
-}`}
-                  </pre>
-                </div>
-              )}
-
-              {activeTab === "logs" && (
-                <div className="space-y-2 font-mono text-xs">
-                  <div className="flex items-center justify-between text-cyan-400 pb-2 border-b border-cyan-500/20">
-                    <span>Compiler Console</span>
-                    <span>Status: Ready</span>
-                  </div>
-                  <div className="p-4 rounded-xl bg-[#020617] border border-cyan-500/20 text-slate-300 space-y-1.5">
-                    <p className="text-cyan-400">[09:15:00] Initializing Studio Next v1.2 build sequence...</p>
-                    <p className="text-slate-400">[09:15:02] Applying neon blue + cyan theme variables...</p>
-                    <p className="text-slate-400">[09:15:05] Verifying responsive layout across mobile, tablet, and PC viewports...</p>
-                    <p className="text-cyan-300 font-bold">[09:15:10] Build verified successfully. Ready for deployment.</p>
-                  </div>
-                </div>
-              )}
-
-              <div className="pt-6 mt-6 border-t border-cyan-500/20 flex items-center justify-between text-xs font-mono text-cyan-200/50 flex-wrap gap-2">
-                <span>STUDIO_READY</span>
-                <span>SECURE_SESSION_ACTIVE</span>
-              </div>
-
-            </div>
-
-          </div>
-
-        </div>
 
       </main>
     </div>
