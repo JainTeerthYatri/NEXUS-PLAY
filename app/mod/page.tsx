@@ -28,7 +28,8 @@ import {
   CheckCircle2,
   XCircle,
   Clock,
-  Terminal
+  Terminal,
+  ArrowRight
 } from "lucide-react";
 
 type Profile = {
@@ -448,8 +449,15 @@ export default function ModDashboardExtended() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-3 w-full lg:w-auto">
-            <div className="relative w-full lg:w-72">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap w-full lg:w-auto">
+            <a 
+              href="/mod/logs"
+              className="px-4 py-2.5 rounded-lg bg-red-600 hover:bg-red-500 text-white font-extrabold text-xs transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-600/30 cursor-pointer shrink-0"
+            >
+              <FileText className="w-4 h-4 text-white" /> See Audit Logs <ArrowRight className="w-3.5 h-3.5" />
+            </a>
+
+            <div className="relative w-full sm:w-64 lg:w-60">
               <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" />
               <input 
                 type="text"
@@ -513,10 +521,10 @@ export default function ModDashboardExtended() {
         </div>
 
         {/* Navigation Tabs */}
-        <div className="flex items-center gap-2 mb-6 border-b border-white/10 pb-4 flex-wrap">
+        <div className="flex items-center gap-2 mb-6 border-b border-white/10 pb-4 overflow-x-auto scrollbar-none">
           <button
             onClick={() => setActiveTab("users")}
-            className={`px-3.5 sm:px-4 py-2 rounded-lg font-mono text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+            className={`px-3.5 sm:px-4 py-2 rounded-lg font-mono text-xs font-bold transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap shrink-0 ${
               activeTab === "users" ? "bg-red-600 text-white shadow-lg shadow-red-600/20" : "bg-[#121216] text-slate-400 hover:text-white border border-white/10"
             }`}
           >
@@ -524,7 +532,7 @@ export default function ModDashboardExtended() {
           </button>
           <button
             onClick={() => setActiveTab("lfg")}
-            className={`px-3.5 sm:px-4 py-2 rounded-lg font-mono text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+            className={`px-3.5 sm:px-4 py-2 rounded-lg font-mono text-xs font-bold transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap shrink-0 ${
               activeTab === "lfg" ? "bg-red-600 text-white shadow-lg shadow-red-600/20" : "bg-[#121216] text-slate-400 hover:text-white border border-white/10"
             }`}
           >
@@ -532,7 +540,7 @@ export default function ModDashboardExtended() {
           </button>
           <button
             onClick={() => setActiveTab("squads")}
-            className={`px-3.5 sm:px-4 py-2 rounded-lg font-mono text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+            className={`px-3.5 sm:px-4 py-2 rounded-lg font-mono text-xs font-bold transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap shrink-0 ${
               activeTab === "squads" ? "bg-red-600 text-white shadow-lg shadow-red-600/20" : "bg-[#121216] text-slate-400 hover:text-white border border-white/10"
             }`}
           >
@@ -540,7 +548,7 @@ export default function ModDashboardExtended() {
           </button>
           <button
             onClick={() => setActiveTab("reports")}
-            className={`px-3.5 sm:px-4 py-2 rounded-lg font-mono text-xs font-bold transition-all cursor-pointer flex items-center gap-2 relative ${
+            className={`px-3.5 sm:px-4 py-2 rounded-lg font-mono text-xs font-bold transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap shrink-0 relative ${
               activeTab === "reports" ? "bg-red-600 text-white shadow-lg shadow-red-600/20" : "bg-[#121216] text-slate-400 hover:text-white border border-white/10"
             }`}
           >
@@ -551,7 +559,7 @@ export default function ModDashboardExtended() {
           </button>
           <button
             onClick={() => setActiveTab("logs")}
-            className={`px-3.5 sm:px-4 py-2 rounded-lg font-mono text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+            className={`px-3.5 sm:px-4 py-2 rounded-lg font-mono text-xs font-bold transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap shrink-0 ${
               activeTab === "logs" ? "bg-red-600 text-white shadow-lg shadow-red-600/20" : "bg-[#121216] text-slate-400 hover:text-white border border-white/10"
             }`}
           >
