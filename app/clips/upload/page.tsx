@@ -112,7 +112,7 @@ export default function UploadClipPage() {
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-[#0b1324] border border-cyan-500/40 text-xs font-mono text-cyan-400 mb-2 shadow-[0_0_15px_rgba(6,182,212,0.15)]">
               <Video className="w-3.5 h-3.5 text-cyan-400" />
-              <span>STUDIO_MATRIX // UPLOAD_SHORT</span>
+              <span>ASTEROID_MATRIX // UPLOAD_SHORT</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">Upload Short Reel</h1>
             <p className="text-xs sm:text-sm text-slate-400 mt-1">
