@@ -95,6 +95,19 @@ export default function SettingsPage() {
     if (error) {
       alert("Error updating profile: " + error.message);
     } else {
+      // ── LOGGING SYSTEM INTEGRATION ──
+      try {
+        await supabase.from("audit_logs").insert({
+          moderator_id: userId,
+          action_type: "UPDATE_PROFILE",
+          target_id: userId,
+          details: `Operator @${username} updated their profile settings and telemetry parameters.`
+        });
+      } catch (logErr) {
+        console.error("Failed to insert profile update audit log:", logErr);
+      }
+      // ────────────────────────────────
+
       alert("Operator profile telemetry updated successfully!");
       router.push("/dashboard");
     }
