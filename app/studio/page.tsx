@@ -368,7 +368,7 @@ export default function StudioPage() {
     }
   };
 
-  const handleToggleStream = () => {
+  const handleToggleStream = async () => {
     if (!isStreaming) {
       if (!streamKeyInput.trim() && !isAccountConnected) {
         setStreamError("Stream Key or Connected Account required! Please configure RTMPS in Settings.");
@@ -423,6 +423,22 @@ export default function StudioPage() {
       };
 
       setIsStreaming(true);
+
+      // ── LOGGING SYSTEM INTEGRATION: START STREAM ──
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await supabase.from("audit_logs").insert({
+            moderator_id: user.id,
+            action_type: "START_STREAM",
+            target_id: user.id,
+            details: `Operator initiated live broadcast stream (Bitrate: ${outputSettings.videoBitrate} Kbps).`
+          });
+        }
+      } catch (logErr) {
+        console.error("Failed to insert start stream audit log:", logErr);
+      }
+      // ──────────────────────────────────────────────
     } else {
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
         mediaRecorderRef.current.stop();
@@ -701,7 +717,7 @@ export default function StudioPage() {
     }
   };
 
-  const handleAddSource = (e: React.FormEvent) => {
+  const handleAddSource = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newSourceName.trim()) return;
     
@@ -735,15 +751,47 @@ export default function StudioPage() {
     setNewSourceName('');
     setSourceValue('');
     setIsAddSourceOpen(false);
+
+    // ── LOGGING SYSTEM INTEGRATION: CREATE SOURCE ──
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from("audit_logs").insert({
+          moderator_id: user.id,
+          action_type: "CREATE_SOURCE",
+          target_id: newSrc.id,
+          details: `Operator added source '${newSrc.name}' (Type: ${newSrc.type}) to scene ID ${activeSceneId}.`
+        });
+      }
+    } catch (logErr) {
+      console.error("Failed to insert create source audit log:", logErr);
+    }
+    // ──────────────────────────────────────────────
   };
 
-  const handleAddScene = (e: React.FormEvent) => {
+  const handleAddScene = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newSceneName.trim()) return;
     const newScene = { id: Date.now().toString(), name: newSceneName.trim() };
     setScenes([...scenes, newScene]);
     handleSceneSwitch(newScene.id);
     setNewSceneName('');
+
+    // ── LOGGING SYSTEM INTEGRATION: CREATE SCENE ──
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from("audit_logs").insert({
+          moderator_id: user.id,
+          action_type: "CREATE_SCENE",
+          target_id: newScene.id,
+          details: `Operator created a new studio scene: '${newScene.name}'.`
+        });
+      }
+    } catch (logErr) {
+      console.error("Failed to insert create scene audit log:", logErr);
+    }
+    // ──────────────────────────────────────────────
   };
 
   const deleteScene = (id: string, e: React.MouseEvent) => {
