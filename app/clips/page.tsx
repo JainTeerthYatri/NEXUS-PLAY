@@ -159,7 +159,7 @@ export default function ShortsFeedPage() {
               <Trophy className="w-10 h-10 text-cyan-500/60 mx-auto mb-4" />
               <h3 className="text-white font-bold mb-1 text-sm sm:text-base">No Shorts Deployed Yet</h3>
               <p className="text-xs sm:text-sm text-slate-400 mb-6 font-mono">
-                The network shorts feed is empty. Share your tactical highlight now.
+                The network shorts feed is empty. Share your highlight now.
               </p>
               {user && (
                 <Link href="/clips/upload" className="px-4 py-2 rounded bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs inline-block uppercase tracking-wider transition-all">
