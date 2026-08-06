@@ -5,7 +5,7 @@ import Navbar from "@/components/Navbar";
 import { createClient } from "@/lib/supabase/client";
 import { 
   Shield, Terminal, Activity, Search, Filter, 
-  Clock, User, Sparkles, Lock, ArrowRight, Trash2 
+  Clock, User, Sparkles, Lock, ArrowRight, Trash2, AlertOctagon 
 } from "lucide-react";
 
 type AuditLog = {
@@ -85,7 +85,6 @@ export default function ModeratorLogsPage() {
       .eq("id", logId);
 
     if (!error) {
-      // Record a new entry documenting that this log was deleted
       if (user) {
         try {
           await supabase.from("audit_logs").insert({
@@ -99,11 +98,41 @@ export default function ModeratorLogsPage() {
         }
       }
 
-      // Refresh logs list instantly
       fetchLogs();
       alert("✅ Audit log entry successfully purged.");
     } else {
       alert("Error deleting audit log: " + error.message);
+    }
+  }
+
+  // Purge ALL Audit Logs at once
+  async function handlePurgeAllLogs() {
+    if (!confirm("⚠️ WARNING: This will permanently delete ALL audit logs in the database. Are you absolutely sure?")) return;
+
+    // Supabase delete query without condition deletes all rows if RLS/Policies permit
+    const { error } = await supabase
+      .from("audit_logs")
+      .delete()
+      .neq("id", "00000000-0000-0000-0000-000000000000"); // Matches all standard UUIDs safely
+
+    if (!error) {
+      if (user) {
+        try {
+          await supabase.from("audit_logs").insert({
+            moderator_id: user.id,
+            action_type: "PURGE_ALL_LOGS",
+            target_id: null,
+            details: `Moderator purged the entire audit logs registry.`
+          });
+        } catch (logErr) {
+          console.error("Failed to insert purge all audit log:", logErr);
+        }
+      }
+
+      fetchLogs();
+      alert("✅ All audit logs have been successfully cleared.");
+    } else {
+      alert("Error purging logs registry: " + error.message);
     }
   }
 
@@ -180,14 +209,25 @@ export default function ModeratorLogsPage() {
             <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight drop-shadow-[0_0_15px_rgba(251,191,36,0.2)]">
               Moderator Audit Logs
             </h1>
-            <p className="text-xs sm:text-sm text-amber-200/60 mt-1">
+            <p className="text-sm text-amber-200/60 mt-1">
               Real-time activity tracking across squads, studio broadcasts, and administrative actions.
             </p>
           </div>
 
-          <div className="px-4 py-2 rounded-xl bg-[#161004] border border-amber-500/40 text-xs font-mono text-amber-300 flex items-center gap-2 shadow-[0_0_10px_rgba(251,191,36,0.1)] w-fit">
-            <Activity className="w-4 h-4 text-yellow-400 shrink-0" />
-            <span>Total Recorded Events: <strong className="text-white">{logs.length}</strong></span>
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="px-4 py-2 rounded-xl bg-[#161004] border border-amber-500/40 text-xs font-mono text-amber-300 flex items-center gap-2 shadow-[0_0_10px_rgba(251,191,36,0.1)]">
+              <Activity className="w-4 h-4 text-yellow-400 shrink-0" />
+              <span>Total Recorded Events: <strong className="text-white">{logs.length}</strong></span>
+            </div>
+
+            {logs.length > 0 && (
+              <button
+                onClick={handlePurgeAllLogs}
+                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-extrabold text-xs transition-all flex items-center gap-2 shadow-lg shadow-red-600/30 cursor-pointer"
+              >
+                <AlertOctagon className="w-4 h-4" /> Purge All Logs
+              </button>
+            )}
           </div>
         </div>
 
