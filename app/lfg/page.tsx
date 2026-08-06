@@ -194,6 +194,19 @@ export default function LfgBoardPage() {
         listing_id: listingData.id,
         user_id: user.id,
       });
+
+      // ── LOGGING SYSTEM INTEGRATION: CREATE LFG NODE ──
+      try {
+        await supabase.from("audit_logs").insert({
+          moderator_id: user.id,
+          action_type: "CREATE_LFG_NODE",
+          target_id: listingData.id,
+          details: `User deployed an LFG matchmaking node for ${gameTitle} (${region}).`
+        });
+      } catch (logErr) {
+        console.error("Failed to insert create LFG audit log:", logErr);
+      }
+      // ───────────────────────────────────────────────
     }
 
     setIsModalOpen(false);
@@ -204,12 +217,28 @@ export default function LfgBoardPage() {
   async function handleDeleteListing(id: string) {
     if (!confirm("Are you sure you want to purge this matchmaking node?")) return;
 
+    const { data: { user } } = await supabase.auth.getUser();
     const { error } = await supabase
       .from("lfg_listings")
       .delete()
       .eq("id", id);
 
     if (!error) {
+      // ── LOGGING SYSTEM INTEGRATION: DELETE LFG NODE ──
+      if (user) {
+        try {
+          await supabase.from("audit_logs").insert({
+            moderator_id: user.id,
+            action_type: "DELETE_LFG_NODE",
+            target_id: id,
+            details: `LFG node (ID: ${id}) was deleted/purged.`
+          });
+        } catch (logErr) {
+          console.error("Failed to insert delete LFG audit log:", logErr);
+        }
+      }
+      // ───────────────────────────────────────────────
+
       fetchListings();
     } else {
       alert("Error deleting listing: " + error.message);
@@ -252,6 +281,19 @@ export default function LfgBoardPage() {
       message: `[ASTEROID_BOT] This is to inform you all that @${leavingUsername} has left the '${item.game_title}' squad.`,
     });
 
+    // ── LOGGING SYSTEM INTEGRATION: LEAVE PARTY ──
+    try {
+      await supabase.from("audit_logs").insert({
+        moderator_id: user.id,
+        action_type: "LEAVE_LFG_PARTY",
+        target_id: item.id,
+        details: `User left LFG party node ID: ${item.id}.`
+      });
+    } catch (logErr) {
+      console.error("Failed to insert leave LFG party audit log:", logErr);
+    }
+    // ───────────────────────────────────────────────
+
     setActiveListing(null);
     setActiveMembersListing(null);
     fetchListings();
@@ -261,6 +303,7 @@ export default function LfgBoardPage() {
     if (!activeMembersListing) return;
     if (!confirm("Are you sure you want to kick this operator from the squad?")) return;
 
+    const { data: { user } } = await supabase.auth.getUser();
     const { error } = await supabase
       .from("lfg_participants")
       .delete()
@@ -282,9 +325,24 @@ export default function LfgBoardPage() {
 
     await supabase.from("chat_messages").insert({
       listing_id: activeMembersListing.id,
-      sender_id: user.id,
+      sender_id: user?.id,
       message: `[ASTEROID_BOT] Notice: @${kickedUsername} has been removed from the squad by the host.`,
     });
+
+    // ── LOGGING SYSTEM INTEGRATION: KICK MEMBER ──
+    if (user) {
+      try {
+        await supabase.from("audit_logs").insert({
+          moderator_id: user.id,
+          action_type: "KICK_LFG_MEMBER",
+          target_id: memberUserId,
+          details: `Host/Admin kicked member ID ${memberUserId} from LFG node ${activeMembersListing.id}.`
+        });
+      } catch (logErr) {
+        console.error("Failed to insert kick member audit log:", logErr);
+      }
+    }
+    // ───────────────────────────────────────────────
 
     await openLfgMembersModal(activeMembersListing);
     await fetchParticipantCounts(listings);
@@ -396,6 +454,19 @@ export default function LfgBoardPage() {
       sender_id: user.id,
       message: `[ASTEROID_BOT] This is to inform you all that here @${joiningUsername} had joined the '${item.game_title}' squad, so welcome him in the group!`,
     });
+
+    // ── LOGGING SYSTEM INTEGRATION: JOIN PARTY ──
+    try {
+      await supabase.from("audit_logs").insert({
+        moderator_id: user.id,
+        action_type: "JOIN_LFG_PARTY",
+        target_id: item.id,
+        details: `User joined LFG party node ID: ${item.id} (${item.game_title}).`
+      });
+    } catch (logErr) {
+      console.error("Failed to insert join LFG audit log:", logErr);
+    }
+    // ───────────────────────────────────────────────
 
     setActiveListing(item);
     await fetchMessages(item.id);
