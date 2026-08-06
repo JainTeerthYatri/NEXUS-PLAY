@@ -89,6 +89,20 @@ export default function DashboardPage() {
 
     if (!error) {
       setProfile({ ...profile, is_live: nextStatus });
+
+      // ── LOGGING SYSTEM INTEGRATION ──
+      try {
+        await supabase.from("audit_logs").insert({
+          moderator_id: profile.id,
+          action_type: nextStatus ? "GO_LIVE" : "GO_OFFLINE",
+          target_id: profile.id,
+          details: `Operator @${profile.username} switched live broadcasting status to: ${nextStatus ? "ONLINE" : "OFFLINE"}.`
+        });
+      } catch (logErr) {
+        console.error("Failed to insert live status toggle audit log:", logErr);
+      }
+      // ────────────────────────────────
+
     } else {
       alert("Error updating live telemetry: " + error.message);
     }
