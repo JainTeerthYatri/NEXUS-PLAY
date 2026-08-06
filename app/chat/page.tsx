@@ -1076,4 +1076,3 @@ export default function AsteroidChatPage() {
     </div>
   );
 }
-```[cite: 7]
