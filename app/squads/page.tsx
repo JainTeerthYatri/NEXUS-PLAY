@@ -243,6 +243,19 @@ export default function FindSquadsPage() {
       message: `[ASTEROID_BOT] Squad '${name}' has been successfully deployed by @${creatorUsername}! Welcome to the tactical hub, operator.`,
     });
 
+    // ── LOGGING SYSTEM INTEGRATION: CREATE SQUAD ──
+    try {
+      await supabase.from("audit_logs").insert({
+        moderator_id: user.id,
+        action_type: "CREATE_SQUAD",
+        target_id: newSquad.id,
+        details: `User deployed squad lobby '${name}' for ${game} (Rank: ${rank}).`
+      });
+    } catch (logErr) {
+      console.error("Failed to insert create squad audit log:", logErr);
+    }
+    // ──────────────────────────────────────────────
+
     setIsModalOpen(false);
     setName("");
     setUserMemberships((prev) => ({ ...prev, [newSquad.id]: true }));
@@ -279,6 +292,19 @@ export default function FindSquadsPage() {
       }
       return;
     }
+
+    // ── LOGGING SYSTEM INTEGRATION: JOIN REQUEST ──
+    try {
+      await supabase.from("audit_logs").insert({
+        moderator_id: user.id,
+        action_type: "REQUEST_SQUAD_JOIN",
+        target_id: squad.id,
+        details: `User sent join request for squad '${squad.name}' (ID: ${squad.id}).`
+      });
+    } catch (logErr) {
+      console.error("Failed to insert squad request audit log:", logErr);
+    }
+    // ──────────────────────────────────────────────
 
     setUserRequests((prev) => ({ ...prev, [squad.id]: 'pending' }));
     alert("📨 Join request sent successfully to the squad leader!");
@@ -351,18 +377,47 @@ export default function FindSquadsPage() {
       message: `[ASTEROID_BOT] This is to inform you all that @${joinedUsername} has joined the '${squad.name}' squad, so welcome them warmly in the group!`,
     });
 
+    // ── LOGGING SYSTEM INTEGRATION: ACCEPT REQUEST ──
+    try {
+      await supabase.from("audit_logs").insert({
+        moderator_id: currentUser.id,
+        action_type: "ACCEPT_SQUAD_REQUEST",
+        target_id: squad.id,
+        details: `Squad leader accepted user ID ${req.user_id} into squad '${squad.name}'.`
+      });
+    } catch (logErr) {
+      console.error("Failed to insert accept squad request audit log:", logErr);
+    }
+    // ──────────────────────────────────────────────
+
     alert("✅ Request accepted! User has joined the squad.");
     openRequestsModal(squad);
-    fetchSquads(user?.id);
+    fetchSquads(currentUser?.id);
   }
 
   async function handleRejectRequest(reqId: string, squad: Squad) {
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
     const { error } = await supabase
       .from("squad_requests")
       .update({ status: 'rejected' })
       .eq("id", reqId);
 
     if (!error) {
+      // ── LOGGING SYSTEM INTEGRATION: REJECT REQUEST ──
+      if (currentUser) {
+        try {
+          await supabase.from("audit_logs").insert({
+            moderator_id: currentUser.id,
+            action_type: "REJECT_SQUAD_REQUEST",
+            target_id: squad.id,
+            details: `Squad leader rejected join request ID ${reqId} for squad '${squad.name}'.`
+          });
+        } catch (logErr) {
+          console.error("Failed to insert reject request audit log:", logErr);
+        }
+      }
+      // ──────────────────────────────────────────────
+
       alert("Request rejected.");
       openRequestsModal(squad);
     } else {
@@ -421,6 +476,19 @@ export default function FindSquadsPage() {
       message: `[ASTEROID_BOT] This is to inform you all that @${kickedUsername} has been kicked from the '${squad.name}' squad by the leader.`,
     });
 
+    // ── LOGGING SYSTEM INTEGRATION: KICK MEMBER ──
+    try {
+      await supabase.from("audit_logs").insert({
+        moderator_id: currentUser.id,
+        action_type: "KICK_SQUAD_MEMBER",
+        target_id: memberUserId,
+        details: `Squad leader kicked user ID ${memberUserId} from squad '${squad.name}'.`
+      });
+    } catch (logErr) {
+      console.error("Failed to insert kick squad member audit log:", logErr);
+    }
+    // ──────────────────────────────────────────────
+
     // Instant local state update to remove member from table immediately
     setSquadMembersList((prev) => prev.filter((m) => m.user_id !== memberUserId));
     setActiveMembersSquad((prev) => prev ? { ...prev, current_members: newCount } : null);
@@ -471,6 +539,19 @@ export default function FindSquadsPage() {
         message: `[ASTEROID_BOT] This is to inform you all that @${leavingUsername} has left the '${squad.name}' squad.`,
       });
 
+      // ── LOGGING SYSTEM INTEGRATION: LEAVE SQUAD ──
+      try {
+        await supabase.from("audit_logs").insert({
+          moderator_id: user.id,
+          action_type: "LEAVE_SQUAD",
+          target_id: squad.id,
+          details: `User left squad '${squad.name}' (ID: ${squad.id}).`
+        });
+      } catch (logErr) {
+        console.error("Failed to insert leave squad audit log:", logErr);
+      }
+      // ──────────────────────────────────────────────
+
       setUserMemberships((prev) => {
         const copy = { ...prev };
         delete copy[squad.id];
@@ -495,12 +576,28 @@ export default function FindSquadsPage() {
       return;
     }
 
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
     const { error } = await supabase
       .from("squads")
       .delete()
       .eq("id", squadId);
 
     if (!error) {
+      // ── LOGGING SYSTEM INTEGRATION: DELETE SQUAD ──
+      if (currentUser) {
+        try {
+          await supabase.from("audit_logs").insert({
+            moderator_id: currentUser.id,
+            action_type: "DELETE_SQUAD",
+            target_id: squadId,
+            details: `User/Leader deleted squad lobby ID: ${squadId}.`
+          });
+        } catch (logErr) {
+          console.error("Failed to insert delete squad audit log:", logErr);
+        }
+      }
+      // ──────────────────────────────────────────────
+
       setUserMemberships((prev) => {
         const copy = { ...prev };
         delete copy[squadId];
