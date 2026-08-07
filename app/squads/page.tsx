@@ -91,6 +91,26 @@ export default function FindSquadsPage() {
 
   const supabase = createClient();
 
+  // Native Web Audio API Notification Sound Generator
+  const playNotificationSound = () => {
+    try {
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5 note
+      oscillator.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.2); // A5 note
+      gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.35);
+      oscillator.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+      oscillator.start();
+      oscillator.stop(audioCtx.currentTime + 0.35);
+    } catch (e) {
+      console.error("Audio playback error:", e);
+    }
+  };
+
   useEffect(() => {
     async function init() {
       const { data: { user } } = await supabase.auth.getUser();
@@ -104,7 +124,70 @@ export default function FindSquadsPage() {
     init();
   }, []);
 
-  // Realtime Subscriptions for Chat & Typing & Join Requests
+  // Realtime Subscriptions for Incoming Requests (Squad Leaders) & Status Updates (Members)
+  useEffect(() => {
+    if (!user) return;
+
+    // 1. Watcher for Squad Leaders (Incoming join requests to their squads)
+    const leaderRequestsChannel = supabase
+      .channel(`leader_requests_${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'squad_requests',
+        },
+        async (payload) => {
+          const newReq = payload.new as any;
+          const { data: squadData } = await supabase
+            .from('squads')
+            .select('created_by, name')
+            .eq('id', newReq.squad_id)
+            .single();
+
+          if (squadData && squadData.created_by === user.id) {
+            playNotificationSound();
+            fetchSquads(user.id);
+            if (activeRequestsSquad && activeRequestsSquad.id === newReq.squad_id) {
+              openRequestsModal(activeRequestsSquad);
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    // 2. Watcher for Members (Updates to their own sent requests, e.g. Accepted/Rejected)
+    const memberRequestsChannel = supabase
+      .channel(`member_requests_${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'squad_requests',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          const updated = payload.new as any;
+          playNotificationSound();
+          if (updated.status === 'accepted') {
+            alert(`🎉 Your join request was ACCEPTED! You have joined the squad.`);
+          } else if (updated.status === 'rejected') {
+            alert(`❌ Your join request was rejected.`);
+          }
+          fetchSquads(user.id);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(leaderRequestsChannel);
+      supabase.removeChannel(memberRequestsChannel);
+    };
+  }, [user, activeRequestsSquad, supabase]);
+
+  // Realtime Subscriptions for Chat & Typing
   useEffect(() => {
     if (!activeChatSquad) return;
 
@@ -133,6 +216,9 @@ export default function FindSquadsPage() {
           };
 
           setChatMessages((prev) => [...prev, newMsg]);
+          if (payload.new.user_id !== user?.id) {
+            playNotificationSound();
+          }
           scrollToBottom();
         }
       )
@@ -154,44 +240,7 @@ export default function FindSquadsPage() {
     return () => {
       supabase.removeChannel(chatChannel);
     };
-  }, [activeChatSquad, user]);
-
-  // Global Realtime Listener for Squad Requests & Memberships update
-  useEffect(() => {
-    if (!user) return;
-
-    const globalChannel = supabase
-      .channel(`global_user_squads_${user.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'squad_requests',
-          filter: `user_id=eq.${user.id}`,
-        },
-        () => {
-          fetchSquads(user.id);
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'squad_members',
-          filter: `user_id=eq.${user.id}`,
-        },
-        () => {
-          fetchSquads(user.id);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(globalChannel);
-    };
-  }, [user, supabase]);
+  }, [activeChatSquad, user, supabase]);
 
   const scrollToBottom = () => {
     setTimeout(() => {
@@ -254,7 +303,6 @@ export default function FindSquadsPage() {
     }
   }
 
-  // Handle Typing Broadcast
   const handleTypingInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     setNewMessage(e.target.value);
     if (!activeChatSquad || !user) return;
@@ -378,6 +426,7 @@ export default function FindSquadsPage() {
     }
 
     setUserRequests((prev) => ({ ...prev, [squad.id]: 'pending' }));
+    playNotificationSound();
     alert("📨 Join request sent successfully to the squad leader!");
   }
 
@@ -459,6 +508,7 @@ export default function FindSquadsPage() {
       console.error("Failed to insert accept squad request audit log:", logErr);
     }
 
+    playNotificationSound();
     alert("✅ Request accepted! User has joined the squad.");
     openRequestsModal(squad);
     fetchSquads(currentUser?.id);
@@ -821,7 +871,7 @@ export default function FindSquadsPage() {
           </div>
         ) : filteredSquads.length === 0 ? (
           <div className="p-12 rounded-xl bg-[#161004] border border-amber-500/40 text-center max-w-md mx-auto my-12 shadow-[0_0_20px_rgba(251,191,36,0.1)]">
-            <Gamepad2 className="w-10 h-10 text-yellow-400 mx-auto mb-4 drop-shadow-[0_0_10px_rgba(251,191,36,0.5)]" />
+            <Gamepad2 className="w-10 h-10 text-yellow-400 mx-auto mb-4 drop-shadow-[0_0_10px_rgba(250,204,21,0.5)]" />
             <h3 className="text-white font-bold mb-1">No Squad Lobbies Found</h3>
             <p className="text-sm text-amber-200/60 mb-6">
               {searchQuery || selectedGameFilter !== "All" 
@@ -1272,7 +1322,7 @@ export default function FindSquadsPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-notes text-yellow-400/90 mb-1">Rank Requirement</label>
+                  <label className="block text-xs font-mono text-yellow-400/90 mb-1">Rank Requirement</label>
                   <input 
                     type="text" 
                     required
