@@ -124,13 +124,22 @@ export default function FindSquadsPage() {
     init();
   }, []);
 
-  // Realtime Subscriptions for Incoming Requests (Squad Leaders) & Status Updates (Members)
+  // Global Realtime Subscriptions for Squads, Memberships, and Requests
   useEffect(() => {
     if (!user) return;
 
-    // 1. Watcher for Squad Leaders (Incoming join requests to their squads)
-    const leaderRequestsChannel = supabase
-      .channel(`leader_requests_${user.id}`)
+    const globalSyncChannel = supabase
+      .channel(`global_squad_sync_${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'squads' },
+        () => { fetchSquads(user.id); }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'squad_members' },
+        () => { fetchSquads(user.id); }
+      )
       .on(
         'postgres_changes',
         {
@@ -155,11 +164,6 @@ export default function FindSquadsPage() {
           }
         }
       )
-      .subscribe();
-
-    // 2. Watcher for Members (Updates to their own sent requests, e.g. Accepted/Rejected)
-    const memberRequestsChannel = supabase
-      .channel(`member_requests_${user.id}`)
       .on(
         'postgres_changes',
         {
@@ -182,8 +186,7 @@ export default function FindSquadsPage() {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(leaderRequestsChannel);
-      supabase.removeChannel(memberRequestsChannel);
+      supabase.removeChannel(globalSyncChannel);
     };
   }, [user, activeRequestsSquad, supabase]);
 
@@ -483,6 +486,9 @@ export default function FindSquadsPage() {
       .update({ current_members: newCount })
       .eq("id", squad.id);
 
+    // Instant local state update for card count
+    setSquads(prev => prev.map(s => s.id === squad.id ? { ...s, current_members: newCount } : s));
+
     const { data: userProfile } = await supabase
       .from("profiles")
       .select("username")
@@ -573,6 +579,9 @@ export default function FindSquadsPage() {
       .update({ current_members: newCount })
       .eq("id", squad.id);
 
+    // Instant local state update for card count
+    setSquads(prev => prev.map(s => s.id === squad.id ? { ...s, current_members: newCount } : s));
+
     await supabase
       .from("squad_requests")
       .delete()
@@ -632,6 +641,9 @@ export default function FindSquadsPage() {
         .from("squads")
         .update({ current_members: newCount })
         .eq("id", squad.id);
+
+      // Instant local state update for card count
+      setSquads(prev => prev.map(s => s.id === squad.id ? { ...s, current_members: newCount } : s));
 
       await supabase
         .from("squad_requests")
