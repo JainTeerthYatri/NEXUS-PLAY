@@ -80,6 +80,8 @@ export default function FindSquadsPage() {
   const [activeChatSquad, setActiveChatSquad] = useState<Squad | null>(null);
   const [chatMessages, setChatMessages] = useState<SquadMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
+  const [typingUsers, setTypingUsers] = useState<string[]>([]);
+  const typingTimeoutRef = useRef<any>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
 
   const [name, setName] = useState("");
@@ -102,12 +104,13 @@ export default function FindSquadsPage() {
     init();
   }, []);
 
+  // Realtime Subscriptions for Chat & Typing & Join Requests
   useEffect(() => {
     if (!activeChatSquad) return;
 
     fetchMessages(activeChatSquad.id);
 
-    const channel = supabase
+    const chatChannel = supabase
       .channel(`squad_chat_${activeChatSquad.id}`)
       .on(
         'postgres_changes',
@@ -133,12 +136,62 @@ export default function FindSquadsPage() {
           scrollToBottom();
         }
       )
+      .on('broadcast', { event: 'typing' }, (payload) => {
+        const { username, isTyping } = payload.payload;
+        if (username === user?.user_metadata?.username) return;
+
+        setTypingUsers((prev) => {
+          if (isTyping && !prev.includes(username)) {
+            return [...prev, username];
+          } else if (!isTyping) {
+            return prev.filter((u) => u !== username);
+          }
+          return prev;
+        });
+      })
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(chatChannel);
     };
-  }, [activeChatSquad]);
+  }, [activeChatSquad, user]);
+
+  // Global Realtime Listener for Squad Requests & Memberships update
+  useEffect(() => {
+    if (!user) return;
+
+    const globalChannel = supabase
+      .channel(`global_user_squads_${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'squad_requests',
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => {
+          fetchSquads(user.id);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'squad_members',
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => {
+          fetchSquads(user.id);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(globalChannel);
+    };
+  }, [user, supabase]);
 
   const scrollToBottom = () => {
     setTimeout(() => {
@@ -201,6 +254,28 @@ export default function FindSquadsPage() {
     }
   }
 
+  // Handle Typing Broadcast
+  const handleTypingInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewMessage(e.target.value);
+    if (!activeChatSquad || !user) return;
+
+    const channel = supabase.channel(`squad_chat_${activeChatSquad.id}`);
+    channel.send({
+      type: 'broadcast',
+      event: 'typing',
+      payload: { username: user.email?.split('@')[0] || 'operator', isTyping: true },
+    });
+
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = setTimeout(() => {
+      channel.send({
+        type: 'broadcast',
+        event: 'typing',
+        payload: { username: user.email?.split('@')[0] || 'operator', isTyping: false },
+      });
+    }, 2000);
+  };
+
   async function handleCreateSquad(e: React.FormEvent) {
     e.preventDefault();
     const { data: { user } } = await supabase.auth.getUser();
@@ -243,7 +318,6 @@ export default function FindSquadsPage() {
       message: `[ASTEROID_BOT] Squad '${name}' has been successfully deployed by @${creatorUsername}! Welcome to the tactical hub, operator.`,
     });
 
-    // ── LOGGING SYSTEM INTEGRATION: CREATE SQUAD ──
     try {
       await supabase.from("audit_logs").insert({
         moderator_id: user.id,
@@ -254,7 +328,6 @@ export default function FindSquadsPage() {
     } catch (logErr) {
       console.error("Failed to insert create squad audit log:", logErr);
     }
-    // ──────────────────────────────────────────────
 
     setIsModalOpen(false);
     setName("");
@@ -293,7 +366,6 @@ export default function FindSquadsPage() {
       return;
     }
 
-    // ── LOGGING SYSTEM INTEGRATION: JOIN REQUEST ──
     try {
       await supabase.from("audit_logs").insert({
         moderator_id: user.id,
@@ -304,7 +376,6 @@ export default function FindSquadsPage() {
     } catch (logErr) {
       console.error("Failed to insert squad request audit log:", logErr);
     }
-    // ──────────────────────────────────────────────
 
     setUserRequests((prev) => ({ ...prev, [squad.id]: 'pending' }));
     alert("📨 Join request sent successfully to the squad leader!");
@@ -377,7 +448,6 @@ export default function FindSquadsPage() {
       message: `[ASTEROID_BOT] This is to inform you all that @${joinedUsername} has joined the '${squad.name}' squad, so welcome them warmly in the group!`,
     });
 
-    // ── LOGGING SYSTEM INTEGRATION: ACCEPT REQUEST ──
     try {
       await supabase.from("audit_logs").insert({
         moderator_id: currentUser.id,
@@ -388,7 +458,6 @@ export default function FindSquadsPage() {
     } catch (logErr) {
       console.error("Failed to insert accept squad request audit log:", logErr);
     }
-    // ──────────────────────────────────────────────
 
     alert("✅ Request accepted! User has joined the squad.");
     openRequestsModal(squad);
@@ -403,7 +472,6 @@ export default function FindSquadsPage() {
       .eq("id", reqId);
 
     if (!error) {
-      // ── LOGGING SYSTEM INTEGRATION: REJECT REQUEST ──
       if (currentUser) {
         try {
           await supabase.from("audit_logs").insert({
@@ -416,7 +484,6 @@ export default function FindSquadsPage() {
           console.error("Failed to insert reject request audit log:", logErr);
         }
       }
-      // ──────────────────────────────────────────────
 
       alert("Request rejected.");
       openRequestsModal(squad);
@@ -476,7 +543,6 @@ export default function FindSquadsPage() {
       message: `[ASTEROID_BOT] This is to inform you all that @${kickedUsername} has been kicked from the '${squad.name}' squad by the leader.`,
     });
 
-    // ── LOGGING SYSTEM INTEGRATION: KICK MEMBER ──
     try {
       await supabase.from("audit_logs").insert({
         moderator_id: currentUser.id,
@@ -487,9 +553,7 @@ export default function FindSquadsPage() {
     } catch (logErr) {
       console.error("Failed to insert kick squad member audit log:", logErr);
     }
-    // ──────────────────────────────────────────────
 
-    // Instant local state update to remove member from table immediately
     setSquadMembersList((prev) => prev.filter((m) => m.user_id !== memberUserId));
     setActiveMembersSquad((prev) => prev ? { ...prev, current_members: newCount } : null);
 
@@ -539,7 +603,6 @@ export default function FindSquadsPage() {
         message: `[ASTEROID_BOT] This is to inform you all that @${leavingUsername} has left the '${squad.name}' squad.`,
       });
 
-      // ── LOGGING SYSTEM INTEGRATION: LEAVE SQUAD ──
       try {
         await supabase.from("audit_logs").insert({
           moderator_id: user.id,
@@ -550,7 +613,6 @@ export default function FindSquadsPage() {
       } catch (logErr) {
         console.error("Failed to insert leave squad audit log:", logErr);
       }
-      // ──────────────────────────────────────────────
 
       setUserMemberships((prev) => {
         const copy = { ...prev };
@@ -583,7 +645,6 @@ export default function FindSquadsPage() {
       .eq("id", squadId);
 
     if (!error) {
-      // ── LOGGING SYSTEM INTEGRATION: DELETE SQUAD ──
       if (currentUser) {
         try {
           await supabase.from("audit_logs").insert({
@@ -596,7 +657,6 @@ export default function FindSquadsPage() {
           console.error("Failed to insert delete squad audit log:", logErr);
         }
       }
-      // ──────────────────────────────────────────────
 
       setUserMemberships((prev) => {
         const copy = { ...prev };
@@ -1153,11 +1213,18 @@ export default function FindSquadsPage() {
                 )}
               </div>
 
+              {/* Typing indicator bar */}
+              {typingUsers.length > 0 && (
+                <div className="px-4 py-1.5 bg-[#1a1205] text-[11px] font-mono text-amber-400/80 border-t border-amber-500/20 italic animate-pulse">
+                  {typingUsers.join(', ')} {typingUsers.length === 1 ? 'is' : 'are'} typing...
+                </div>
+              )}
+
               <form onSubmit={handleSendMessage} className="p-4 bg-[#1a1205] border-t border-amber-500/30 flex items-center gap-3">
                 <input 
                   type="text"
                   value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
+                  onChange={handleTypingInput}
                   placeholder="Type a tactical message to your squad..."
                   className="flex-1 px-4 py-2.5 rounded-xl bg-[#080600] border border-amber-500/30 text-white text-sm focus:border-yellow-400 outline-none shadow-inner"
                 />
@@ -1205,7 +1272,7 @@ export default function FindSquadsPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-mono text-yellow-400/90 mb-1">Rank Requirement</label>
+                  <label className="block text-xs font-notes text-yellow-400/90 mb-1">Rank Requirement</label>
                   <input 
                     type="text" 
                     required
@@ -1241,7 +1308,7 @@ export default function FindSquadsPage() {
                     type="submit"
                     className="px-4 py-2 rounded bg-amber-500 hover:bg-amber-400 text-black text-xs font-extrabold shadow-[0_0_15px_rgba(251,191,36,0.3)] cursor-pointer"
                   >
-                    Create Squad
+                    Create Squads
                   </button>
                 </div>
               </form>
