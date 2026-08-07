@@ -480,14 +480,20 @@ export default function FindSquadsPage() {
       return;
     }
 
-    const newCount = squad.current_members + 1;
+    // Get exact actual count from squad_members table to ensure 100% accuracy
+    const { count } = await supabase
+      .from("squad_members")
+      .select("*", { count: 'exact', head: true })
+      .eq("squad_id", squad.id);
+
+    const exactCount = count ?? (squad.current_members + 1);
+
     await supabase
       .from("squads")
-      .update({ current_members: newCount })
+      .update({ current_members: exactCount })
       .eq("id", squad.id);
 
-    // Instant local state update for card count
-    setSquads(prev => prev.map(s => s.id === squad.id ? { ...s, current_members: newCount } : s));
+    setSquads(prev => prev.map(s => s.id === squad.id ? { ...s, current_members: exactCount } : s));
 
     const { data: userProfile } = await supabase
       .from("profiles")
@@ -573,14 +579,20 @@ export default function FindSquadsPage() {
       return;
     }
 
-    const newCount = Math.max(1, squad.current_members - 1);
+    // Get exact actual count from squad_members table
+    const { count } = await supabase
+      .from("squad_members")
+      .select("*", { count: 'exact', head: true })
+      .eq("squad_id", squad.id);
+
+    const exactCount = count ?? Math.max(1, squad.current_members - 1);
+
     await supabase
       .from("squads")
-      .update({ current_members: newCount })
+      .update({ current_members: exactCount })
       .eq("id", squad.id);
 
-    // Instant local state update for card count
-    setSquads(prev => prev.map(s => s.id === squad.id ? { ...s, current_members: newCount } : s));
+    setSquads(prev => prev.map(s => s.id === squad.id ? { ...s, current_members: exactCount } : s));
 
     await supabase
       .from("squad_requests")
@@ -614,7 +626,7 @@ export default function FindSquadsPage() {
     }
 
     setSquadMembersList((prev) => prev.filter((m) => m.user_id !== memberUserId));
-    setActiveMembersSquad((prev) => prev ? { ...prev, current_members: newCount } : null);
+    setActiveMembersSquad((prev) => prev ? { ...prev, current_members: exactCount } : null);
 
     fetchSquads(currentUser.id);
     alert("✅ Member has been kicked from the squad.");
@@ -636,14 +648,20 @@ export default function FindSquadsPage() {
       .eq("user_id", user.id);
 
     if (!error) {
-      const newCount = Math.max(1, squad.current_members - 1);
+      // Get exact actual count from squad_members table
+      const { count } = await supabase
+        .from("squad_members")
+        .select("*", { count: 'exact', head: true })
+        .eq("squad_id", squad.id);
+
+      const exactCount = count ?? Math.max(1, squad.current_members - 1);
+
       await supabase
         .from("squads")
-        .update({ current_members: newCount })
+        .update({ current_members: exactCount })
         .eq("id", squad.id);
 
-      // Instant local state update for card count
-      setSquads(prev => prev.map(s => s.id === squad.id ? { ...s, current_members: newCount } : s));
+      setSquads(prev => prev.map(s => s.id === squad.id ? { ...s, current_members: exactCount } : s));
 
       await supabase
         .from("squad_requests")
@@ -743,6 +761,17 @@ export default function FindSquadsPage() {
 
     if (!error && data) {
       setSquadMembersList(data as unknown as SquadMember[]);
+      
+      // Auto-correct desynced current_members count on opening modal
+      if (data.length !== squad.current_members) {
+        await supabase
+          .from("squads")
+          .update({ current_members: data.length })
+          .eq("id", squad.id);
+
+        setSquads(prev => prev.map(s => s.id === squad.id ? { ...s, current_members: data.length } : s));
+        setActiveMembersSquad(prev => prev ? { ...prev, current_members: data.length } : null);
+      }
     } else {
       setSquadMembersList([]);
     }
@@ -813,7 +842,7 @@ export default function FindSquadsPage() {
           {user && (
             <button 
               onClick={() => setIsModalOpen(true)}
-              className="px-5 py-2.5 rounded bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-sm transition-all flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(251,191,36,0.4)] cursor-pointer"
+              className="px-5 py-2.5 rounded bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-sm transition-all flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(251,191,36,0.4)] cursor-pointer shrink-0"
             >
               <Plus className="w-4 h-4 text-black" /> Create Squad
             </button>
@@ -859,14 +888,14 @@ export default function FindSquadsPage() {
         </div>
 
         <div className="flex items-center gap-2 overflow-x-auto pb-4 mb-6 scrollbar-none">
-          <span className="text-xs font-mono text-amber-400 flex items-center gap-1 mr-1">
+          <span className="text-xs font-mono text-amber-400 flex items-center gap-1 mr-1 shrink-0">
             <Filter className="w-3.5 h-3.5" /> Games:
           </span>
           {availableGames.map((gameName) => (
             <button
               key={gameName}
               onClick={() => setSelectedGameFilter(gameName)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-mono whitespace-nowrap transition-all cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-mono whitespace-nowrap transition-all cursor-pointer shrink-0 ${
                 selectedGameFilter.toLowerCase() === gameName.toLowerCase()
                   ? "bg-yellow-500/20 border border-yellow-400 text-yellow-300 shadow-[0_0_10px_rgba(251,191,36,0.2)]"
                   : "bg-[#140e04] border border-amber-500/20 text-amber-200/60 hover:text-amber-300 hover:border-amber-500/40"
@@ -914,26 +943,26 @@ export default function FindSquadsPage() {
                   className="p-6 rounded-xl bg-[#140e04] border border-amber-500/30 hover:border-yellow-400 transition-all flex flex-col justify-between shadow-[0_0_15px_rgba(251,191,36,0.06)] hover:shadow-[0_0_25px_rgba(251,191,36,0.2)] group"
                 >
                   <div>
-                    <div className="flex items-center justify-between mb-4">
-                      <span className="px-2.5 py-1 rounded bg-amber-950/80 border border-amber-500/50 text-xs font-mono text-amber-300 shadow-[0_0_8px_rgba(251,191,36,0.15)]">
+                    <div className="flex items-center justify-between mb-4 gap-2">
+                      <span className="px-2.5 py-1 rounded bg-amber-950/80 border border-amber-500/50 text-xs font-mono text-amber-300 shadow-[0_0_8px_rgba(251,191,36,0.15)] truncate">
                         {squad.game}
                       </span>
-                      <span className="px-2.5 py-1 rounded bg-yellow-950/80 border border-yellow-500/60 text-xs font-mono text-yellow-300 shadow-[0_0_10px_rgba(250,204,21,0.2)]">
+                      <span className="px-2.5 py-1 rounded bg-yellow-950/80 border border-yellow-500/60 text-xs font-mono text-yellow-300 shadow-[0_0_10px_rgba(250,204,21,0.2)] shrink-0">
                         {squad.rank}
                       </span>
                     </div>
 
-                    <h3 className="font-extrabold text-white text-lg mb-1 group-hover:text-yellow-300 transition-colors">
+                    <h3 className="font-extrabold text-white text-lg mb-1 group-hover:text-yellow-300 transition-colors truncate" title={squad.name}>
                       {squad.name}
                     </h3>
-                    <div className="flex items-center justify-between mb-4">
-                      <p className="text-xs text-amber-200/60 font-mono">
-                        Lead: <span className="text-yellow-400 font-semibold">@{squad.profiles?.username || "commander"}</span>
+                    <div className="flex items-center justify-between mb-4 gap-2">
+                      <p className="text-xs text-amber-200/60 font-mono truncate">
+                        Lead: <span className="text-yellow-400 font-semibold truncate">@{squad.profiles?.username || "commander"}</span>
                       </p>
                       
                       <button 
                         onClick={() => openMembersModal(squad)}
-                        className="text-xs text-amber-400 hover:text-yellow-300 font-mono flex items-center gap-1 underline cursor-pointer"
+                        className="text-xs text-amber-400 hover:text-yellow-300 font-mono flex items-center gap-1 underline cursor-pointer shrink-0"
                       >
                         <Eye className="w-3.5 h-3.5" /> Members
                       </button>
@@ -954,25 +983,25 @@ export default function FindSquadsPage() {
                   </div>
 
                   <div className="pt-4 border-t border-amber-500/20 flex flex-col gap-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-mono text-amber-200/70 flex items-center gap-1.5">
-                        <Users className="w-3.5 h-3.5 text-yellow-400" />
-                        {isFull ? "Full Lobby" : `${squad.max_slots - squad.current_members} Slots Open`}
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-mono text-amber-200/70 flex items-center gap-1.5 truncate">
+                        <Users className="w-3.5 h-3.5 text-yellow-400 shrink-0" />
+                        <span className="truncate">{isFull ? "Full Lobby" : `${squad.max_slots - squad.current_members} Slots Open`}</span>
                       </span>
 
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 shrink-0">
                         {isCreator && (
                           <>
                             <button 
                               onClick={() => openRequestsModal(squad)}
-                              className="px-2.5 py-1.5 rounded bg-amber-950/80 hover:bg-amber-900 border border-amber-500/50 text-amber-300 text-xs font-extrabold transition-all flex items-center gap-1 cursor-pointer"
+                              className="px-2.5 py-1.5 rounded bg-amber-950/80 hover:bg-amber-900 border border-amber-500/50 text-amber-300 text-xs font-extrabold transition-all flex items-center gap-1 cursor-pointer shrink-0"
                               title="View Join Requests"
                             >
                               <Clock className="w-3.5 h-3.5" /> Requests
                             </button>
                             <button 
                               onClick={() => handleDeleteSquad(squad.id)}
-                              className="px-2 py-1.5 rounded bg-red-950/40 hover:bg-red-600 border border-red-500/40 text-red-400 hover:text-white text-xs font-extrabold transition-all flex items-center gap-1 cursor-pointer"
+                              className="px-2 py-1.5 rounded bg-red-950/40 hover:bg-red-600 border border-red-500/40 text-red-400 hover:text-white text-xs font-extrabold transition-all flex items-center gap-1 cursor-pointer shrink-0"
                               title="Delete Squad"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -983,23 +1012,23 @@ export default function FindSquadsPage() {
                         {!isCreator && isJoined ? (
                           <button 
                             onClick={() => handleLeaveSquad(squad)}
-                            className="px-3 py-1.5 rounded bg-emerald-950/60 hover:bg-red-950/80 border border-emerald-500/40 hover:border-red-500/60 text-emerald-400 hover:text-red-300 text-xs font-extrabold transition-all flex items-center gap-1.5 cursor-pointer shadow-[0_0_10px_rgba(16,185,129,0.2)]"
+                            className="px-3 py-1.5 rounded bg-emerald-950/60 hover:bg-red-950/80 border border-emerald-500/40 hover:border-red-500/60 text-emerald-400 hover:text-red-300 text-xs font-extrabold transition-all flex items-center gap-1.5 cursor-pointer shadow-[0_0_10px_rgba(16,185,129,0.2)] shrink-0"
                           >
                             <UserMinus className="w-3.5 h-3.5" /> Leave
                           </button>
                         ) : !isCreator && reqStatus === 'pending' ? (
-                          <span className="px-2.5 py-1.5 rounded bg-yellow-950/40 border border-yellow-500/30 text-yellow-300 text-xs font-extrabold flex items-center gap-1 font-mono">
-                            <Clock className="w-3.5 h-3.5 animate-spin" /> Pending Approval
+                          <span className="px-2.5 py-1.5 rounded bg-yellow-950/40 border border-yellow-500/30 text-yellow-300 text-xs font-extrabold flex items-center gap-1 font-mono shrink-0">
+                            <Clock className="w-3.5 h-3.5 animate-spin" /> Pending
                           </span>
                         ) : !isCreator && reqStatus === 'rejected' ? (
-                          <span className="px-2.5 py-1.5 rounded bg-red-950/40 border border-red-500/30 text-red-400 text-xs font-extrabold">
-                            Request Denied
+                          <span className="px-2.5 py-1.5 rounded bg-red-950/40 border border-red-500/30 text-red-400 text-xs font-extrabold shrink-0">
+                            Denied
                           </span>
                         ) : !isCreator ? (
                           <button 
                             onClick={() => handleRequestToJoin(squad)}
                             disabled={isFull}
-                            className={`px-3 py-1.5 rounded text-xs font-extrabold transition-all flex items-center gap-1.5 ${
+                            className={`px-3 py-1.5 rounded text-xs font-extrabold transition-all flex items-center gap-1.5 shrink-0 ${
                               isFull 
                                 ? 'bg-gray-800 text-gray-500 border border-gray-700 cursor-not-allowed' 
                                 : 'bg-[#080600] hover:bg-amber-500 border border-amber-500/40 hover:border-amber-400 text-amber-300 hover:text-black shadow-[0_0_10px_rgba(251,191,36,0.1)] cursor-pointer'
@@ -1008,7 +1037,7 @@ export default function FindSquadsPage() {
                             <UserPlus className="w-3.5 h-3.5" /> {isFull ? "Full" : "Request Join"}
                           </button>
                         ) : (
-                          <span className="px-2.5 py-1.5 rounded bg-yellow-950/40 border border-yellow-500/30 text-yellow-300 text-xs font-extrabold flex items-center gap-1">
+                          <span className="px-2.5 py-1.5 rounded bg-yellow-950/40 border border-yellow-500/30 text-yellow-300 text-xs font-extrabold flex items-center gap-1 shrink-0">
                             <CheckCircle2 className="w-3.5 h-3.5" /> Owner
                           </span>
                         )}
@@ -1020,7 +1049,7 @@ export default function FindSquadsPage() {
                         onClick={() => setActiveChatSquad(squad)}
                         className="w-full py-2 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-300 text-xs font-extrabold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-[0_0_10px_rgba(251,191,36,0.15)]"
                       >
-                        <MessageSquare className="w-4 h-4 text-yellow-400" /> Open Squad Chat Room
+                        <MessageSquare className="w-4 h-4 text-yellow-400 shrink-0" /> Open Squad Chat Room
                       </button>
                     )}
                   </div>
@@ -1034,18 +1063,19 @@ export default function FindSquadsPage() {
         {activeMembersSquad && (
           <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm">
             <div className="w-full max-w-xl p-6 rounded-xl bg-[#161004] border border-amber-500/50 shadow-[0_0_30px_rgba(251,191,36,0.2)]">
-              <div className="flex items-center justify-between mb-4 pb-3 border-b border-amber-500/30">
-                <div>
-                  <h3 className="text-lg font-extrabold text-white flex items-center gap-2">
-                    <Users className="w-5 h-5 text-yellow-400" /> {activeMembersSquad.name} Roster
+              <div className="flex items-center justify-between mb-4 pb-3 border-b border-amber-500/30 gap-4">
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-lg font-extrabold text-white flex items-center gap-2 min-w-0">
+                    <Users className="w-5 h-5 text-yellow-400 shrink-0" /> 
+                    <span className="truncate">{activeMembersSquad.name} Roster</span>
                   </h3>
-                  <p className="text-xs font-mono text-amber-200/60">
+                  <p className="text-xs font-mono text-amber-200/60 truncate mt-0.5">
                     Game: {activeMembersSquad.game} | Slots: {activeMembersSquad.current_members}/{activeMembersSquad.max_slots}
                   </p>
                 </div>
                 <button 
                   onClick={() => setActiveMembersSquad(null)}
-                  className="text-amber-400 hover:text-white text-xs font-mono cursor-pointer"
+                  className="text-amber-400 hover:text-white text-xs font-mono cursor-pointer shrink-0"
                 >
                   [CLOSE]
                 </button>
@@ -1068,15 +1098,15 @@ export default function FindSquadsPage() {
                     return (
                       <div 
                         key={idx}
-                        className="flex items-center justify-between p-3 rounded bg-[#080600] border border-amber-500/20"
+                        className="flex items-center justify-between p-3 rounded bg-[#080600] border border-amber-500/20 gap-2"
                       >
-                        <div className="flex items-center gap-2.5 truncate mr-2">
+                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
                           {isLeader ? (
                             <Crown className="w-4 h-4 text-yellow-400 shrink-0 drop-shadow-[0_0_6px_rgba(250,204,21,0.8)]" />
                           ) : (
                             <div className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
                           )}
-                          <div className="truncate">
+                          <div className="min-w-0 flex-1">
                             <p className="text-sm font-bold text-white truncate">
                               @{m.profiles?.username || "operator"}
                             </p>
@@ -1117,18 +1147,19 @@ export default function FindSquadsPage() {
         {activeRequestsSquad && (
           <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm">
             <div className="w-full max-w-md p-6 rounded-xl bg-[#161004] border border-amber-500/50 shadow-[0_0_30px_rgba(251,191,36,0.2)]">
-              <div className="flex items-center justify-between mb-4 pb-3 border-b border-amber-500/30">
-                <div>
-                  <h3 className="text-lg font-extrabold text-white flex items-center gap-2">
-                    <Clock className="w-5 h-5 text-yellow-400" /> Pending Join Requests
+              <div className="flex items-center justify-between mb-4 pb-3 border-b border-amber-500/30 gap-4">
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-lg font-extrabold text-white flex items-center gap-2 min-w-0">
+                    <Clock className="w-5 h-5 text-yellow-400 shrink-0" /> 
+                    <span className="truncate">Pending Requests</span>
                   </h3>
-                  <p className="text-xs font-mono text-amber-200/60">
+                  <p className="text-xs font-mono text-amber-200/60 truncate mt-0.5">
                     {activeRequestsSquad.name} ({activeRequestsSquad.current_members}/{activeRequestsSquad.max_slots} Slots)
                   </p>
                 </div>
                 <button 
                   onClick={() => setActiveRequestsSquad(null)}
-                  className="text-amber-400 hover:text-white text-xs font-mono cursor-pointer"
+                  className="text-amber-400 hover:text-white text-xs font-mono cursor-pointer shrink-0"
                 >
                   [CLOSE]
                 </button>
@@ -1147,18 +1178,18 @@ export default function FindSquadsPage() {
                   {squadRequestsList.map((req) => (
                     <div 
                       key={req.id}
-                      className="flex items-center justify-between p-3 rounded bg-[#080600] border border-amber-500/20"
+                      className="flex items-center justify-between p-3 rounded bg-[#080600] border border-amber-500/20 gap-2"
                     >
-                      <div>
-                        <p className="text-sm font-bold text-white">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-bold text-white truncate">
                           @{req.profiles?.username || "operator"}
                         </p>
-                        <p className="text-[10px] font-mono text-amber-200/50">
+                        <p className="text-[10px] font-mono text-amber-200/50 truncate">
                           {req.profiles?.display_name || "Gamer"}
                         </p>
                       </div>
 
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 shrink-0">
                         <button
                           onClick={() => handleAcceptRequest(req, activeRequestsSquad)}
                           className="p-1.5 rounded bg-emerald-950/80 hover:bg-emerald-600 border border-emerald-500/40 text-emerald-300 hover:text-white transition-all cursor-pointer"
@@ -1185,25 +1216,25 @@ export default function FindSquadsPage() {
         {activeChatSquad && (
           <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4 backdrop-blur-md">
             <div className="w-full max-w-2xl h-[450px] flex flex-col rounded-xl bg-[#140e04] border border-amber-500/50 shadow-[0_0_40px_rgba(251,191,36,0.25)] overflow-hidden">
-              <div className="flex items-center justify-between px-6 py-4 bg-[#1a1205] border-b border-amber-500/30">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-amber-500/20 border border-amber-500/40">
+              <div className="flex items-center justify-between px-6 py-4 bg-[#1a1205] border-b border-amber-500/30 gap-4">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div className="p-2 rounded-lg bg-amber-500/20 border border-amber-500/40 shrink-0">
                     <MessageSquare className="w-5 h-5 text-yellow-400" />
                   </div>
-                  <div>
-                    <h3 className="font-extrabold text-white text-base">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-extrabold text-white text-base truncate">
                       {activeChatSquad.name} // Tactical Chat Room
                     </h3>
-                    <p className="text-xs font-mono text-amber-200/60">
+                    <p className="text-xs font-mono text-amber-200/60 truncate">
                       Game: {activeChatSquad.game} • {activeChatSquad.current_members} Operators Connected
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0">
                   {user && user.id !== activeChatSquad.created_by && (
                     <button 
                       onClick={() => handleLeaveSquad(activeChatSquad)}
-                      className="px-3 py-1.5 rounded bg-red-950/40 hover:bg-red-900/60 border border-red-500/30 text-red-400 text-xs font-mono flex items-center gap-1 transition-colors cursor-pointer"
+                      className="px-3 py-1.5 rounded bg-red-950/40 hover:bg-red-900/60 border border-red-500/30 text-red-400 text-xs font-mono flex items-center gap-1 transition-colors cursor-pointer shrink-0"
                       title="Leave Squad"
                     >
                       <UserMinus className="w-3.5 h-3.5" /> Leave
@@ -1211,7 +1242,7 @@ export default function FindSquadsPage() {
                   )}
                   <button 
                     onClick={() => setActiveChatSquad(null)}
-                    className="p-2 rounded-lg bg-amber-950/50 hover:bg-amber-900 text-amber-300 border border-amber-500/30 cursor-pointer"
+                    className="p-2 rounded-lg bg-amber-950/50 hover:bg-amber-900 text-amber-300 border border-amber-500/30 cursor-pointer shrink-0"
                   >
                     <X className="w-5 h-5" />
                   </button>
@@ -1236,7 +1267,7 @@ export default function FindSquadsPage() {
                           <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-yellow-400 mb-1 font-mono">
                             <Bot className="w-4 h-4 text-yellow-400 animate-bounce" /> ASTEROID CHAT BOT
                           </div>
-                          <p className="text-xs text-amber-200/90 font-mono leading-relaxed">
+                          <p className="text-xs text-amber-200/90 font-mono leading-relaxed break-words">
                             {cleanMessage}
                           </p>
                         </div>
@@ -1262,7 +1293,7 @@ export default function FindSquadsPage() {
                           </span>
                         </div>
 
-                        <div className={`p-3 rounded-xl max-w-md text-sm ${
+                        <div className={`p-3 rounded-xl max-w-md text-sm break-words ${
                           isMe 
                             ? 'bg-amber-500 text-black font-medium shadow-[0_0_15px_rgba(251,191,36,0.2)] rounded-tr-none' 
                             : 'bg-[#1a1205] text-slate-100 border border-amber-500/30 rounded-tl-none'
@@ -1292,7 +1323,7 @@ export default function FindSquadsPage() {
                 />
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-sm transition-all flex items-center gap-2 shadow-[0_0_15px_rgba(251,191,36,0.4)] cursor-pointer"
+                  className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-sm transition-all flex items-center gap-2 shadow-[0_0_15px_rgba(251,191,36,0.4)] cursor-pointer shrink-0"
                 >
                   <Send className="w-4 h-4 text-black" /> Send
                 </button>
