@@ -7,21 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 export async function handleSignupAction(
   formData: FormData
 ): Promise<{ error?: string; success?: boolean }> {
-  // 1. Get client IP address for rate limiting
-  const headersList = await headers();
-  const ip = headersList.get("x-forwarded-for") ?? "127.0.0.1";
-
-  // 2. Check Upstash Rate Limit (5 attempts per 60 seconds)
-  const { success, reset } = await authRatelimit.limit(ip);
-
-  if (!success) {
-    const waitTime = Math.ceil((reset - Date.now()) / 1000);
-    return { 
-      error: `Too many signup attempts. Please try again after ${waitTime} seconds.` 
-    };
-  }
-
-  // 3. Extract form data fields
+  // 1. Extract form data fields first to check validation
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
   const username = formData.get("username") as string;
@@ -33,9 +19,32 @@ export async function handleSignupAction(
     return { error: "You must accept both the Terms & Conditions and Cookies Policy to register." };
   }
 
+  // 2. Server-side password policy validation (>= 10 chars, 1 uppercase, 1 number, 1 special char)
+  const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{10,}$/;
+
+  if (!passwordRegex.test(password)) {
+    return {
+      error: "Password must be at least 10 characters long and contain at least one uppercase letter, one number, and one special character.",
+    };
+  }
+
+  // 3. Get client IP address for rate limiting
+  const headersList = await headers();
+  const ip = headersList.get("x-forwarded-for") ?? "127.0.0.1";
+
+  // 4. Check Upstash Rate Limit (5 attempts per 60 seconds)
+  const { success, reset } = await authRatelimit.limit(ip);
+
+  if (!success) {
+    const waitTime = Math.ceil((reset - Date.now()) / 1000);
+    return { 
+      error: `Too many signup attempts. Please try again after ${waitTime} seconds.` 
+    };
+  }
+
   const supabase = await createClient();
 
-  // 4. Check if Username already exists in the profiles table
+  // 5. Check if Username already exists in the profiles table
   const { data: existingUser, error: usernameCheckError } = await supabase
     .from("profiles")
     .select("username")
@@ -46,7 +55,7 @@ export async function handleSignupAction(
     return { error: "This username is already taken by an authorized user" };
   }
 
-  // 5. Supabase Sign Up
+  // 6. Supabase Sign Up
   const { error } = await supabase.auth.signUp({
     email,
     password,
