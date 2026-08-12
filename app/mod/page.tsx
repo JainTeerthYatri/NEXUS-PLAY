@@ -133,7 +133,7 @@ export default function ModDashboardExtended() {
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   // --- NEW: Test Email & Auth Bypass States ---
-  const [testEmailInput, setTestEmailInput] = useState(`mod-test-${Math.floor(Math.random() * 10000)}@asteroid-test.local`);
+  const [testEmailInput, setTestEmailInput] = useState(`mod-test-${Math.floor(Math.random() * 10000)}@gmail.com`);
   const [testUsernameInput, setTestUsernameInput] = useState(`operator_test_${Math.floor(Math.random() * 1000)}`);
   const [bypassLoading, setBypassLoading] = useState(false);
   const [activeTestSessions, setActiveTestSessions] = useState<{ email: string; token: string; createdAt: string }[]>([]);
