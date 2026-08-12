@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { UserPlus, Mail, Lock, User, AtSign, ArrowRight } from "lucide-react";
+import { UserPlus, Mail, Lock, User, AtSign, ArrowRight, Check, X } from "lucide-react";
 import { handleSignupAction } from "./actions";
 import { createClient } from "@/lib/supabase/client";
 
@@ -20,12 +20,25 @@ export default function SignupPage() {
   const router = useRouter();
   const supabase = createClient();
 
+  // Password validation checks
+  const hasMinLength = password.length >= 10;
+  const hasUppercase = /[A-Z]/.test(password);
+  const hasSpecialChar = /[^A-Za-z0-9]/.test(password);
+  const hasNumber = /[0-9]/.test(password);
+
+  const isPasswordValid = hasMinLength && hasUppercase && hasSpecialChar && hasNumber;
+
   async function handleSignup(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setErrorMsg("");
 
     if (!acceptTerms || !acceptCookies) {
       setErrorMsg("You must accept both the Terms & Conditions and Cookies Policy to register.");
+      return;
+    }
+
+    if (!isPasswordValid) {
+      setErrorMsg("Password does not meet the security requirements.");
       return;
     }
 
@@ -96,7 +109,7 @@ export default function SignupPage() {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="operator_x"
-                className="w-full pl-10 pr-3 py-2.5 sm:py-2 rounded bg-black/40 border border-white/10 text-white text-sm focus:border-fuchsia-500 outline-none transition-colors [&:-webkit-autofill]:!bg-black [&:-webkit-autofill]:!text-white [&:-webkit-autofill]:[-webkit-box-shadow:0_0_0_1000px_#121216_inset]"
+                className="w-full pl-10 pr-3 py-2.5 sm:py-2 rounded bg-black/40 border border-white/10 text-white text-sm focus:border-fuchsia-500 outline-none transition-colors"
               />
             </div>
           </div>
@@ -112,7 +125,7 @@ export default function SignupPage() {
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
                 placeholder="ASTEROID GAMING-CLOUD Operator"
-                className="w-full pl-10 pr-3 py-2.5 sm:py-2 rounded bg-black/40 border border-white/10 text-white text-sm focus:border-fuchsia-500 outline-none transition-colors [&:-webkit-autofill]:!bg-black [&:-webkit-autofill]:!text-white [&:-webkit-autofill]:[-webkit-box-shadow:0_0_0_1000px_#121216_inset]"
+                className="w-full pl-10 pr-3 py-2.5 sm:py-2 rounded bg-black/40 border border-white/10 text-white text-sm focus:border-fuchsia-500 outline-none transition-colors"
               />
             </div>
           </div>
@@ -128,7 +141,7 @@ export default function SignupPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="operator@nexusplay.com"
-                className="w-full pl-10 pr-3 py-2.5 sm:py-2 rounded bg-black/40 border border-white/10 text-white text-sm focus:border-fuchsia-500 outline-none transition-colors [&:-webkit-autofill]:!bg-black [&:-webkit-autofill]:!text-white [&:-webkit-autofill]:[-webkit-box-shadow:0_0_0_1000px_#121216_inset]"
+                className="w-full pl-10 pr-3 py-2.5 sm:py-2 rounded bg-black/40 border border-white/10 text-white text-sm focus:border-fuchsia-500 outline-none transition-colors"
               />
             </div>
           </div>
@@ -144,8 +157,24 @@ export default function SignupPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full pl-10 pr-3 py-2.5 sm:py-2 rounded bg-black/40 border border-white/10 text-white text-sm focus:border-fuchsia-500 outline-none transition-colors [&:-webkit-autofill]:!bg-black [&:-webkit-autofill]:!text-white [&:-webkit-autofill]:[-webkit-box-shadow:0_0_0_1000px_#121216_inset]"
+                className="w-full pl-10 pr-3 py-2.5 sm:py-2 rounded bg-black/40 border border-white/10 text-white text-sm focus:border-fuchsia-500 outline-none transition-colors"
               />
+            </div>
+            
+            {/* Password Requirement Indicators */}
+            <div className="mt-2 grid grid-cols-2 gap-1 text-[11px] font-mono">
+              <div className={`flex items-center gap-1 ${hasMinLength ? "text-emerald-400" : "text-slate-500"}`}>
+                {hasMinLength ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />} 10+ characters
+              </div>
+              <div className={`flex items-center gap-1 ${hasUppercase ? "text-emerald-400" : "text-slate-500"}`}>
+                {hasUppercase ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />} One uppercase letter
+              </div>
+              <div className={`flex items-center gap-1 ${hasNumber ? "text-emerald-400" : "text-slate-500"}`}>
+                {hasNumber ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />} One number
+              </div>
+              <div className={`flex items-center gap-1 ${hasSpecialChar ? "text-emerald-400" : "text-slate-500"}`}>
+                {hasSpecialChar ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />} One special char
+              </div>
             </div>
           </div>
 
@@ -180,7 +209,7 @@ export default function SignupPage() {
 
           <button 
             type="submit"
-            disabled={loading || !acceptTerms || !acceptCookies}
+            disabled={loading || !acceptTerms || !acceptCookies || !isPasswordValid}
             className="w-full py-3 sm:py-2.5 rounded bg-fuchsia-600 hover:bg-fuchsia-500 text-white font-bold text-sm transition-colors flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(217,70,239,0.3)] disabled:opacity-50 disabled:cursor-not-allowed mt-4 cursor-pointer"
           >
             <span>{loading ? "Registering..." : "Register Profile"}</span>
