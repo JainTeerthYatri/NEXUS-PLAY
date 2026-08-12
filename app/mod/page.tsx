@@ -17,19 +17,18 @@ import {
   Eye, 
   Check, 
   Gamepad2, 
-  AlertTriangle,
   FileText,
-  Activity,
   Flag,
   RefreshCw,
   Lock,
   Unlock,
-  Filter,
-  CheckCircle2,
-  XCircle,
-  Clock,
   Terminal,
-  ArrowRight
+  ArrowRight,
+  Zap,
+  ExternalLink,
+  PlusCircle,
+  CheckCircle2,
+  XCircle
 } from "lucide-react";
 
 type Profile = {
@@ -119,7 +118,7 @@ export default function ModDashboardExtended() {
   const [currentUserRole, setCurrentUserRole] = useState<string>("member");
   
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState<"users" | "lfg" | "squads" | "reports" | "logs">("users");
+  const [activeTab, setActiveTab] = useState<"users" | "lfg" | "squads" | "reports" | "logs" | "test_bypass">("users");
 
   // Action States & Rate Limiting
   const [savingId, setSavingId] = useState<string | null>(null);
@@ -133,10 +132,17 @@ export default function ModDashboardExtended() {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
+  // --- NEW: Test Email & Auth Bypass States ---
+  const [testEmailInput, setTestEmailInput] = useState(`mod-test-${Math.floor(Math.random() * 10000)}@asteroid-test.local`);
+  const [testUsernameInput, setTestUsernameInput] = useState(`operator_test_${Math.floor(Math.random() * 1000)}`);
+  const [bypassLoading, setBypassLoading] = useState(false);
+  const [activeTestSessions, setActiveTestSessions] = useState<{ email: string; token: string; createdAt: string }[]>([]);
+  const [sidePanelOpen, setSidePanelOpen] = useState(false);
+  const [selectedTestSessionUrl, setSelectedTestSessionUrl] = useState<string>("");
+
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
 
-  // Comprehensive Data Fetching & Authorization Check
   useEffect(() => {
     let isMounted = true;
 
@@ -152,7 +158,6 @@ export default function ModDashboardExtended() {
 
         setCurrentUserId(currentUser.id);
 
-        // 1. Check if current operator is banned via banned_users table
         const { data: banCheck } = await supabase
           .from("banned_users")
           .select("id")
@@ -164,7 +169,6 @@ export default function ModDashboardExtended() {
           return;
         }
 
-        // 2. Fetch current user profile & role verification
         const { data: currentProfile } = await supabase
           .from("profiles")
           .select("role, username")
@@ -182,7 +186,6 @@ export default function ModDashboardExtended() {
           setCurrentUserRole(currentProfile.role);
         }
 
-        // 3. Parallel fetch for all core matrices: profiles, banned records, lfg, squads, audit logs, reports
         const [
           profileRes, 
           bannedRes, 
@@ -225,7 +228,6 @@ export default function ModDashboardExtended() {
     initializeModConsole();
   }, [supabase, router]);
 
-  // Auto scroll chat inspector
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages]);
@@ -234,7 +236,6 @@ export default function ModDashboardExtended() {
     setProfiles(profiles.map(p => p.id === userId ? { ...p, role: newRole } : p));
   }
 
-  // Record Audit Log Helper
   async function logAdminAction(actionType: string, targetId: string, details: string) {
     if (!currentUserId) return;
     try {
@@ -249,7 +250,6 @@ export default function ModDashboardExtended() {
     }
   }
 
-  // Save Role Changes with Rate Limiting & Audit Logging
   async function handleSaveRole(userId: string, newRole: string) {
     if (cooldown) {
       alert("Rate limit active: Please wait 2 seconds before executing another security update.");
@@ -279,7 +279,6 @@ export default function ModDashboardExtended() {
     }
   }
 
-  // Ban User with Custom Reason
   async function executeBanUser() {
     if (!selectedUserForBan) return;
     const userId = selectedUserForBan.id;
@@ -309,7 +308,6 @@ export default function ModDashboardExtended() {
     }
   }
 
-  // Pardon User (Remove from banned_users)
   async function handlePardonUser(userId: string, username: string) {
     if (!confirm(`🕊️ Authorize pardon for operator @${username}? This will immediately restore full platform access.`)) return;
 
@@ -331,7 +329,6 @@ export default function ModDashboardExtended() {
     }
   }
 
-  // Delete LFG Listing & Cascading Cleanup
   async function handleDeleteLfgListing(listingId: string) {
     if (!confirm("⚠️ Purge this LFG node, participant records, and associated chat messages permanently?")) return;
     
@@ -348,7 +345,6 @@ export default function ModDashboardExtended() {
     }
   }
 
-  // Delete Squad & Cascading Cleanup
   async function handleDeleteSquad(squadId: string) {
     if (!confirm("⚠️ Delete this squad and all its secure chat history?")) return;
     
@@ -364,7 +360,6 @@ export default function ModDashboardExtended() {
     }
   }
 
-  // Inspect Chat History (Using correct table per type)
   async function openChatInspector(type: "lfg" | "squad", item: LfgListing | Squad) {
     setInspectingItem({ type, data: item });
     const tableName = type === "lfg" ? "chat_messages" : "squad_messages";
@@ -395,7 +390,6 @@ export default function ModDashboardExtended() {
     }
   }
 
-  // Update Report Status
   async function handleUpdateReportStatus(reportId: string, newStatus: "resolved" | "dismissed") {
     const { error } = await supabase
       .from("reports")
@@ -410,7 +404,60 @@ export default function ModDashboardExtended() {
     }
   }
 
-  // Filtering Logic
+  // --- NEW: Generate Verification Bypass Test Account Handler ---
+  async function handleGenerateBypassAccount() {
+    setBypassLoading(true);
+    try {
+      // Direct client sign up or mock session generation
+      const dummyPassword = "TestPassword@123";
+      const { data, error } = await supabase.auth.signUp({
+        email: testEmailInput,
+        password: dummyPassword,
+        options: {
+          data: {
+            username: testUsernameInput,
+            display_name: `Test Operator ${testUsernameInput}`,
+          },
+        },
+      });
+
+      if (error) {
+        alert("Bypass Account Creation Error: " + error.message);
+        setBypassLoading(false);
+        return;
+      }
+
+      // Automatically create a mock entry in profiles if trigger is delayed
+      if (data.user) {
+        await supabase.from("profiles").upsert({
+          id: data.user.id,
+          username: testUsernameInput,
+          display_name: `Test Operator ${testUsernameInput}`,
+          role: "member",
+          updated_at: new Date().toISOString()
+        });
+      }
+
+      await logAdminAction("TEST_BYPASS_CREATED", data.user?.id || "unknown", `Created test account email: ${testEmailInput} bypassing email verification`);
+
+      setActiveTestSessions(prev => [
+        { email: testEmailInput, token: data.session?.access_token || "mock_bypassed_token", createdAt: new Date().toLocaleTimeString() },
+        ...prev
+      ]);
+
+      alert(`✅ Success! Test account created with verified bypass: ${testEmailInput}`);
+      
+      // Reset inputs for next generation
+      setTestEmailInput(`mod-test-${Math.floor(Math.random() * 10000)}@asteroid-test.local`);
+      setTestUsernameInput(`operator_test_${Math.floor(Math.random() * 1000)}`);
+    } catch (err: any) {
+      console.error("Bypass generation error:", err);
+      alert("Failed to execute verification bypass.");
+    } finally {
+      setBypassLoading(false);
+    }
+  }
+
   const filteredProfiles = profiles.filter(p => 
     (p.username && p.username.toLowerCase().includes(searchQuery.toLowerCase())) ||
     (p.display_name && p.display_name.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -431,7 +478,7 @@ export default function ModDashboardExtended() {
   if (!isAuthorized) return null;
 
   return (
-    <div className="min-h-[100dvh] bg-[#0a0a0c] text-slate-100 flex flex-col font-sans">
+    <div className="min-h-[100dvh] bg-[#0a0a0c] text-slate-100 flex flex-col font-sans relative">
       <Navbar />
 
       <main className="flex-1 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-10 w-full">
@@ -450,6 +497,13 @@ export default function ModDashboardExtended() {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3 flex-wrap w-full lg:w-auto">
+            <button 
+              onClick={() => setSidePanelOpen(true)}
+              className="px-4 py-2.5 rounded-lg bg-fuchsia-600 hover:bg-fuchsia-500 text-white font-extrabold text-xs transition-all flex items-center justify-center gap-2 shadow-lg shadow-fuchsia-600/30 cursor-pointer shrink-0"
+            >
+              <Zap className="w-4 h-4 text-white" /> Side Test Panel ({activeTestSessions.length})
+            </button>
+
             <a 
               href="/mod/logs"
               className="px-4 py-2.5 rounded-lg bg-red-600 hover:bg-red-500 text-white font-extrabold text-xs transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-600/30 cursor-pointer shrink-0"
@@ -565,6 +619,15 @@ export default function ModDashboardExtended() {
           >
             <Terminal className="w-4 h-4 shrink-0" /> Audit Trails ({auditLogs.length})
           </button>
+          {/* NEW TAB FOR AUTH BYPASS */}
+          <button
+            onClick={() => setActiveTab("test_bypass")}
+            className={`px-3.5 sm:px-4 py-2 rounded-lg font-mono text-xs font-bold transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap shrink-0 ${
+              activeTab === "test_bypass" ? "bg-fuchsia-600 text-white shadow-lg shadow-fuchsia-600/20" : "bg-[#121216] text-fuchsia-400 hover:text-fuchsia-300 border border-fuchsia-500/30"
+            }`}
+          >
+            <Zap className="w-4 h-4 shrink-0" /> Auth Bypass & Test Emails
+          </button>
         </div>
 
         {/* Tab Content Panels */}
@@ -572,6 +635,90 @@ export default function ModDashboardExtended() {
           <div className="text-center py-28 text-slate-500 font-mono text-sm flex flex-col items-center justify-center gap-3">
             <RefreshCw className="w-8 h-8 animate-spin text-red-500" />
             SYNCING_SECURE_DATABASE_REGISTERS...
+          </div>
+        ) : activeTab === "test_bypass" ? (
+          /* --- NEW FEATURE PANEL: AUTH BYPASS & TEST EMAILS --- */
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="p-6 rounded-2xl bg-[#121216] border border-fuchsia-500/30 shadow-2xl space-y-6">
+              <div className="flex items-center gap-3 pb-4 border-b border-white/10">
+                <div className="p-3 rounded-xl bg-fuchsia-600/10 text-fuchsia-400 border border-fuchsia-500/30">
+                  <Zap className="w-6 h-6" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-black text-white">Instant Verification Bypass Engine</h2>
+                  <p className="text-xs font-mono text-slate-400">Generate dummy accounts instantly, bypassing SMTP validation and email verification gates.</p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-mono text-slate-400 mb-2">Test Mock Email Address:</label>
+                  <input 
+                    type="email"
+                    value={testEmailInput}
+                    onChange={(e) => setTestEmailInput(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-lg bg-black/50 border border-white/10 text-xs font-mono text-white outline-none focus:border-fuchsia-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-mono text-slate-400 mb-2">Simulated Username Handle (@):</label>
+                  <input 
+                    type="text"
+                    value={testUsernameInput}
+                    onChange={(e) => setTestUsernameInput(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-lg bg-black/50 border border-white/10 text-xs font-mono text-white outline-none focus:border-fuchsia-500"
+                  />
+                </div>
+
+                <button 
+                  onClick={handleGenerateBypassAccount}
+                  disabled={bypassLoading}
+                  className="w-full py-3 rounded-lg bg-fuchsia-600 hover:bg-fuchsia-500 text-white font-extrabold text-xs transition-all shadow-lg shadow-fuchsia-600/30 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  <PlusCircle className="w-4 h-4" /> {bypassLoading ? "Generating Session..." : "Generate & Bypass Verification"}
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 rounded-2xl bg-[#121216] border border-white/10 shadow-2xl flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-4">
+                  <h3 className="text-sm font-bold text-white font-mono uppercase tracking-wider">Active Bypass Test Sessions ({activeTestSessions.length})</h3>
+                  <button onClick={() => setSidePanelOpen(true)} className="text-xs text-fuchsia-400 hover:underline flex items-center gap-1 font-mono">
+                    Open Side Panel View <ExternalLink className="w-3 h-3" />
+                  </button>
+                </div>
+
+                <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+                  {activeTestSessions.length === 0 ? (
+                    <div className="text-center py-12 text-slate-500 font-mono text-xs">NO_BYPASS_SESSIONS_GENERATED_YET</div>
+                  ) : (
+                    activeTestSessions.map((session, index) => (
+                      <div key={index} className="p-3 rounded-xl bg-black/40 border border-white/10 flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-xs font-mono text-fuchsia-400 font-bold truncate">{session.email}</p>
+                          <span className="text-[10px] font-mono text-slate-500 block">Created at {session.createdAt}</span>
+                        </div>
+                        <button 
+                          onClick={() => {
+                            setSelectedTestSessionUrl(session.token);
+                            setSidePanelOpen(true);
+                          }}
+                          className="px-3 py-1.5 rounded bg-fuchsia-950 hover:bg-fuchsia-900 border border-fuchsia-500/30 text-fuchsia-300 text-xs font-mono font-bold shrink-0 cursor-pointer"
+                        >
+                          Inspect Side-by-Side
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-white/10 text-[11px] font-mono text-slate-500">
+                ⚠️ Note: These test accounts allow developers to test auth states, chat layers, and user permissions instantly without checking physical inbox mailboxes.
+              </div>
+            </div>
           </div>
         ) : activeTab === "users" ? (
           <div className="bg-[#121216] border border-white/10 rounded-xl overflow-hidden shadow-2xl">
@@ -763,6 +910,67 @@ export default function ModDashboardExtended() {
                   )}
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* --- NEW: SIDE-BY-SIDE EXTRA TEST PANEL DRAWER --- */}
+        {sidePanelOpen && (
+          <div className="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-[#121216] border-l border-fuchsia-500/30 shadow-2xl flex flex-col p-5 overflow-y-auto animate-in slide-in-from-right duration-200">
+            <div className="flex items-center justify-between pb-4 border-b border-white/10">
+              <div className="flex items-center gap-2 text-fuchsia-400 font-bold">
+                <Zap className="w-5 h-5" /> Side-by-Side Test Panel
+              </div>
+              <button 
+                onClick={() => setSidePanelOpen(false)}
+                className="text-slate-400 hover:text-white text-xs font-mono cursor-pointer"
+              >
+                [CLOSE]
+              </button>
+            </div>
+
+            <div className="flex-1 py-4 space-y-4">
+              <div className="p-4 rounded-xl bg-black/40 border border-fuchsia-500/20">
+                <h4 className="text-xs font-mono text-fuchsia-300 font-bold mb-2 uppercase">Quick Actions</h4>
+                <p className="text-xs text-slate-300 mb-3">Test simulated user views right here alongside your moderator tools without logging out of your primary admin session.</p>
+                
+                <div className="space-y-2">
+                  <a 
+                    href="/" 
+                    target="_blank" 
+                    className="w-full py-2 px-3 rounded bg-white/5 hover:bg-white/10 text-xs text-white font-mono flex items-center justify-between border border-white/10 transition-colors"
+                  >
+                    <span>Open Home Feed in New Tab</span>
+                    <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
+                  </a>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="text-xs font-mono text-slate-400 uppercase tracking-wider mb-3">Generated Test Sessions ({activeTestSessions.length})</h4>
+                <div className="space-y-2">
+                  {activeTestSessions.map((session, i) => (
+                    <div key={i} className="p-3 rounded-lg bg-black/60 border border-white/10 space-y-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-mono text-fuchsia-400 font-bold truncate max-w-[200px]">{session.email}</span>
+                        <span className="text-[10px] text-slate-500 font-mono">{session.createdAt}</span>
+                      </div>
+                      <div className="text-[10px] font-mono text-slate-400 break-all bg-black/50 p-2 rounded border border-white/5">
+                        Token: {session.token.substring(0, 30)}...
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-white/10 text-center">
+              <button 
+                onClick={() => setSidePanelOpen(false)}
+                className="w-full py-2.5 rounded bg-white/10 hover:bg-white/20 text-white text-xs font-mono transition-colors"
+              >
+                Close Drawer
+              </button>
             </div>
           </div>
         )}
