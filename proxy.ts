@@ -1,10 +1,15 @@
-import { type NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
+import { type NextRequest, NextResponse } from "next/server";
+import { createServerClient } from "@supabase/ssr";
 
 export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
-  })
+  });
+
+  // 1. Establish baseline security headers (Technical Safeguards)
+  supabaseResponse.headers.set("X-Content-Type-Options", "nosniff");
+  supabaseResponse.headers.set("X-Frame-Options", "DENY");
+  supabaseResponse.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -12,72 +17,84 @@ export async function proxy(request: NextRequest) {
     {
       cookies: {
         getAll() {
-          return request.cookies.getAll()
+          return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
           supabaseResponse = NextResponse.next({
             request,
-          })
+          });
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
-          )
+          );
         },
       },
     }
-  )
+  );
 
-  // Get current user session
-  const { data: { user } } = await supabase.auth.getUser()
+  // 2. Retrieve authenticated session securely
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  const url = request.nextUrl.clone()
-  const pathname = url.pathname
+  const url = request.nextUrl.clone();
+  const pathname = url.pathname;
 
-  // 1. Check if user is logged in and query the `banned_users` table
+  // 3. Check suspension status in banned_users table safely
   if (user) {
-    const { data: banCheck } = await supabase
-      .from("banned_users")
-      .select("id")
-      .eq("user_id", user.id)
-      .single()
+    try {
+      const { data: banCheck } = await supabase
+        .from("banned_users")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
 
-    // Agar user banned_users table mein mil jata hai
-    if (banCheck) {
-      // Agar wo /banned page par nahi hai, toh use seedha /banned par redirect karo
-      if (pathname !== "/banned") {
-        url.pathname = "/banned"
-        return NextResponse.redirect(url)
+      if (banCheck) {
+        if (pathname !== "/banned") {
+          url.pathname = "/banned";
+          return NextResponse.redirect(url);
+        }
+      } else {
+        if (pathname === "/banned") {
+          url.pathname = "/dashboard";
+          return NextResponse.redirect(url);
+        }
       }
-    } else {
-      // Agar user banned nahi hai, lekin galti se /banned page khol raha hai, toh use dashboard/home bhej do
-      if (pathname === "/banned") {
-        url.pathname = "/dashboard"
-        return NextResponse.redirect(url)
-      }
+    } catch (err) {
+      console.error("Session verification error:", err);
     }
   }
 
-  // List of routes jo sirf authenticated users ke liye khulne chahiye
-  const protectedRoutes = ['/dashboard', '/studio', '/mod', '/squads/create', '/lfg/create']
-  const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route))
+  // 4. Comprehensive list of protected routes
+  const protectedRoutes = [
+    "/dashboard",
+    "/settings",
+    "/studio",
+    "/mod",
+    "/mod/logs",
+    "/squads/create",
+    "/lfg/create",
+    "/clips/upload",
+  ];
+  const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route));
 
-  // Agar user logged in nahi hai aur protected route par ja raha hai -> /auth/signup par bhej do
+  // If unauthorized visitor requests a protected route -> redirect to signup
   if (isProtectedRoute && !user) {
-    url.pathname = '/auth/signup'
-    return NextResponse.redirect(url)
+    url.pathname = "/auth/signup";
+    return NextResponse.redirect(url);
   }
 
-  // Agar user pehle se logged in hai aur /auth/login ya /auth/signup kholne ki koshish kare -> dashboard par bhej do
-  if ((pathname.startsWith('/auth/login') || pathname.startsWith('/auth/signup')) && user) {
-    url.pathname = '/dashboard'
-    return NextResponse.redirect(url)
+  // If logged-in user navigates to auth pages -> redirect to dashboard
+  if ((pathname.startsWith("/auth/login") || pathname.startsWith("/auth/signup")) && user) {
+    url.pathname = "/dashboard";
+    return NextResponse.redirect(url);
   }
 
-  return supabaseResponse
+  return supabaseResponse;
 }
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
-}
+};
