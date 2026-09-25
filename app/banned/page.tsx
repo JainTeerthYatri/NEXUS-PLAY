@@ -20,7 +20,7 @@ export default function BannedPage() {
           moderator_id: user.id,
           action_type: "SESSION_DISCONNECT_BANNED",
           target_id: user.id,
-          details: `Banned user ${user.email || user.id} disconnected their session from the ban page.`[cite: 7]
+          details: `Banned user ${user.email || user.id} disconnected their session from the ban page.`,
         });
       }
     } catch (err) {
