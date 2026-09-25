@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { UserPlus, Mail, Lock, User, AtSign, ArrowRight, Check, X } from "lucide-react";
+import { UserPlus, Mail, Lock, User, AtSign, ArrowRight, Check, X, ShieldAlert } from "lucide-react";
 import { handleSignupAction } from "./actions";
 import { createClient } from "@/lib/supabase/client";
 
@@ -13,6 +13,7 @@ export default function SignupPage() {
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [acceptTerms, setAcceptTerms] = useState(false);
+  const [isAgeConfirmed, setIsAgeConfirmed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   
@@ -31,19 +32,45 @@ export default function SignupPage() {
     e.preventDefault();
     setErrorMsg("");
 
+    const cleanUsername = username.trim().toLowerCase();
+    const cleanDisplayName = displayName.trim();
+    const cleanEmail = email.trim();
+
+    if (!cleanUsername || cleanUsername.length < 3 || cleanUsername.length > 25) {
+      setErrorMsg("Username must be between 3 and 25 characters.");
+      return;
+    }
+
+    if (!/^[a-zA-Z0-9_]+$/.test(cleanUsername)) {
+      setErrorMsg("Username may only contain letters, numbers, and underscores.");
+      return;
+    }
+
+    if (!isAgeConfirmed) {
+      setErrorMsg("You must confirm you are at least 18 years old or operating under verifiable parental/guardian consent.");
+      return;
+    }
+
     if (!acceptTerms) {
-      setErrorMsg("Kripya platform par aage badhne ke liye Terms & Conditions accept karein.");
+      setErrorMsg("Please accept the Terms & Conditions and Privacy Policy to proceed.");
       return;
     }
 
     if (!isPasswordValid) {
-      setErrorMsg("Password security requirements poori nahi karta.");
+      setErrorMsg("Password does not satisfy the specified security requirements.");
       return;
     }
 
     setLoading(true);
 
-    const formData = new FormData(e.currentTarget);
+    const formData = new FormData();
+    formData.set("username", cleanUsername);
+    formData.set("displayName", cleanDisplayName || cleanUsername);
+    formData.set("email", cleanEmail);
+    formData.set("password", password);
+    formData.set("acceptTerms", "on");
+    formData.set("isAgeConfirmed", "on");
+
     const result = (await handleSignupAction(formData)) as { error?: string; success?: boolean };
 
     if (result?.error) {
@@ -63,7 +90,7 @@ export default function SignupPage() {
             moderator_id: user.id,
             action_type: "USER_SIGNUP",
             target_id: user.id,
-            details: `New operator profile created for user ${user.email} (Username: ${username}).`
+            details: `New operator profile created for user ${user.email} (Username: ${cleanUsername}, Age Verified: True).`
           });
         }
       } catch (err) {
@@ -139,7 +166,7 @@ export default function SignupPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="operator@nexusplay.com"
+                placeholder="operator@asteroid-gaming.com"
                 className="w-full pl-10 pr-3 py-2.5 sm:py-2 rounded bg-black/40 border border-white/10 text-white text-sm focus:border-fuchsia-500 outline-none transition-colors"
               />
             </div>
@@ -177,8 +204,24 @@ export default function SignupPage() {
             </div>
           </div>
 
-          {/* Unified Terms & Essential Session Consent */}
+          {/* Age Verification Declaration (Section 9) */}
           <div className="pt-2">
+            <label className="flex items-start gap-2.5 cursor-pointer text-xs text-slate-300">
+              <input 
+                type="checkbox"
+                name="isAgeConfirmed"
+                checked={isAgeConfirmed}
+                onChange={(e) => setIsAgeConfirmed(e.target.checked)}
+                className="mt-0.5 rounded border-white/20 bg-black/50 text-fuchsia-600 focus:ring-0 cursor-pointer shrink-0"
+              />
+              <span>
+                I confirm that I am at least 18 years of age, or possess verifiable parental/guardian authorization to access this platform. <span className="text-fuchsia-500">*</span>
+              </span>
+            </label>
+          </div>
+
+          {/* Unified Terms & Essential Session Consent */}
+          <div>
             <label className="flex items-start gap-2.5 cursor-pointer text-xs text-slate-300">
               <input 
                 type="checkbox"
@@ -203,7 +246,7 @@ export default function SignupPage() {
 
           <button 
             type="submit"
-            disabled={loading || !acceptTerms || !isPasswordValid}
+            disabled={loading || !acceptTerms || !isAgeConfirmed || !isPasswordValid}
             className="w-full py-3 sm:py-2.5 rounded bg-fuchsia-600 hover:bg-fuchsia-500 text-white font-bold text-sm transition-colors flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(217,70,239,0.3)] disabled:opacity-50 disabled:cursor-not-allowed mt-4 cursor-pointer"
           >
             <span>{loading ? "Registering..." : "Register Profile"}</span>
