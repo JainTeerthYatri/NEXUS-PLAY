@@ -13,7 +13,6 @@ export default function SignupPage() {
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [acceptTerms, setAcceptTerms] = useState(false);
-  const [acceptCookies, setAcceptCookies] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   
@@ -32,13 +31,13 @@ export default function SignupPage() {
     e.preventDefault();
     setErrorMsg("");
 
-    if (!acceptTerms || !acceptCookies) {
-      setErrorMsg("You must accept both the Terms & Conditions and Cookies Policy to register.");
+    if (!acceptTerms) {
+      setErrorMsg("Kripya platform par aage badhne ke liye Terms & Conditions accept karein.");
       return;
     }
 
     if (!isPasswordValid) {
-      setErrorMsg("Password does not meet the security requirements.");
+      setErrorMsg("Password security requirements poori nahi karta.");
       return;
     }
 
@@ -178,8 +177,8 @@ export default function SignupPage() {
             </div>
           </div>
 
-          {/* Terms & Conditions and Cookies Checkboxes */}
-          <div className="space-y-3 pt-2">
+          {/* Unified Terms & Essential Session Consent */}
+          <div className="pt-2">
             <label className="flex items-start gap-2.5 cursor-pointer text-xs text-slate-300">
               <input 
                 type="checkbox"
@@ -189,27 +188,22 @@ export default function SignupPage() {
                 className="mt-0.5 rounded border-white/20 bg-black/50 text-fuchsia-600 focus:ring-0 cursor-pointer shrink-0"
               />
               <span>
-                I agree to the <Link href="/terms" target="_blank" className="text-fuchsia-400 underline hover:text-fuchsia-300">Terms & Conditions</Link> and platform rules. <span className="text-fuchsia-500">*</span>
-              </span>
-            </label>
-
-            <label className="flex items-start gap-2.5 cursor-pointer text-xs text-slate-300">
-              <input 
-                type="checkbox"
-                name="acceptCookies"
-                checked={acceptCookies}
-                onChange={(e) => setAcceptCookies(e.target.checked)}
-                className="mt-0.5 rounded border-white/20 bg-black/50 text-fuchsia-600 focus:ring-0 cursor-pointer shrink-0"
-              />
-              <span>
-                I accept the use of <Link href="/cookies" target="_blank" className="text-fuchsia-400 underline hover:text-fuchsia-300">Cookies & Privacy Policy</Link> for session tracking. <span className="text-fuchsia-500">*</span>
+                I agree to the{" "}
+                <Link href="/terms" target="_blank" className="text-fuchsia-400 underline hover:text-fuchsia-300">
+                  Terms & Conditions
+                </Link>{" "}
+                and acknowledge essential session storage under the{" "}
+                <Link href="/privacy" target="_blank" className="text-fuchsia-400 underline hover:text-fuchsia-300">
+                  Privacy Policy
+                </Link>
+                . <span className="text-fuchsia-500">*</span>
               </span>
             </label>
           </div>
 
           <button 
             type="submit"
-            disabled={loading || !acceptTerms || !acceptCookies || !isPasswordValid}
+            disabled={loading || !acceptTerms || !isPasswordValid}
             className="w-full py-3 sm:py-2.5 rounded bg-fuchsia-600 hover:bg-fuchsia-500 text-white font-bold text-sm transition-colors flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(217,70,239,0.3)] disabled:opacity-50 disabled:cursor-not-allowed mt-4 cursor-pointer"
           >
             <span>{loading ? "Registering..." : "Register Profile"}</span>

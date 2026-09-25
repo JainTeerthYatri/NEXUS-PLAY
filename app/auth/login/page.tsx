@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Mail, Lock, ArrowRight, ShieldCheck, Zap, AlertCircle } from "lucide-react";
+import { Mail, Lock, ArrowRight, ShieldCheck, AlertCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
@@ -12,58 +12,53 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [step, setStep] = useState<"email_check" | "password_prompt">("email_check");
-  const [isTestAccount, setIsTestAccount] = useState(false);
 
   const router = useRouter();
   const supabase = createClient();
 
-  // Step 1: Check Email existence and whether it's a test or regular account
- async function handleCheckEmail(e: React.FormEvent) {
-  e.preventDefault();
-  setErrorMsg("");
+  // Step 1: Format validation and move to password input
+  async function handleCheckEmail(e: React.FormEvent) {
+    e.preventDefault();
+    setErrorMsg("");
 
-  const trimmedEmail = email.trim();
+    const trimmedEmail = email.trim();
 
-  // Basic email format validation
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!trimmedEmail || !emailRegex.test(trimmedEmail)) {
-    setErrorMsg("Kripya ek valid email address enter karein.");
-    return;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!trimmedEmail || !emailRegex.test(trimmedEmail)) {
+      setErrorMsg("Kripya ek valid email address enter karein.");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      setStep("password_prompt");
+    } catch (err: any) {
+      setErrorMsg("Account verify karne me dikkat aayi. Kripya dobara koshish karein.");
+    } finally {
+      setLoading(false);
+    }
   }
-
-  setLoading(true);
-
-  try {
-    // Sabhi users ke liye safe tareeqe se password prompt step par move karein
-    setStep("password_prompt");
-  } catch (err: any) {
-    setErrorMsg("Account verify karne me dikkat aayi. Kripya dobara koshish karein.");
-  } finally {
-    setLoading(false);
-  }
-}
 
   // Step 2: Final Login Execution
-  async function executeLogin(loginEmail: string, loginPass: string, bypass: boolean = false) {
+  async function executeLogin(loginEmail: string, loginPass: string) {
     setLoading(true);
     setErrorMsg("");
 
     const { error } = await supabase.auth.signInWithPassword({
-      email: loginEmail,
+      email: loginEmail.trim(),
       password: loginPass,
     });
 
     if (error) {
-      // If account doesn't exist or wrong credentials
       if (error.message.toLowerCase().includes("invalid login credentials")) {
-        setErrorMsg("Account not found or incorrect credentials. Firstly create your account within the registration page.");
+        setErrorMsg("Email ya password galat hai. Kripya details check karein ya naya account register karein.");
       } else {
         setErrorMsg(error.message);
       }
       setLoading(false);
-      setStep("email_check"); // Reset back to email check
+      setStep("email_check");
     } else {
-      // Success: Redirect to home grid
       router.push("/");
       router.refresh();
     }
@@ -71,7 +66,7 @@ export default function LoginPage() {
 
   async function handlePasswordLogin(e: React.FormEvent) {
     e.preventDefault();
-    await executeLogin(email, password, false);
+    await executeLogin(email, password);
   }
 
   return (
@@ -106,13 +101,10 @@ export default function LoginPage() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="operator@nexusplay.com or test email"
+                  placeholder="operator@nexusplay.com"
                   className="w-full pl-10 pr-3 py-2.5 sm:py-2 rounded bg-black/40 border border-white/10 text-white text-sm focus:border-fuchsia-500 outline-none transition-colors"
                 />
               </div>
-              <p className="text-[10px] font-mono text-slate-500 mt-1.5">
-                💡 Tip: Entering a test email (containing 'test') will instantly bypass password verification.
-              </p>
             </div>
 
             <button 
@@ -131,7 +123,7 @@ export default function LoginPage() {
               <button 
                 type="button" 
                 onClick={() => { setStep("email_check"); setPassword(""); }} 
-                className="text-slate-500 hover:text-white underline"
+                className="text-slate-500 hover:text-white underline cursor-pointer"
               >
                 Change
               </button>
