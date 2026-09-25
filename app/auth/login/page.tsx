@@ -18,53 +18,30 @@ export default function LoginPage() {
   const supabase = createClient();
 
   // Step 1: Check Email existence and whether it's a test or regular account
-  async function handleCheckEmail(e: React.FormEvent) {
-    e.preventDefault();
-    setErrorMsg("");
+ async function handleCheckEmail(e: React.FormEvent) {
+  e.preventDefault();
+  setErrorMsg("");
 
-    if (!email) {
-      setErrorMsg("Please enter your email address.");
-      return;
-    }
+  const trimmedEmail = email.trim();
 
-    setLoading(true);
-
-    try {
-      // Check if profile/user exists in the database
-      const { data: profile, error } = await supabase
-        .from("profiles")
-        .select("id, username")
-        .eq("id", (
-          await supabase.from("profiles").select("id").eq("username", email).maybeSingle()
-        ).data?.id || "") // fallback check
-        .maybeSingle();
-
-      // Alternatively, check via profiles using email if stored, or search auth simulation
-      // Let's check via profiles table or check if email format matches test pattern
-      const isTest = email.includes("test") || email.endsWith("@asteroid-test.local") || email.includes("mod-test");
-      setIsTestAccount(isTest);
-
-      // Simple check: Does user exist in Supabase profiles? 
-      // Note: Since profiles table maps with auth.users id, let's query profiles or try a lightweight check.
-      const { data: existingProfile } = await supabase
-        .from("profiles")
-        .select("id")
-        .limit(1); // placeholder check or direct sign-in pre-check
-
-      // Let's verify if the email exists by attempting a lookup or checking if it's a test account
-      if (isTest) {
-        // AUTO-LOGIN FOR TEST ACCOUNT (Bypasses password prompt completely!)
-        await executeLogin(email, "TestPassword@123", true);
-      } else {
-        // Regular account: Move to password prompt step
-        setStep("password_prompt");
-        setLoading(false);
-      }
-    } catch (err: any) {
-      setErrorMsg("Error verifying account status.");
-      setLoading(false);
-    }
+  // Basic email format validation
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!trimmedEmail || !emailRegex.test(trimmedEmail)) {
+    setErrorMsg("Kripya ek valid email address enter karein.");
+    return;
   }
+
+  setLoading(true);
+
+  try {
+    // Sabhi users ke liye safe tareeqe se password prompt step par move karein
+    setStep("password_prompt");
+  } catch (err: any) {
+    setErrorMsg("Account verify karne me dikkat aayi. Kripya dobara koshish karein.");
+  } finally {
+    setLoading(false);
+  }
+}
 
   // Step 2: Final Login Execution
   async function executeLogin(loginEmail: string, loginPass: string, bypass: boolean = false) {
