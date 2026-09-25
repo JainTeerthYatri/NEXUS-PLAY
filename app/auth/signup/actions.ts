@@ -1,85 +1,89 @@
+// app/auth/signup/actions.ts
 "use server";
 
-import { headers } from "next/headers";
-import { authRatelimit } from "@/lib/ratelimit";
 import { createClient } from "@/lib/supabase/server";
 
-export async function handleSignupAction(
-  formData: FormData
-): Promise<{ error?: string; success?: boolean }> {
-  // 1. Extract form data fields first to check validation
-  const email = formData.get("email") as string;
+export async function handleSignupAction(formData: FormData) {
+  const username = (formData.get("username") as string)?.trim().toLowerCase();
+  const displayName = (formData.get("displayName") as string)?.trim();
+  const email = (formData.get("email") as string)?.trim().toLowerCase();
   const password = formData.get("password") as string;
-  const username = formData.get("username") as string;
-  const displayName = formData.get("displayName") as string;
-  const acceptTerms = formData.get("acceptTerms") === "on";
-  const acceptCookies = formData.get("acceptCookies") === "on";
+  const dob = formData.get("dob") as string;
+  const isMinor = formData.get("isMinor") === "true";
+  const guardianName = (formData.get("guardianName") as string)?.trim();
+  const guardianEmail = (formData.get("guardianEmail") as string)?.trim().toLowerCase();
+  const acceptTerms = formData.get("acceptTerms");
 
-  if (!acceptTerms || !acceptCookies) {
-    return { error: "You must accept both the Terms & Conditions and Cookies Policy to register." };
+  // 1. Basic validation
+  if (!username || !email || !password || !dob || !acceptTerms) {
+    return { error: "Missing required registration parameters." };
   }
 
-  // 2. Server-side password policy validation (>= 10 chars, 1 uppercase, 1 number, 1 special char)
-  const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{10,}$/;
-
-  if (!passwordRegex.test(password)) {
-    return {
-      error: "Password must be at least 10 characters long and contain at least one uppercase letter, one number, and one special character.",
-    };
+  if (username.length < 3 || username.length > 25 || !/^[a-zA-Z0-9_]+$/.test(username)) {
+    return { error: "Username must be 3-25 alphanumeric characters or underscores." };
   }
 
-  // 3. Get client IP address for rate limiting
-  const headersList = await headers();
-  const ip = headersList.get("x-forwarded-for") ?? "127.0.0.1";
+  // 2. Minor / Guardian validation
+  if (isMinor && (!guardianName || !guardianEmail)) {
+    return { error: "Parent or legal guardian details are required for minor accounts." };
+  }
 
-  // 4. Check Upstash Rate Limit (5 attempts per 60 seconds)
-  const { success, reset } = await authRatelimit.limit(ip);
+  // 3. Password complexity enforcement
+  const hasMinLength = password.length >= 10;
+  const hasUppercase = /[A-Z]/.test(password);
+  const hasSpecialChar = /[^A-Za-z0-9]/.test(password);
+  const hasNumber = /[0-9]/.test(password);
 
-  if (!success) {
-    const waitTime = Math.ceil((reset - Date.now()) / 1000);
-    return { 
-      error: `Too many signup attempts. Please try again after ${waitTime} seconds.` 
-    };
+  if (!hasMinLength || !hasUppercase || !hasSpecialChar || !hasNumber) {
+    return { error: "Password does not satisfy security complexity criteria." };
   }
 
   const supabase = await createClient();
 
-  // 5. Check if Username already exists in the profiles table
-  const { data: existingUser, error: usernameCheckError } = await supabase
+  // 4. Check if username handle is already taken
+  const { data: existingUser } = await supabase
     .from("profiles")
-    .select("username")
+    .select("id")
     .eq("username", username)
     .maybeSingle();
 
   if (existingUser) {
-    return { error: "This username is already taken by an authorized user" };
+    return { error: "This username handle is already registered." };
   }
 
-  // 6. Supabase Sign Up
-  const { error } = await supabase.auth.signUp({
+  // 5. Authenticate and register user via Supabase Auth
+  const { data: authData, error: authError } = await supabase.auth.signUp({
     email,
     password,
     options: {
       data: {
         username,
-        display_name: displayName,
+        display_name: displayName || username,
+        dob,
+        is_minor: isMinor,
+        guardian_name: isMinor ? guardianName : null,
+        guardian_email: isMinor ? guardianEmail : null,
       },
     },
   });
 
-  if (error) {
-    let errorMsg = error?.message || "An unexpected database or auth error occurred.";
-    
-    // Check if error is related to existing email
-    if (
-      errorMsg.toLowerCase().includes("already registered") || 
-      errorMsg.toLowerCase().includes("already exists") ||
-      errorMsg.toLowerCase().includes("email address")
-    ) {
-      errorMsg = "if email is in our data then (this email is already in use)";
+  if (authError) {
+    return { error: authError.message };
+  }
+
+  // 6. Ensure profile table record consistency
+  if (authData.user) {
+    const { error: profileError } = await supabase.from("profiles").upsert({
+      id: authData.user.id,
+      username,
+      display_name: displayName || username,
+      role: "member",
+      updated_at: new Date().toISOString(),
+    });
+
+    if (profileError) {
+      console.error("Profile upsert failure:", profileError.message);
     }
-    
-    return { error: errorMsg };
   }
 
   return { success: true };
