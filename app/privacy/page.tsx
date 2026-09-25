@@ -36,16 +36,16 @@ export default function PrivacyPage() {
               <span className="text-red-500 font-mono text-xs">01.</span> Information We Collect
             </h2>
             <p className="text-slate-400 pl-3 sm:pl-5">
-              To provide competitive gaming matchmaking, team coordination, and live broadcasting workspaces, we collect the following categories of data[cite: 4]:
+              To provide competitive gaming matchmaking, team coordination, and live broadcasting workspaces, we collect the following categories of data:
             </p>
             <div className="pl-3 sm:pl-5 space-y-3 text-slate-400">
-              <p><strong className="text-slate-200">Authentication & Credentials:</strong> Account identifiers and encrypted login credentials processed through Supabase Auth[cite: 4].</p>
-              <p><strong className="text-slate-200">Profile & Gamification Data:</strong> Public creator handles (@), display names, bio data, avatar graphics stored in cloud storage buckets, and account level/XP progression counters[cite: 4].</p>
-              <p><strong className="text-slate-200">User-Generated Media & Clip Vaults:</strong> Gameplay video reels and media files uploaded to storage buckets, including title metadata and upvote metrics[cite: 4].</p>
-              <p><strong className="text-slate-200">Matchmaking & Comms Tables:</strong> Active database tables including squad entries (<code className="text-red-400 font-mono text-[11px] sm:text-xs break-all">squads</code>, <code className="text-red-400 font-mono text-[11px] sm:text-xs break-all">squad_members</code>), LFG matchmaking vectors (<code className="text-red-400 font-mono text-[11px] sm:text-xs break-all">lfg_listings</code>, <code className="text-red-400 font-mono text-[11px] sm:text-xs break-all">lfg_participants</code>), encrypted direct messages, and chat rooms[cite: 4].</p>
+              <p><strong className="text-slate-200">Authentication & Credentials:</strong> Account identifiers and encrypted login credentials processed through Supabase Auth.</p>
+              <p><strong className="text-slate-200">Profile & Gamification Data:</strong> Public creator handles (@), display names, bio data, avatar graphics stored in cloud storage buckets, and account level/XP progression counters.</p>
+              <p><strong className="text-slate-200">User-Generated Media & Clip Vaults:</strong> Gameplay video reels and media files uploaded to storage buckets, including title metadata and upvote metrics.</p>
+              <p><strong className="text-slate-200">Matchmaking & Comms Tables:</strong> Active database tables including squad entries (<code className="text-red-400 font-mono text-[11px] sm:text-xs break-all">squads</code>, <code className="text-red-400 font-mono text-[11px] sm:text-xs break-all">squad_members</code>), LFG matchmaking vectors (<code className="text-red-400 font-mono text-[11px] sm:text-xs break-all">lfg_listings</code>, <code className="text-red-400 font-mono text-[11px] sm:text-xs break-all">lfg_participants</code>), encrypted direct messages, and chat rooms.</p>
               <p><strong className="text-slate-200">Nominee Designation (Under Section 14):</strong> Optional representative details configured by the user in Account Settings for account succession or incapacitation.</p>
-              <p><strong className="text-slate-200">Technical & Rate-Limiting Telemetry:</strong> Essential session cookies via Supabase SSR and IP metadata processed through Upstash rate-limiters to ensure system stability against bot attacks[cite: 4].</p>
-              <p><strong className="text-slate-200">Broadcasting Bridge Signals:</strong> Broadcast states (<code className="text-red-400 font-mono text-[11px] sm:text-xs break-all">is_live</code>) and stream telemetry managed via WebSockets[cite: 4].</p>
+              <p><strong className="text-slate-200">Technical & Rate-Limiting Telemetry:</strong> Essential session cookies via Supabase SSR and IP metadata processed through Upstash rate-limiters to ensure system stability against bot attacks.</p>
+              <p><strong className="text-slate-200">Broadcasting Bridge Signals:</strong> Broadcast states (<code className="text-red-400 font-mono text-[11px] sm:text-xs break-all">is_live</code>) and stream telemetry managed via WebSockets.</p>
             </div>
           </section>
 
@@ -61,7 +61,7 @@ export default function PrivacyPage() {
             </p>
             <ul className="list-disc list-inside text-slate-400 pl-3 sm:pl-5 space-y-1.5">
               <li><strong>Affirmative User Consent:</strong> Supplied explicitly when creating your operator credentials.</li>
-              <li><strong>Legitimate Technical Necessity:</strong> Running user sessions, enforcing platform access hierarchy (Member, Mod, Owner), and system security[cite: 4].</li>
+              <li><strong>Legitimate Technical Necessity:</strong> Running user sessions, enforcing platform access hierarchy (Member, Mod, Owner), and system security.</li>
             </ul>
           </section>
 
@@ -74,7 +74,7 @@ export default function PrivacyPage() {
             </h2>
             <div className="pl-3 sm:pl-5 space-y-3 text-slate-400 leading-relaxed">
               <p>
-                We enforce database protection protocols, including strict <strong className="text-slate-200">Row Level Security (RLS)</strong> policies on relational PostgreSQL schemas and authenticated access barriers to prevent unauthorized tampering[cite: 4].
+                We enforce database protection protocols, including strict <strong className="text-slate-200">Row Level Security (RLS)</strong> policies on relational PostgreSQL schemas and authenticated access barriers to prevent unauthorized tampering.
               </p>
               <p className="p-3.5 rounded-xl bg-black/50 border border-white/10 text-slate-300">
                 <strong className="text-white block mb-1">Disclaimer of Technical Liability & Assumption of Risk:</strong>
@@ -125,7 +125,7 @@ export default function PrivacyPage() {
             
             <div className="ml-3 sm:ml-5 p-4 rounded-xl bg-black/40 border border-white/10 space-y-2 text-xs font-mono">
               <p className="text-slate-200"><strong>Designated Authority:</strong> Platform Owner & Data Protection Desk</p>
-              <p className="text-slate-200"><strong>Platform Name:</strong> ASTEROID GAMING-CLOUD[cite: 4]</p>
+              <p className="text-slate-200"><strong>Platform Name:</strong> ASTEROID GAMING-CLOUD</p>
               <p className="text-slate-200"><strong>Jurisdiction / Location:</strong> Loni, Ghaziabad, Uttar Pradesh, India</p>
               <p className="text-slate-200 flex items-center gap-1.5">
                 <Clock className="w-3.5 h-3.5 text-red-400" />
@@ -136,7 +136,7 @@ export default function PrivacyPage() {
                   href="mailto:jainteerthyarta@gmail.com" 
                   className="inline-flex items-center gap-2 px-3 py-1.5 rounded bg-red-950/40 border border-red-500/30 text-red-400 hover:bg-red-900/40 transition-colors break-all"
                 >
-                  <Mail className="w-3.5 h-3.5 shrink-0" /> jainteerthyarta@gmail.com[cite: 4]
+                  <Mail className="w-3.5 h-3.5 shrink-0" /> jainteerthyarta@gmail.com
                 </a>
               </div>
             </div>
