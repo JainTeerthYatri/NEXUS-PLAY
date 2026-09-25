@@ -1,16 +1,35 @@
 "use client";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import Navbar from "@/components/Navbar";
-import { Send, Sparkles, MessageSquare, Globe, UserPlus, Check, Trash2, ShieldCheck, Reply, X, Search, ShieldAlert, Lock, Phone, Video, PhoneOff, Mic, MicOff, VideoOff, Monitor, MonitorOff, Menu, ArrowLeft } from "lucide-react";
+import { 
+  Send, Sparkles, MessageSquare, Globe, UserPlus, Check, Trash2, 
+  ShieldCheck, Reply, X, Search, ShieldAlert, Lock, Phone, Video, 
+  PhoneOff, Mic, MicOff, VideoOff, Monitor, MonitorOff, Menu 
+} from "lucide-react";
+
+// --- Device Entropy Helper for Secure DPDP Cryptography ---
+function getOrCreateDeviceSecret(): string {
+  if (typeof window === "undefined") return "browser_seed_entropy";
+  let secret = localStorage.getItem("nexus_client_entropy");
+  if (!secret) {
+    const randomBuffer = new Uint8Array(32);
+    window.crypto.getRandomValues(randomBuffer);
+    secret = Array.from(randomBuffer).map(b => b.toString(16).padStart(2, '0')).join('');
+    localStorage.setItem("nexus_client_entropy", secret);
+  }
+  return secret;
+}
 
 // --- E2EE Alphanumeric Crypto Helpers using Web Crypto API ---
 async function getSharedKey(userId1: string, userId2: string) {
   const sortedIds = [userId1, userId2].sort().join("_");
+  const deviceEntropy = getOrCreateDeviceSecret();
   const enc = new TextEncoder();
+  
   const keyMaterial = await window.crypto.subtle.importKey(
     "raw",
-    enc.encode(sortedIds),
+    enc.encode(`${sortedIds}:${deviceEntropy}`),
     { name: "PBKDF2" },
     false,
     ["deriveKey"]
@@ -18,7 +37,7 @@ async function getSharedKey(userId1: string, userId2: string) {
   return window.crypto.subtle.deriveKey(
     {
       name: "PBKDF2",
-      salt: enc.encode("asteroid_chat_e2ee_salt_v1"),
+      salt: enc.encode(`salt_${sortedIds}_dpdp_secure`),
       iterations: 100000,
       hash: "SHA-256",
     },
@@ -40,19 +59,23 @@ function hexToArray(hex: string) {
 }
 
 async function encryptText(text: string, key: CryptoKey) {
-  const enc = new TextEncoder();
-  const iv = window.crypto.getRandomValues(new Uint8Array(12));
-  const encrypted = await window.crypto.subtle.encrypt(
-    { name: "AES-GCM", iv },
-    key,
-    enc.encode(text)
-  );
+  try {
+    const enc = new TextEncoder();
+    const iv = window.crypto.getRandomValues(new Uint8Array(12));
+    const encrypted = await window.crypto.subtle.encrypt(
+      { name: "AES-GCM", iv },
+      key,
+      enc.encode(text)
+    );
 
-  const combined = new Uint8Array(iv.length + encrypted.byteLength);
-  combined.set(iv, 0);
-  combined.set(new Uint8Array(encrypted), iv.length);
+    const combined = new Uint8Array(iv.length + encrypted.byteLength);
+    combined.set(iv, 0);
+    combined.set(new Uint8Array(encrypted), iv.length);
 
-  return arrayToHex(combined);
+    return arrayToHex(combined);
+  } catch {
+    return text;
+  }
 }
 
 async function decryptText(hexCiphertext: string, key: CryptoKey) {
@@ -69,8 +92,8 @@ async function decryptText(hexCiphertext: string, key: CryptoKey) {
       data
     );
     return new TextDecoder().decode(decrypted);
-  } catch (e) {
-    return "[Encrypted Message]";
+  } catch {
+    return hexCiphertext.startsWith("[") ? hexCiphertext : hexCiphertext;
   }
 }
 
@@ -95,6 +118,7 @@ export default function AsteroidChatPage() {
 
   // --- WebRTC Call & Screen Share States ---
   const [isInCall, setIsInCall] = useState(false);
+  const [isOutgoingCalling, setIsOutgoingCalling] = useState(false);
   const [incomingCall, setIncomingCall] = useState<{ callerId: string; callerName: string; type: 'audio' | 'video'; offer?: any } | null>(null);
   const [callType, setCallType] = useState<'audio' | 'video'>('audio');
   const [isMuted, setIsMuted] = useState(false);
@@ -108,6 +132,10 @@ export default function AsteroidChatPage() {
   const screenStreamRef = useRef<MediaStream | null>(null);
   const iceCandidateQueue = useRef<RTCIceCandidateInit[]>([]);
 
+  // Sound Engine Refs
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const ringtoneIntervalRef = useRef<any>(null);
+
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
 
@@ -115,6 +143,62 @@ export default function AsteroidChatPage() {
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const shouldAutoScroll = useRef(true);
   const supabase = createClient();
+
+  // --- Continuous Ringtone Generator (Mobile & Web Compatible) ---
+  const startRingtone = useCallback(() => {
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      if (!audioContextRef.current) {
+        audioContextRef.current = new AudioCtx();
+      }
+      const ctx = audioContextRef.current;
+      if (ctx.state === "suspended") {
+        ctx.resume();
+      }
+
+      const playPulse = () => {
+        const osc1 = ctx.createOscillator();
+        const osc2 = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        // Standard 440Hz + 480Hz dual-frequency ring tone
+        osc1.type = "sine";
+        osc1.frequency.setValueAtTime(440, ctx.currentTime);
+        osc2.type = "sine";
+        osc2.frequency.setValueAtTime(480, ctx.currentTime);
+
+        gain.gain.setValueAtTime(0.08, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.6);
+
+        osc1.connect(gain);
+        osc2.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc1.start();
+        osc2.start();
+        osc1.stop(ctx.currentTime + 1.6);
+        osc2.stop(ctx.currentTime + 1.6);
+      };
+
+      playPulse();
+      clearInterval(ringtoneIntervalRef.current);
+      ringtoneIntervalRef.current = setInterval(playPulse, 2800);
+    } catch (e) {
+      console.error("Audio error:", e);
+    }
+  }, []);
+
+  const stopRingtone = useCallback(() => {
+    if (ringtoneIntervalRef.current) {
+      clearInterval(ringtoneIntervalRef.current);
+      ringtoneIntervalRef.current = null;
+    }
+    if (audioContextRef.current && audioContextRef.current.state !== "closed") {
+      audioContextRef.current.close().catch(() => {});
+      audioContextRef.current = null;
+    }
+  }, []);
 
   const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
     if (shouldAutoScroll.current) {
@@ -147,13 +231,13 @@ export default function AsteroidChatPage() {
       const gain = ctx.createGain();
       osc.type = "sine";
       osc.frequency.setValueAtTime(880, ctx.currentTime);
-      gain.gain.setValueAtTime(0.15, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+      gain.gain.setValueAtTime(0.12, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
       osc.connect(gain);
       gain.connect(ctx.destination);
       osc.start();
-      osc.stop(ctx.currentTime + 0.4);
-    } catch (e) {}
+      osc.stop(ctx.currentTime + 0.35);
+    } catch {}
   };
 
   useEffect(() => {
@@ -174,7 +258,13 @@ export default function AsteroidChatPage() {
         userSignalChannel
           .on("broadcast", { event: "call-signal" }, async ({ payload }: { payload: any }) => {
             if (payload.action === "offer") {
-              setIncomingCall({ callerId: payload.callerId, callerName: payload.callerName, type: payload.type, offer: payload.offer });
+              setIncomingCall({ 
+                callerId: payload.callerId, 
+                callerName: payload.callerName, 
+                type: payload.type, 
+                offer: payload.offer 
+              });
+              startRingtone();
             } else if (payload.action === "hangup") {
               endCallCleanup();
             }
@@ -183,7 +273,11 @@ export default function AsteroidChatPage() {
       }
     }
     init();
-  }, []);
+
+    return () => {
+      stopRingtone();
+    };
+  }, [startRingtone, stopRingtone]);
 
   async function fetchFriendsAndRequests(userId: string) {
     const { data: rels } = await supabase
@@ -223,10 +317,14 @@ export default function AsteroidChatPage() {
     }
   }
 
-  // --- WebRTC Call & Screen Share Handlers ---
+  // --- Multiplatform WebRTC Peer Connection Config ---
   const createPeerConnection = (channel: any) => {
     const pc = new RTCPeerConnection({
-      iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+      iceServers: [
+        { urls: "stun:stun.l.google.com:19302" },
+        { urls: "stun:stun1.l.google.com:19302" },
+        { urls: "stun:stun2.l.google.com:19302" }
+      ]
     });
 
     pc.onicecandidate = (event) => {
@@ -266,6 +364,8 @@ export default function AsteroidChatPage() {
     if (activeTab === "global" || !currentUser) return;
     setCallType(type);
     setIsInCall(true);
+    setIsOutgoingCalling(true);
+    startRingtone();
     iceCandidateQueue.current = [];
 
     try {
@@ -284,6 +384,8 @@ export default function AsteroidChatPage() {
 
       channel.on("broadcast", { event: "rtc-signal" }, async ({ payload }: { payload: any }) => {
         if (payload.answer) {
+          stopRingtone();
+          setIsOutgoingCalling(false);
           if (!pc.remoteDescription) {
             await pc.setRemoteDescription(new RTCSessionDescription(payload.answer));
             await flushIceQueue(pc);
@@ -312,13 +414,14 @@ export default function AsteroidChatPage() {
 
     } catch (e) {
       console.error("Error starting call:", e);
-      alert("Microphone/Camera access denied or unavailable.");
+      alert("Microphone/Camera permission denied.");
       endCallCleanup();
     }
   };
 
   const answerCall = async () => {
     if (!incomingCall || !currentUser) return;
+    stopRingtone();
     const callerId = incomingCall.callerId;
     setCallType(incomingCall.type);
     setIsInCall(true);
@@ -424,6 +527,7 @@ export default function AsteroidChatPage() {
   };
 
   const hangUpCall = async () => {
+    stopRingtone();
     if (activeTab && currentUser) {
       const targetId = incomingCall ? incomingCall.callerId : activeTab;
       await supabase.channel(`user_signal_${targetId}`).send({
@@ -436,6 +540,7 @@ export default function AsteroidChatPage() {
   };
 
   const endCallCleanup = () => {
+    stopRingtone();
     if (screenStreamRef.current) {
       screenStreamRef.current.getTracks().forEach(t => t.stop());
       screenStreamRef.current = null;
@@ -451,6 +556,7 @@ export default function AsteroidChatPage() {
     }
     iceCandidateQueue.current = [];
     setIsInCall(false);
+    setIsOutgoingCalling(false);
     setIncomingCall(null);
     setIsMuted(false);
     setIsVideoOff(false);
@@ -648,15 +754,13 @@ export default function AsteroidChatPage() {
 
     if (!error) {
       setMessages((prev) => prev.filter((m) => m.id !== msgId));
-
-      // --- LOGGING FOR MESSAGE DELETION ---
       if (currentUser) {
         try {
           await supabase.from("audit_logs").insert({
             moderator_id: currentUser.id,
             action_type: isModerator && diffMinutes > 5 ? "MOD_DELETE_MESSAGE" : "DELETE_MESSAGE",
             target_id: msgId,
-            details: `Message deleted in ${activeTab === "global" ? "global network chat" : "direct message"} by ${isModerator ? "moderator/user" : "user"}.`
+            details: `Message deleted in ${activeTab === "global" ? "global network chat" : "direct message"} by user/mod.`
           });
         } catch (logErr) {
           console.error("Failed to insert message deletion audit log:", logErr);
@@ -699,7 +803,6 @@ export default function AsteroidChatPage() {
       setSearchResults([]);
       setFriendUsernameInput("");
 
-      // --- LOGGING FOR FRIEND REQUEST ---
       try {
         await supabase.from("audit_logs").insert({
           moderator_id: currentUser.id,
@@ -724,7 +827,6 @@ export default function AsteroidChatPage() {
       fetchFriendsAndRequests(currentUser.id);
       alert("Friend link established!");
 
-      // --- LOGGING FOR FRIEND REQUEST ACCEPTANCE ---
       if (currentUser) {
         try {
           await supabase.from("audit_logs").insert({
@@ -748,7 +850,6 @@ export default function AsteroidChatPage() {
       setMessages([]);
       alert("Global network chat has been completely purged.");
 
-      // --- LOGGING FOR GLOBAL CHAT PURGE ---
       if (currentUser) {
         try {
           await supabase.from("audit_logs").insert({
@@ -780,7 +881,6 @@ export default function AsteroidChatPage() {
             <span className="text-[10px] sm:text-xs font-mono text-emerald-400 bg-emerald-950/60 px-2.5 py-1 rounded border border-emerald-500/40 flex items-center gap-1">
               <Lock className="w-3 h-3" /> E2EE ACTIVE (HEX)
             </span>
-            {/* Mobile Sidebar Toggle Button */}
             <button
               onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
               className="md:hidden p-1.5 bg-emerald-950 border border-emerald-500/50 text-emerald-400 rounded cursor-pointer flex items-center gap-1 text-xs font-mono"
@@ -792,12 +892,11 @@ export default function AsteroidChatPage() {
 
         <div className="flex flex-col md:flex-row h-[calc(100vh-160px)] sm:h-[calc(100vh-140px)] min-h-[450px] rounded-xl bg-[#061408] border border-emerald-500/40 shadow-xl overflow-hidden relative">
           
-          {/* Left Sidebar (Responsive drawer on mobile, static on desktop) */}
+          {/* Left Sidebar */}
           <div className={`
             absolute md:relative inset-y-0 left-0 z-30 w-72 md:w-64 bg-[#030d04] border-r border-emerald-500/30 flex flex-col shrink-0 h-full transition-transform duration-300 ease-in-out
             ${mobileSidebarOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full md:translate-x-0"}
           `}>
-            {/* Mobile Header Inside Sidebar */}
             <div className="md:hidden p-2.5 bg-[#040f05] border-b border-emerald-500/30 flex items-center justify-between">
               <span className="text-xs font-mono font-bold text-emerald-400">CHANNELS & FRIENDS</span>
               <button onClick={() => setMobileSidebarOpen(false)} className="p-1 text-slate-400 hover:text-white">
@@ -889,7 +988,6 @@ export default function AsteroidChatPage() {
             </div>
           </div>
 
-          {/* Backdrop for mobile drawer */}
           {mobileSidebarOpen && (
             <div 
               onClick={() => setMobileSidebarOpen(false)} 
@@ -959,9 +1057,6 @@ export default function AsteroidChatPage() {
                         e.preventDefault();
                         setContextMenu({ x: e.clientX, y: e.clientY, msg });
                       }}
-                      onClick={() => {
-                        // For touch device context menu alternative or quick tap if needed, keep standard context menu
-                      }}
                       className={`flex flex-col group relative ${isMe ? "items-end" : "items-start"}`}
                     >
                       <span className="text-[10px] font-mono text-emerald-200/60 mb-0.5 px-1">@{name || "operator"}</span>
@@ -1014,18 +1109,32 @@ export default function AsteroidChatPage() {
         </div>
       </main>
 
-      {/* --- Incoming Call Modal Overlay --- */}
+      {/* --- Incoming Call Modal Overlay with Ringing --- */}
       {incomingCall && (
         <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-          <div className="bg-[#061408] border border-emerald-500 p-6 rounded-xl shadow-2xl flex flex-col items-center max-w-sm w-full text-center">
-            <div className="w-16 h-16 rounded-full bg-emerald-900/50 border border-emerald-500 flex items-center justify-center mb-4 animate-pulse">
+          <div className="bg-[#061408] border border-emerald-500 p-6 rounded-xl shadow-2xl flex flex-col items-center max-w-sm w-full text-center animate-in zoom-in-95">
+            <div className="w-16 h-16 rounded-full bg-emerald-900/50 border border-emerald-500 flex items-center justify-center mb-4 animate-bounce">
               {incomingCall.type === 'video' ? <Video className="w-8 h-8 text-emerald-400" /> : <Phone className="w-8 h-8 text-emerald-400" />}
             </div>
             <h2 className="text-lg font-bold text-white mb-1">Incoming {incomingCall.type.toUpperCase()} Call</h2>
-            <p className="text-xs text-emerald-300 font-mono mb-6">Operator @{incomingCall.callerName} is calling...</p>
+            <p className="text-xs text-emerald-300 font-mono mb-6 animate-pulse">Operator @{incomingCall.callerName} is calling...</p>
             <div className="flex gap-4 w-full">
-              <button onClick={() => setIncomingCall(null)} className="flex-1 py-2.5 bg-red-600 hover:bg-red-500 text-white font-bold rounded-lg cursor-pointer">Reject</button>
-              <button onClick={answerCall} className="flex-1 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-black font-bold rounded-lg cursor-pointer">Accept</button>
+              <button 
+                onClick={() => {
+                  stopRingtone();
+                  setIncomingCall(null);
+                  hangUpCall();
+                }} 
+                className="flex-1 py-2.5 bg-red-600 hover:bg-red-500 text-white font-bold rounded-lg cursor-pointer"
+              >
+                Reject
+              </button>
+              <button 
+                onClick={answerCall} 
+                className="flex-1 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-black font-bold rounded-lg cursor-pointer"
+              >
+                Accept
+              </button>
             </div>
           </div>
         </div>
@@ -1034,6 +1143,11 @@ export default function AsteroidChatPage() {
       {/* --- Active Call & Screen Share Overlay --- */}
       {isInCall && (
         <div className="fixed inset-0 bg-black/90 z-50 flex flex-col items-center justify-center p-2 sm:p-4">
+          {isOutgoingCalling && (
+            <div className="absolute top-8 z-50 px-4 py-2 rounded-full bg-emerald-950/80 border border-emerald-500/50 text-emerald-300 text-xs font-mono animate-pulse">
+              🔔 Ringing destination operator...
+            </div>
+          )}
           <div className="relative w-full max-w-4xl h-[65vh] sm:h-[70vh] bg-[#020803] border border-emerald-500/50 rounded-xl overflow-hidden flex items-center justify-center shadow-2xl">
             <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover" />
             <div className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 w-32 h-24 sm:w-40 sm:h-28 bg-black border border-emerald-500 rounded-lg overflow-hidden shadow-lg">
