@@ -129,7 +129,7 @@ export default function SettingsPage() {
     if (!userId) return;
 
     const firstConfirm = confirm(
-      "⚠️ WARNING (DPDP Sec 12): Kya aap apna account aur saara digital personal data permanently erase karna chahte hain? Yeh action wapas nahi liya ja sakta."
+      "⚠️ WARNING: Kya aap apna account aur saara digital personal data permanently erase karna chahte hain? Yeh action wapas nahi liya ja sakta."
     );
     if (!firstConfirm) return;
 
@@ -274,7 +274,7 @@ export default function SettingsPage() {
             <div className="flex items-center gap-2 border-b border-cyan-500/20 pb-2">
               <UserCheck className="w-4 h-4 text-cyan-400" />
               <h3 className="text-xs sm:text-sm font-mono font-bold text-white uppercase tracking-wider">
-                Digital Nominee Details (DPDP Act Sec 14)
+                Digital Nominee Details
               </h3>
             </div>
             <p className="text-xs text-slate-400">
@@ -324,7 +324,7 @@ export default function SettingsPage() {
           <div className="flex items-center gap-2 text-red-400">
             <ShieldAlert className="w-5 h-5 shrink-0" />
             <h3 className="text-sm font-bold uppercase tracking-wider font-mono">
-              Danger Zone // Right to Erasure (DPDP Sec 12)
+              Danger Zone // Right to Erasure
             </h3>
           </div>
           <p className="text-xs text-slate-300 leading-relaxed">
