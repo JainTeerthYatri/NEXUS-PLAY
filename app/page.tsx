@@ -18,6 +18,11 @@ const GiftIntro = dynamic(() => import("@/components/GiftIntro"), {
 
 /* ───────────────────────── CONFIG (edit these to match your DB / routes) ───────────────────────── */
 
+// Gift opening is shown ONLY to logged-out visitors (before login).
+// "session" = once per browser tab session, "always" = every time a guest opens the page.
+const GIFT_MODE: "session" | "always" = "session";
+const GIFT_KEY = "astroid-gift-seen";
+
 // Where each dashboard counter is read from. Wrong table/column => it just shows 0 (no crash).
 const STAT_SOURCES = {
   clips:     { table: "clips",         column: "user_id" },
@@ -31,38 +36,40 @@ type StatKey = keyof typeof STAT_SOURCES;
 
 const XP_PER_LEVEL = 500;
 
+const HI_FONT = "'Noto Serif Devanagari','Kohinoor Devanagari','Mangal','Nirmala UI',serif";
+
 const RANKS = [
-  { en: "Bronze Operator", jp: "銅" },
-  { en: "Silver Operator", jp: "銀" },
-  { en: "Gold Operator", jp: "金" },
-  { en: "Platinum Operator", jp: "白金" },
-  { en: "Diamond Operator", jp: "金剛" },
-  { en: "Legend Operator", jp: "伝説" },
+  { en: "Bronze Operator", hi: "कांस्य" },
+  { en: "Silver Operator", hi: "रजत" },
+  { en: "Gold Operator", hi: "स्वर्ण" },
+  { en: "Platinum Operator", hi: "प्लैटिनम" },
+  { en: "Diamond Operator", hi: "हीरक" },
+  { en: "Legend Operator", hi: "महारथी" },
 ];
 
-const STAT_CARDS: { key: StatKey; label: string; jp: string; icon: typeof Trophy }[] = [
-  { key: "clips", label: "Highlight Clips", jp: "動画", icon: Trophy },
-  { key: "squads", label: "Squad Lobbies", jp: "部隊", icon: Users },
-  { key: "lfg", label: "LFG Nodes", jp: "募集", icon: Radio },
-  { key: "followers", label: "Followers", jp: "仲間", icon: UserCheck },
-  { key: "following", label: "Following", jp: "追う", icon: UserPlus },
+const STAT_CARDS: { key: StatKey; label: string; hi: string; icon: typeof Trophy }[] = [
+  { key: "clips", label: "Highlight Clips", hi: "झलकियाँ", icon: Trophy },
+  { key: "squads", label: "Squad Lobbies", hi: "दल", icon: Users },
+  { key: "lfg", label: "LFG Nodes", hi: "खोज", icon: Radio },
+  { key: "followers", label: "Followers", hi: "साथी", icon: UserCheck },
+  { key: "following", label: "Following", hi: "अनुसरण", icon: UserPlus },
 ];
 
 const QUICK_ACTIONS = [
-  { label: "Launch Studio", jp: "配信", desc: "Go live with the web broadcast studio", href: "/studio", icon: Radio },
-  { label: "Find a Squad", jp: "仲間", desc: "Join or host an LFG lobby", href: "/lfg", icon: Users },
-  { label: "Post a Clip", jp: "動画", desc: "Upload a highlight, earn XP", href: "/clips", icon: Video },
-  { label: "Open Chat", jp: "会話", desc: "Talk with the community, encrypted", href: "/chat", icon: MessageSquare },
-  { label: "Thumbnail Forge", jp: "創作", desc: "Generate thumbnails & logos with AI", href: "/dashboard", icon: Sparkles },
+  { label: "Launch Studio", hi: "प्रसारण", desc: "Go live with the web broadcast studio", href: "/studio", icon: Radio },
+  { label: "Find a Squad", hi: "टोली", desc: "Join or host an LFG lobby", href: "/lfg", icon: Users },
+  { label: "Post a Clip", hi: "झलक", desc: "Upload a highlight, earn XP", href: "/clips", icon: Video },
+  { label: "Open Chat", hi: "बातचीत", desc: "Talk with the community, encrypted", href: "/chat", icon: MessageSquare },
+  { label: "Thumbnail Forge", hi: "रचना", desc: "Generate thumbnails & logos with AI", href: "/dashboard", icon: Sparkles },
 ];
 
 const MODULES = [
-  { jp: "配信", title: "Universal Web-OBS Studio", description: "Browser-native live broadcasting compositor with multi-layer canvas, facecam PiP, and direct RTMP streaming bridge.", href: "/studio", icon: Radio },
-  { jp: "創作", title: "AI Thumbnail & Logo Forge", description: "Zero-cost neural text-to-image engine with real-time progress steps and 2D canvas sticker overlay editors.", href: "/dashboard", icon: Sparkles },
-  { jp: "会話", title: "Unrestricted Global Comms", description: "Real-time open chat rooms with instant moderation and Web Crypto API end-to-end encrypted direct messaging.", href: "/chat", icon: MessageSquare },
-  { jp: "仲間", title: "Neural LFG Matchmaker", description: "Automated regional skill filters, slot-locked party lobbies, and live squad host controls.", href: "/lfg", icon: Users },
-  { jp: "動画", title: "Highlight Clips Vault", description: "Scroll-snap vertical shorts video feed with strict 2MB validation and automatic XP leveling rewards.", href: "/clips", icon: Video },
-  { jp: "守護", title: "5-Tier RBAC Command Center", description: "Comprehensive moderation dashboard with audit logs, ban enforcement, and DPDP Act compliance desks.", href: "/mod", icon: Shield },
+  { hi: "प्रसारण", title: "Universal Web-OBS Studio", description: "Browser-native live broadcasting compositor with multi-layer canvas, facecam PiP, and direct RTMP streaming bridge.", href: "/studio", icon: Radio },
+  { hi: "रचना", title: "AI Thumbnail & Logo Forge", description: "Zero-cost neural text-to-image engine with real-time progress steps and 2D canvas sticker overlay editors.", href: "/dashboard", icon: Sparkles },
+  { hi: "संवाद", title: "Unrestricted Global Comms", description: "Real-time open chat rooms with instant moderation and Web Crypto API end-to-end encrypted direct messaging.", href: "/chat", icon: MessageSquare },
+  { hi: "साथी", title: "Neural LFG Matchmaker", description: "Automated regional skill filters, slot-locked party lobbies, and live squad host controls.", href: "/lfg", icon: Users },
+  { hi: "झलक", title: "Highlight Clips Vault", description: "Scroll-snap vertical shorts video feed with strict 2MB validation and automatic XP leveling rewards.", href: "/clips", icon: Video },
+  { hi: "सुरक्षा", title: "5-Tier RBAC Command Center", description: "Comprehensive moderation dashboard with audit logs, ban enforcement, and DPDP Act compliance desks.", href: "/mod", icon: Shield },
 ];
 
 /* ───────────────────────── types & helpers ───────────────────────── */
@@ -101,33 +108,35 @@ async function countRows(
 }
 
 function greetingFor(hour: number) {
-  if (hour < 5) return { jp: "こんばんは", en: "Good night" };
-  if (hour < 12) return { jp: "おはよう", en: "Good morning" };
-  if (hour < 18) return { jp: "こんにちは", en: "Good afternoon" };
-  return { jp: "こんばんは", en: "Good evening" };
+  if (hour < 5) return { hi: "शुभ रात्रि", en: "Good night" };
+  if (hour < 12) return { hi: "सुप्रभात", en: "Good morning" };
+  if (hour < 18) return { hi: "नमस्ते", en: "Good afternoon" };
+  return { hi: "शुभ संध्या", en: "Good evening" };
 }
 
-/** Red hanko (name seal) with a kanji or initial */
-function Hanko({ char, size = "md" }: { char: string; size?: "sm" | "md" | "lg" }) {
-  const dims = size === "lg" ? "w-16 h-16 text-3xl" : size === "sm" ? "w-7 h-7 text-sm" : "w-11 h-11 text-xl";
+/** Round saffron seal (like a tilak / bindi) with a Devanagari letter or initial */
+function Seal({ char, size = "md" }: { char: string; size?: "sm" | "md" | "lg" }) {
+  const dims = size === "lg" ? "w-16 h-16 text-3xl" : size === "sm" ? "w-8 h-8 text-base" : "w-11 h-11 text-xl";
   return (
     <span
-      className={`inline-flex items-center justify-center ${dims} bg-red-600 text-amber-50 font-black rounded-sm -rotate-6 shadow-[0_0_18px_rgba(239,68,68,0.55)] border-2 border-double border-amber-200/70 select-none`}
-      style={{ fontFamily: "'Hiragino Mincho ProN','Yu Mincho','Noto Serif JP',serif" }}
+      className={`inline-flex items-center justify-center ${dims} rounded-full bg-gradient-to-br from-orange-500 to-rose-600 text-amber-50 font-black shadow-[0_0_18px_rgba(249,115,22,0.6)] border-2 border-double border-amber-200/80 select-none`}
+      style={{ fontFamily: HI_FONT }}
     >
       {char}
     </span>
   );
 }
 
-function ToriiGate({ className = "" }: { className?: string }) {
+/** Mughal-style arch (decorative) */
+function ArchGate({ className = "" }: { className?: string }) {
   return (
-    <svg viewBox="0 0 200 150" className={className} aria-hidden="true">
-      <path d="M6 30 Q100 6 194 30 L190 46 Q100 26 10 46 Z" fill="currentColor" />
-      <rect x="26" y="52" width="148" height="9" fill="currentColor" />
-      <rect x="44" y="46" width="13" height="100" fill="currentColor" />
-      <rect x="143" y="46" width="13" height="100" fill="currentColor" />
-      <rect x="92" y="34" width="16" height="20" fill="currentColor" />
+    <svg viewBox="0 0 200 160" className={className} aria-hidden="true">
+      <path
+        fillRule="evenodd"
+        fill="currentColor"
+        d="M14 160 V84 C14 52 58 42 100 4 C142 42 186 52 186 84 V160 Z M42 160 V90 C42 70 74 62 100 32 C126 62 158 70 158 90 V160 Z"
+      />
+      <circle cx="100" cy="14" r="4" fill="currentColor" />
     </svg>
   );
 }
@@ -140,27 +149,25 @@ export default function LandingPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [stats, setStats] = useState<Stats>(EMPTY_STATS);
   const [authReady, setAuthReady] = useState(false);
-  const [showIntro, setShowIntro] = useState(true);
-  const [introReady, setIntroReady] = useState(false);
+  const [showIntro, setShowIntro] = useState(false);
 
   const supabase = useMemo(() => createClient(), []);
 
-  // localStorage check
-  useEffect(() => {
-    const seen = localStorage.getItem("astroid-gift-seen");
-    if (seen === "true") {
-      setShowIntro(false);
-    }
-    setIntroReady(true);
-  }, []);
-
-  // Auth + profile + stats
+  // Auth first -> decides everything. Gift intro is ONLY for logged-out visitors.
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.user || cancelled) return;
+        if (cancelled) return;
+
+        if (!session?.user) {
+          // guest -> maybe show the gift
+          const seen = GIFT_MODE === "session" && sessionStorage.getItem(GIFT_KEY) === "true";
+          if (!seen) setShowIntro(true);
+          return;
+        }
+
         setUser(session.user);
 
         const { data } = await supabase
@@ -186,9 +193,9 @@ export default function LandingPage() {
     return () => { cancelled = true; };
   }, [supabase]);
 
-  // Katakana / kanji rain (only after intro)
+  // Devanagari rain (only when the page is actually visible, i.e. not during the gift intro)
   useEffect(() => {
-    if (showIntro) return;
+    if (!authReady || showIntro) return;
 
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -203,8 +210,8 @@ export default function LandingPage() {
     };
     setCanvasDimensions();
 
-    const letters = "アストロイドゲーミングクラウド星雲龍虎侍忍者桜炎雷風01";
-    const fontSize = 16;
+    const letters = "अआइईउऊएऐओऔकखगघचछजझटठडढतथदधनपफबभमयरलवशषसह०१२३४५६७८९";
+    const fontSize = 18;
     let columns = Math.floor(canvas.width / fontSize);
     let drops: number[] = Array.from({ length: columns }).fill(1) as number[];
 
@@ -216,13 +223,13 @@ export default function LandingPage() {
     window.addEventListener("resize", handleResize);
 
     const draw = () => {
-      ctx.fillStyle = "rgba(7, 6, 11, 0.13)";
+      ctx.fillStyle = "rgba(11, 6, 16, 0.13)";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.font = `${fontSize}px "Hiragino Sans","Yu Gothic","Noto Sans JP",monospace`;
+      ctx.font = `${fontSize}px "Noto Sans Devanagari","Nirmala UI","Mangal",sans-serif`;
 
       for (let i = 0; i < drops.length; i++) {
         const text = letters.charAt(Math.floor(Math.random() * letters.length));
-        ctx.fillStyle = i % 9 === 0 ? "#f5c451" : "#ef4444";
+        ctx.fillStyle = i % 9 === 0 ? "#fbbf24" : i % 13 === 0 ? "#4ade80" : "#f97316";
         ctx.fillText(text, i * fontSize, drops[i] * fontSize);
         if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
           drops[i] = 0;
@@ -237,21 +244,21 @@ export default function LandingPage() {
       window.removeEventListener("resize", handleResize);
       cancelAnimationFrame(animationFrameId);
     };
-  }, [showIntro]);
+  }, [authReady, showIntro]);
 
   const handleIntroComplete = () => {
-    localStorage.setItem("astroid-gift-seen", "true");
+    if (GIFT_MODE === "session") sessionStorage.setItem(GIFT_KEY, "true");
     setShowIntro(false);
   };
 
-  // deterministic sakura petals (no hydration mismatch)
+  // deterministic marigold petals (no hydration mismatch)
   const petals = useMemo(
     () =>
-      Array.from({ length: 16 }, (_, i) => ({
+      Array.from({ length: 18 }, (_, i) => ({
         left: (i * 37 + 11) % 100,
         delay: (i * 1.7) % 12,
         duration: 12 + ((i * 5) % 9),
-        size: 8 + ((i * 3) % 9),
+        size: 9 + ((i * 3) % 10),
       })),
     []
   );
@@ -273,112 +280,108 @@ export default function LandingPage() {
   const isLive = !!profile?.is_live;
   const greet = greetingFor(new Date().getHours());
 
-  // Jab tak localStorage check nahi hua
-  if (!introReady) {
-    return <div className="fixed inset-0 bg-[#07060b]" />;
+  // Jab tak auth check nahi hua
+  if (!authReady) {
+    return <div className="fixed inset-0 bg-[#0b0610]" />;
   }
 
-  // Intro dikhao
+  // Gift intro: sirf login se pehle (guest)
   if (showIntro) {
     return <GiftIntro onComplete={handleIntroComplete} />;
   }
 
   return (
-    <div className="min-h-screen bg-[#07060b] text-slate-100 flex flex-col relative overflow-x-hidden">
-      {/* katakana rain */}
-      <canvas ref={canvasRef} className="fixed inset-0 w-full h-full pointer-events-none opacity-25 z-0" />
-
-      {/* seigaiha (wave) pattern + vermilion glow */}
-      <div className="seigaiha fixed inset-0 pointer-events-none z-0 opacity-[0.07]" />
+    <div className="min-h-screen bg-[#0b0610] text-slate-100 flex flex-col relative overflow-x-hidden">
+      {/* tricolour strip */}
       <div
-        className="fixed inset-0 pointer-events-none z-0"
-        style={{ background: "radial-gradient(ellipse 70% 45% at 50% -5%, rgba(239,68,68,0.22), transparent 70%)" }}
+        className="fixed top-0 left-0 right-0 h-[3px] z-[60] pointer-events-none"
+        style={{ background: "linear-gradient(90deg,#ff9933 0 33.3%,#ffffff 33.3% 66.6%,#138808 66.6% 100%)" }}
       />
 
-      {/* sakura petals */}
+      {/* devanagari rain */}
+      <canvas ref={canvasRef} className="fixed inset-0 w-full h-full pointer-events-none opacity-25 z-0" />
+
+      {/* jaali / mandala pattern + saffron glow */}
+      <div className="jaali fixed inset-0 pointer-events-none z-0 opacity-[0.07]" />
+      <div
+        className="fixed inset-0 pointer-events-none z-0"
+        style={{ background: "radial-gradient(ellipse 70% 45% at 50% -5%, rgba(249,115,22,0.24), transparent 70%)" }}
+      />
+
+      {/* marigold petals */}
       <div className="fixed inset-0 pointer-events-none z-[1] overflow-hidden">
         {petals.map((p, i) => (
           <span
             key={i}
             className="petal"
-            style={{ left: `${p.left}%`, width: p.size, height: p.size, animationDelay: `-${p.delay}s`, animationDuration: `${p.duration}s` }}
+            style={{ left: `${p.left}%`, width: p.size, height: p.size * 1.3, animationDelay: `-${p.delay}s`, animationDuration: `${p.duration}s` }}
           />
         ))}
       </div>
 
       {/* frame */}
       <div className="absolute inset-4 sm:inset-8 pointer-events-none z-[1] border border-amber-300/15 rounded-2xl overflow-hidden">
-        <div className="absolute top-0 left-0 w-32 h-1 bg-gradient-to-r from-red-500 to-transparent shadow-[0_0_15px_#ef4444]" />
-        <div className="absolute top-0 left-0 w-1 h-32 bg-gradient-to-b from-red-500 to-transparent shadow-[0_0_15px_#ef4444]" />
-        <div className="absolute bottom-0 right-0 w-32 h-1 bg-gradient-to-l from-amber-300 to-transparent shadow-[0_0_15px_#f5c451]" />
-        <div className="absolute bottom-0 right-0 w-1 h-32 bg-gradient-to-t from-amber-300 to-transparent shadow-[0_0_15px_#f5c451]" />
+        <div className="absolute top-0 left-0 w-32 h-1 bg-gradient-to-r from-orange-500 to-transparent shadow-[0_0_15px_#f97316]" />
+        <div className="absolute top-0 left-0 w-1 h-32 bg-gradient-to-b from-orange-500 to-transparent shadow-[0_0_15px_#f97316]" />
+        <div className="absolute bottom-0 right-0 w-32 h-1 bg-gradient-to-l from-emerald-500 to-transparent shadow-[0_0_15px_#10b981]" />
+        <div className="absolute bottom-0 right-0 w-1 h-32 bg-gradient-to-t from-emerald-500 to-transparent shadow-[0_0_15px_#10b981]" />
       </div>
 
-      {/* vertical kanji watermarks */}
+      {/* sideways Devanagari watermarks */}
       <div
-        className="fixed left-4 top-1/2 -translate-y-1/2 hidden xl:block pointer-events-none select-none z-[1] text-red-500/20 font-black text-4xl tracking-[0.4em]"
-        style={{ writingMode: "vertical-rl" }}
+        className="fixed left-4 top-1/2 -translate-y-1/2 hidden xl:block pointer-events-none select-none z-[1] text-orange-500/20 font-black text-4xl tracking-[0.3em]"
+        style={{ writingMode: "vertical-rl", textOrientation: "sideways", fontFamily: HI_FONT }}
       >
-        ゲーミングクラウド
+        गेमिंग क्लाउड
       </div>
       <div
-        className="fixed right-4 top-1/2 -translate-y-1/2 hidden xl:block pointer-events-none select-none z-[1] text-amber-300/20 font-black text-2xl tracking-[0.5em]"
-        style={{ writingMode: "vertical-rl" }}
+        className="fixed right-4 top-1/2 -translate-y-1/2 hidden xl:block pointer-events-none select-none z-[1] text-amber-300/20 font-black text-2xl tracking-[0.4em]"
+        style={{ writingMode: "vertical-rl", textOrientation: "sideways", fontFamily: HI_FONT }}
       >
-        星雲 ・ ASTEROID
+        क्षुद्रग्रह · ASTEROID
       </div>
 
       <Navbar />
 
       <main className="flex-1 flex flex-col items-stretch px-4 sm:px-6 lg:px-8 py-14 relative z-10 w-full max-w-7xl mx-auto">
-        {!authReady ? (
-          /* loading skeleton (prevents guest flash) */
-          <div className="space-y-6 animate-pulse">
-            <div className="h-8 w-64 rounded bg-white/5" />
-            <div className="h-24 rounded-xl bg-white/5" />
-            <div className="h-20 rounded-xl bg-white/5" />
-            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-              {Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-28 rounded-xl bg-white/5" />)}
-            </div>
-          </div>
-        ) : user ? (
+        {user ? (
           /* ───────────── LOGGED IN: control center ───────────── */
           <div className="space-y-8">
             {/* header */}
             <header className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 pb-6 border-b border-amber-300/15">
               <div className="space-y-3">
-                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-red-500/40 bg-red-500/10 text-red-300 font-mono text-xs tracking-wider">
-                  <span>創作拠点</span>
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-orange-500/40 bg-orange-500/10 text-orange-300 font-mono text-xs tracking-wider">
+                  <span style={{ fontFamily: HI_FONT }}>रचनाकार केंद्र</span>
                   <span className="text-amber-300/70">//</span>
                   <span>CREATOR_HUB</span>
                   <span className="text-amber-300/70">//</span>
                   <span>@{handle.toUpperCase()}</span>
                 </div>
 
-                <p className="font-mono text-sm text-amber-300/90 tracking-widest">
-                  {greet.jp} <span className="text-slate-500">·</span> {greet.en}
+                <p className="text-sm text-amber-300/90 tracking-widest">
+                  <span style={{ fontFamily: HI_FONT }}>{greet.hi}</span> <span className="text-slate-500">·</span> <span className="font-mono">{greet.en}</span>
                 </p>
 
                 <h1 className="text-3xl sm:text-5xl font-black tracking-tight flex flex-wrap items-center gap-x-3 gap-y-2">
                   <span>Welcome back,</span>
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-500 via-orange-400 to-amber-300 uppercase">
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 via-amber-400 to-yellow-200 uppercase">
                     {displayName}
                   </span>
-                  <Hanko char="星" size="sm" />
+                  <Seal char="अ" size="sm" />
                 </h1>
 
                 <p className="text-slate-300 max-w-2xl">
                   Your control center is online. <span className="text-amber-300 font-semibold">Start your work</span> — go live, squad up or drop a fresh clip.
                 </p>
-                <p className="text-sm text-slate-500">
-                  ようこそ、{displayName}さん。さあ、始めましょう。 &nbsp;·&nbsp; आपका स्वागत है — अपना काम शुरू करें।
+                <p className="text-sm text-slate-400" style={{ fontFamily: HI_FONT }}>
+                  स्वागत है, {displayName} जी — अपना काम शुरू करें।
                 </p>
               </div>
 
               <div className="flex items-center gap-3">
                 <span
                   className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-md border font-mono text-xs font-bold tracking-wider ${
-                    isLive ? "border-red-500/60 bg-red-500/15 text-red-300" : "border-slate-600/60 bg-white/5 text-slate-400"
+                    isLive ? "border-emerald-500/60 bg-emerald-500/15 text-emerald-300" : "border-slate-600/60 bg-white/5 text-slate-400"
                   }`}
                 >
                   {isLive ? <Wifi className="w-4 h-4 animate-pulse" /> : <WifiOff className="w-4 h-4" />}
@@ -386,7 +389,7 @@ export default function LandingPage() {
                 </span>
                 <Link
                   href="/studio"
-                  className="group inline-flex items-center gap-2 px-6 py-3 rounded-md bg-gradient-to-r from-red-600 to-red-500 text-white font-bold text-sm shadow-[0_0_28px_rgba(239,68,68,0.5)] hover:shadow-[0_0_40px_rgba(239,68,68,0.8)] hover:scale-105 transition-all active:scale-95"
+                  className="group inline-flex items-center gap-2 px-6 py-3 rounded-md bg-gradient-to-r from-orange-600 to-orange-500 text-white font-bold text-sm shadow-[0_0_28px_rgba(249,115,22,0.5)] hover:shadow-[0_0_40px_rgba(249,115,22,0.8)] hover:scale-105 transition-all active:scale-95"
                 >
                   <Zap className="w-4 h-4" />
                   Launch Studio
@@ -396,17 +399,17 @@ export default function LandingPage() {
             </header>
 
             {/* profile card */}
-            <section className="jp-card p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center gap-5">
+            <section className="in-card p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center gap-5">
               <div className="relative shrink-0">
                 {profile?.avatar_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={profile.avatar_url}
                     alt={displayName}
-                    className="w-20 h-20 rounded-lg object-cover border-2 border-amber-300/40 shadow-[0_0_20px_rgba(245,196,81,0.25)]"
+                    className="w-20 h-20 rounded-lg object-cover border-2 border-amber-300/40 shadow-[0_0_20px_rgba(251,191,36,0.25)]"
                   />
                 ) : (
-                  <Hanko char={displayName.charAt(0).toUpperCase()} size="lg" />
+                  <Seal char={displayName.charAt(0).toUpperCase()} size="lg" />
                 )}
               </div>
 
@@ -418,7 +421,7 @@ export default function LandingPage() {
                   </span>
                 </div>
                 <p className="font-mono text-xs text-slate-400 flex flex-wrap gap-x-4 gap-y-1">
-                  <span className="text-red-300 font-bold">@{handle.toUpperCase()}</span>
+                  <span className="text-orange-300 font-bold">@{handle.toUpperCase()}</span>
                   <span># UID: {user.id.slice(0, 13)}…</span>
                 </p>
                 <p className="text-sm text-slate-300">
@@ -428,7 +431,7 @@ export default function LandingPage() {
 
               <Link
                 href="/settings"
-                className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-md border border-amber-300/30 bg-white/[0.03] text-slate-200 text-sm font-medium hover:border-red-500/60 hover:text-red-300 hover:bg-red-500/10 transition-colors"
+                className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-md border border-amber-300/30 bg-white/[0.03] text-slate-200 text-sm font-medium hover:border-orange-500/60 hover:text-orange-300 hover:bg-orange-500/10 transition-colors"
               >
                 <Pencil className="w-4 h-4" />
                 Edit Profile
@@ -436,15 +439,15 @@ export default function LandingPage() {
             </section>
 
             {/* level */}
-            <section className="jp-card p-5 sm:p-6">
+            <section className="in-card p-5 sm:p-6">
               <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                 <div className="flex items-center gap-3 font-bold tracking-wide">
                   <Award className="w-5 h-5 text-amber-300" />
                   <span className="uppercase">Level {level}</span>
                   <span className="text-slate-500">—</span>
                   <span className="text-amber-300 uppercase">{rank.en}</span>
-                  <span className="text-red-400 font-black text-lg" style={{ fontFamily: "'Hiragino Mincho ProN','Yu Mincho','Noto Serif JP',serif" }}>
-                    {rank.jp}
+                  <span className="text-orange-400 font-black text-lg" style={{ fontFamily: HI_FONT }}>
+                    {rank.hi}
                   </span>
                 </div>
                 <span className="text-xs text-slate-400 font-mono">
@@ -453,7 +456,7 @@ export default function LandingPage() {
               </div>
               <div className="h-3 rounded-full bg-black/60 border border-amber-300/15 overflow-hidden">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-red-600 via-orange-400 to-amber-300 shadow-[0_0_14px_rgba(239,68,68,0.7)] transition-all duration-1000"
+                  className="h-full rounded-full bg-gradient-to-r from-orange-600 via-amber-400 to-yellow-200 shadow-[0_0_14px_rgba(249,115,22,0.7)] transition-all duration-1000"
                   style={{ width: `${Math.max(2, (xpInto / XP_PER_LEVEL) * 100)}%` }}
                 />
               </div>
@@ -461,11 +464,11 @@ export default function LandingPage() {
 
             {/* stats */}
             <section className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-              {STAT_CARDS.map(({ key, label, jp, icon: Icon }) => (
-                <div key={key} className="jp-card p-5 flex items-start justify-between hover:-translate-y-1 hover:border-red-500/50 transition-all duration-300">
+              {STAT_CARDS.map(({ key, label, hi, icon: Icon }) => (
+                <div key={key} className="in-card p-5 flex items-start justify-between hover:-translate-y-1 hover:border-orange-500/50 transition-all duration-300">
                   <div>
                     <p className="text-sm text-slate-400">{label}</p>
-                    <p className="text-[11px] text-red-400/80 font-bold tracking-widest mt-0.5">{jp}</p>
+                    <p className="text-xs text-orange-400/80 font-bold mt-0.5" style={{ fontFamily: HI_FONT }}>{hi}</p>
                     <p className="text-3xl font-black mt-3">{stats[key]}</p>
                   </div>
                   <div className="p-2.5 rounded-lg border border-amber-300/30 bg-amber-300/5 text-amber-300">
@@ -478,27 +481,27 @@ export default function LandingPage() {
             {/* start your work */}
             <section className="space-y-4">
               <div className="flex items-center gap-3">
-                <Hanko char="始" size="sm" />
+                <Seal char="श" size="sm" />
                 <h3 className="font-bold tracking-widest uppercase text-sm">
-                  Start your work <span className="text-slate-500 font-normal">· 始めよう</span>
+                  Start your work <span className="text-slate-500 font-normal normal-case" style={{ fontFamily: HI_FONT }}>· काम शुरू करें</span>
                 </h3>
                 <div className="flex-1 h-px bg-gradient-to-r from-amber-300/30 to-transparent" />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-                {QUICK_ACTIONS.map(({ label, jp, desc, href, icon: Icon }) => (
+                {QUICK_ACTIONS.map(({ label, hi, desc, href, icon: Icon }) => (
                   <Link
                     key={label}
                     href={href}
-                    className="group jp-card p-5 flex flex-col gap-3 hover:-translate-y-1 hover:border-red-500/60 hover:shadow-[0_0_30px_rgba(239,68,68,0.25)] transition-all duration-300"
+                    className="group in-card p-5 flex flex-col gap-3 hover:-translate-y-1 hover:border-orange-500/60 hover:shadow-[0_0_30px_rgba(249,115,22,0.25)] transition-all duration-300"
                   >
                     <div className="flex items-center justify-between">
-                      <Icon className="w-6 h-6 text-red-400 group-hover:text-amber-300 transition-colors" />
-                      <span className="text-2xl font-black text-amber-300/30 group-hover:text-amber-300/70 transition-colors">{jp}</span>
+                      <Icon className="w-6 h-6 text-orange-400 group-hover:text-amber-300 transition-colors" />
+                      <span className="text-xl font-black text-amber-300/30 group-hover:text-amber-300/70 transition-colors" style={{ fontFamily: HI_FONT }}>{hi}</span>
                     </div>
                     <p className="font-bold">{label}</p>
                     <p className="text-xs text-slate-400 leading-relaxed">{desc}</p>
-                    <span className="mt-auto inline-flex items-center gap-1 text-xs font-semibold text-red-300 group-hover:text-amber-300 transition-colors">
+                    <span className="mt-auto inline-flex items-center gap-1 text-xs font-semibold text-orange-300 group-hover:text-amber-300 transition-colors">
                       <Play className="w-3 h-3" /> Begin <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
                     </span>
                   </Link>
@@ -510,20 +513,25 @@ export default function LandingPage() {
           /* ───────────── GUEST ───────────── */
           <div className="space-y-16">
             <section className="relative text-center space-y-7 max-w-4xl mx-auto pt-6">
-              <ToriiGate className="absolute left-1/2 -translate-x-1/2 -top-6 w-72 h-52 text-red-600/10 pointer-events-none" />
-              <div className="relative flex justify-center"><Hanko char="星" size="lg" /></div>
-              <p className="relative font-mono text-xs tracking-[0.4em] text-amber-300/80">ゲーミング・クラウド // GAMING CLOUD</p>
+              <ArchGate className="absolute left-1/2 -translate-x-1/2 -top-8 w-72 h-56 text-orange-500/10 pointer-events-none" />
+              <div className="relative flex justify-center"><Seal char="अ" size="lg" /></div>
+              <p className="relative text-xs tracking-[0.35em] text-amber-300/80">
+                <span style={{ fontFamily: HI_FONT }}>गेमिंग क्लाउड</span> <span className="font-mono">// GAMING CLOUD</span>
+              </p>
               <h1 className="relative text-5xl sm:text-7xl font-black tracking-tight uppercase">
                 ASTEROID{" "}
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-500 via-orange-400 to-amber-300">GAMING CLOUD</span>
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 via-amber-400 to-yellow-200">GAMING CLOUD</span>
               </h1>
               <p className="relative text-slate-300 max-w-2xl mx-auto leading-relaxed">
                 Stream, chat, clip and squad up — six modules, one cloud. Log in to open your personal control center.
               </p>
+              <p className="relative text-sm text-slate-400" style={{ fontFamily: HI_FONT }}>
+                आपका स्वागत है — लॉग इन करें और अपना काम शुरू करें।
+              </p>
               <div className="relative flex flex-wrap items-center justify-center gap-4 pt-2">
                 <Link
                   href="/signup"
-                  className="group inline-flex items-center gap-2 px-8 py-4 rounded-md bg-gradient-to-r from-red-600 to-red-500 text-white font-bold shadow-[0_0_30px_rgba(239,68,68,0.55)] hover:scale-105 transition-all active:scale-95"
+                  className="group inline-flex items-center gap-2 px-8 py-4 rounded-md bg-gradient-to-r from-orange-600 to-orange-500 text-white font-bold shadow-[0_0_30px_rgba(249,115,22,0.55)] hover:scale-105 transition-all active:scale-95"
                 >
                   <Zap className="w-4 h-4" /> Enter the Cloud
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
@@ -538,17 +546,17 @@ export default function LandingPage() {
             </section>
 
             <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {MODULES.map(({ jp, title, description, href, icon: Icon }) => (
+              {MODULES.map(({ hi, title, description, href, icon: Icon }) => (
                 <Link
                   key={title}
                   href={href}
-                  className="group jp-card p-6 flex flex-col gap-4 hover:-translate-y-1 hover:border-red-500/60 hover:shadow-[0_0_35px_rgba(239,68,68,0.25)] transition-all duration-300"
+                  className="group in-card p-6 flex flex-col gap-4 hover:-translate-y-1 hover:border-orange-500/60 hover:shadow-[0_0_35px_rgba(249,115,22,0.25)] transition-all duration-300"
                 >
                   <div className="flex items-center justify-between">
-                    <div className="p-3 rounded-lg border border-amber-300/30 bg-amber-300/5 text-amber-300 group-hover:text-red-400 transition-colors">
+                    <div className="p-3 rounded-lg border border-amber-300/30 bg-amber-300/5 text-amber-300 group-hover:text-orange-400 transition-colors">
                       <Icon className="w-6 h-6" />
                     </div>
-                    <span className="text-3xl font-black text-red-500/30 group-hover:text-red-500/70 transition-colors">{jp}</span>
+                    <span className="text-2xl font-black text-orange-500/30 group-hover:text-orange-500/70 transition-colors" style={{ fontFamily: HI_FONT }}>{hi}</span>
                   </div>
                   <h3 className="text-lg font-bold group-hover:text-amber-300 transition-colors">{title}</h3>
                   <p className="text-sm text-slate-400 leading-relaxed">{description}</p>
@@ -560,55 +568,59 @@ export default function LandingPage() {
       </main>
 
       <style jsx global>{`
-        .jp-card {
+        .in-card {
           position: relative;
-          background: linear-gradient(145deg, rgba(28, 12, 20, 0.85), rgba(10, 8, 18, 0.92));
-          border: 1px solid rgba(245, 196, 81, 0.18);
+          background: linear-gradient(145deg, rgba(40, 14, 24, 0.85), rgba(12, 8, 20, 0.92));
+          border: 1px solid rgba(251, 191, 36, 0.18);
           border-radius: 10px;
           backdrop-filter: blur(10px);
         }
-        .jp-card::before,
-        .jp-card::after {
+        .in-card::before,
+        .in-card::after {
           content: "";
           position: absolute;
           width: 14px;
           height: 14px;
           pointer-events: none;
         }
-        .jp-card::before {
+        .in-card::before {
           top: -1px;
           left: -1px;
-          border-top: 2px solid #ef4444;
-          border-left: 2px solid #ef4444;
+          border-top: 2px solid #f97316;
+          border-left: 2px solid #f97316;
           border-top-left-radius: 10px;
         }
-        .jp-card::after {
+        .in-card::after {
           bottom: -1px;
           right: -1px;
-          border-bottom: 2px solid #f5c451;
-          border-right: 2px solid #f5c451;
+          border-bottom: 2px solid #fbbf24;
+          border-right: 2px solid #fbbf24;
           border-bottom-right-radius: 10px;
         }
 
-        .seigaiha {
-          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='30' viewBox='0 0 60 30'%3E%3Cg fill='none' stroke='%23f5c451' stroke-width='1'%3E%3Ccircle cx='30' cy='30' r='28'/%3E%3Ccircle cx='30' cy='30' r='21'/%3E%3Ccircle cx='30' cy='30' r='14'/%3E%3Ccircle cx='30' cy='30' r='7'/%3E%3Ccircle cx='0' cy='15' r='28'/%3E%3Ccircle cx='0' cy='15' r='21'/%3E%3Ccircle cx='0' cy='15' r='14'/%3E%3Ccircle cx='0' cy='15' r='7'/%3E%3Ccircle cx='60' cy='15' r='28'/%3E%3Ccircle cx='60' cy='15' r='21'/%3E%3Ccircle cx='60' cy='15' r='14'/%3E%3Ccircle cx='60' cy='15' r='7'/%3E%3C/g%3E%3C/svg%3E");
-          background-size: 60px 30px;
+        .jaali {
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'%3E%3Cg fill='none' stroke='%23fbbf24' stroke-width='1'%3E%3Ccircle cx='24' cy='24' r='4'/%3E%3Ccircle cx='24' cy='24' r='10'/%3E%3Cpath d='M24 2 L29 24 L24 46 L19 24 Z'/%3E%3Cpath d='M2 24 L24 19 L46 24 L24 29 Z'/%3E%3Ccircle cx='0' cy='0' r='6'/%3E%3Ccircle cx='48' cy='0' r='6'/%3E%3Ccircle cx='0' cy='48' r='6'/%3E%3Ccircle cx='48' cy='48' r='6'/%3E%3C/g%3E%3C/svg%3E");
+          background-size: 48px 48px;
         }
 
         .petal {
           position: absolute;
           top: -5%;
-          background: linear-gradient(135deg, #ffd1dc, #ff9eb5);
-          border-radius: 150% 0 150% 0;
-          opacity: 0.55;
+          background: radial-gradient(circle at 30% 30%, #ffd166, #ff8c1a);
+          border-radius: 50% 50% 50% 50% / 62% 62% 38% 38%;
+          opacity: 0.6;
           animation-name: petalFall;
           animation-timing-function: linear;
           animation-iteration-count: infinite;
-          filter: drop-shadow(0 0 4px rgba(255, 158, 181, 0.5));
+          filter: drop-shadow(0 0 4px rgba(255, 140, 26, 0.5));
+        }
+        .petal:nth-child(3n) {
+          background: radial-gradient(circle at 30% 30%, #ff9ec4, #e91e63);
+          filter: drop-shadow(0 0 4px rgba(233, 30, 99, 0.45));
         }
         @keyframes petalFall {
           0%   { transform: translate3d(0, -5vh, 0) rotate(0deg); opacity: 0; }
-          10%  { opacity: 0.55; }
+          10%  { opacity: 0.6; }
           50%  { transform: translate3d(60px, 50vh, 0) rotate(180deg); }
           100% { transform: translate3d(-30px, 110vh, 0) rotate(380deg); opacity: 0; }
         }
