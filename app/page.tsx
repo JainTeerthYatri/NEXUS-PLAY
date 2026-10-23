@@ -5,7 +5,7 @@ import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
-import type { GiftScene } from "@/components/giftScene";
+import type { GiftScene } from "@/components/giftscene";
 import {
   Radio, Users, Video, Sparkles, MessageSquare, Shield, ArrowRight, Zap,
   Award, Wifi, WifiOff, Pencil, Gift,
