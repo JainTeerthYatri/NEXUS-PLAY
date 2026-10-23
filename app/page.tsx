@@ -258,7 +258,7 @@ export default function LandingPage() {
 
     (async () => {
       try {
-        const { createGiftScene } = await import("@/components/giftScene");
+        const { createGiftScene } = await import("@/components/giftscene");
         if (cancelled) return;
         gs = createGiftScene(host, () => setBoxGone(true));
         sceneRef.current = gs;
