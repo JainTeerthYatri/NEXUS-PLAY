@@ -1,17 +1,18 @@
-'use client';
-
-import { useEffect, useRef, useState } from 'react';
+/**
+ * components/giftScene.ts
+ * The 3D gift box (Three.js): paper + ribbon + bow, PBR lighting, soft shadows,
+ * click physics (hop / wobble / squash), unwrap + lid fly-off + sparkle burst.
+ * Used by app/page.tsx (loaded lazily, only for first-time guests).
+ */
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
-import { Gift } from 'lucide-react';
 
-/* ───────────── math helpers ───────────── */
-const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
-const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
-const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
-const easeInCubic = (t: number) => t * t * t;
-const easeInOutCubic = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+export const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
+export const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+export const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
+export const easeInCubic = (t: number) => t * t * t;
+export const easeInOutCubic = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 
 /* ───────────── procedural textures ───────────── */
 function makePaperTexture(): THREE.CanvasTexture {
@@ -19,10 +20,10 @@ function makePaperTexture(): THREE.CanvasTexture {
   const c = document.createElement('canvas');
   c.width = c.height = size;
   const g = c.getContext('2d')!;
-  g.fillStyle = '#0b3b2e';
+  g.fillStyle = '#4a0e2a';
   g.fillRect(0, 0, size, size);
 
-  g.strokeStyle = 'rgba(16,185,129,0.25)';
+  g.strokeStyle = 'rgba(251,191,36,0.28)';
   g.lineWidth = 2;
   for (let i = -size; i < size * 2; i += 64) {
     g.beginPath(); g.moveTo(i, 0); g.lineTo(i + size, size); g.stroke();
@@ -71,7 +72,7 @@ function makeGlowTexture(): THREE.CanvasTexture {
 }
 
 /* ───────────── 3D GIFT SCENE ───────────── */
-type GiftScene = {
+export type GiftScene = {
   pick: (clientX: number, clientY: number) => boolean;
   kick: (strength: number) => void;
   open: () => void;
@@ -80,7 +81,7 @@ type GiftScene = {
   dispose: () => void;
 };
 
-function createGiftScene(container: HTMLElement, onExited: () => void): GiftScene {
+export function createGiftScene(container: HTMLElement, onExited: () => void): GiftScene {
   const BODY_W = 10;
   const BODY_H = 8;
   const LID_W = 10.8;
@@ -110,6 +111,7 @@ function createGiftScene(container: HTMLElement, onExited: () => void): GiftScen
   const envTex = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
   scene.environment = envTex;
 
+  // lights (saffron + gold, festive Indian palette)
   const key = new THREE.DirectionalLight(0xffffff, 2.4);
   key.position.set(14, 26, 16);
   key.castShadow = true;
@@ -123,12 +125,13 @@ function createGiftScene(container: HTMLElement, onExited: () => void): GiftScen
   key.shadow.bias = -0.0004;
   key.shadow.normalBias = 0.03;
   key.shadow.radius = 6;
-  const rim = new THREE.DirectionalLight(0x06b6d4, 2.2);
+  const rim = new THREE.DirectionalLight(0xff9933, 2.4);
   rim.position.set(-18, 12, -14);
-  const fill = new THREE.DirectionalLight(0x10b981, 0.8);
+  const fill = new THREE.DirectionalLight(0xffc266, 0.8);
   fill.position.set(-12, 6, 18);
   scene.add(key, rim, fill, new THREE.AmbientLight(0xffffff, 0.15));
 
+  // podium
   const stage = new THREE.Group();
   scene.add(stage);
   const podium = new THREE.Mesh(
@@ -140,12 +143,13 @@ function createGiftScene(container: HTMLElement, onExited: () => void): GiftScen
   stage.add(podium);
   const ring = new THREE.Mesh(
     new THREE.TorusGeometry(11.3, 0.07, 12, 128),
-    new THREE.MeshStandardMaterial({ color: 0x10b981, emissive: 0x10b981, emissiveIntensity: 2.2 })
+    new THREE.MeshStandardMaterial({ color: 0xff9933, emissive: 0xff9933, emissiveIntensity: 2.2 })
   );
   ring.rotation.x = Math.PI / 2;
   ring.position.y = 0.02;
   stage.add(ring);
 
+  // materials
   const paperTex = makePaperTexture();
   const paperMat = new THREE.MeshStandardMaterial({ map: paperTex, bumpMap: paperTex, bumpScale: 0.6, roughness: 0.5, metalness: 0.05 });
   const ribbonMat = new THREE.MeshPhysicalMaterial({ color: 0xe9c46a, metalness: 0.75, roughness: 0.28, clearcoat: 0.6, clearcoatRoughness: 0.25 });
@@ -165,7 +169,7 @@ function createGiftScene(container: HTMLElement, onExited: () => void): GiftScen
   bs1.position.y = bs2.position.y = BODY_H / 2;
   gift.add(bs1, bs2);
 
-  const mouthMat = new THREE.MeshStandardMaterial({ color: 0x021a12, emissive: 0x34ffb0, emissiveIntensity: 0 });
+  const mouthMat = new THREE.MeshStandardMaterial({ color: 0x1a0a05, emissive: 0xffb347, emissiveIntensity: 0 });
   const mouth = new THREE.Mesh(new THREE.PlaneGeometry(BODY_W - 1.4, BODY_W - 1.4), mouthMat);
   mouth.rotation.x = -Math.PI / 2;
   mouth.position.y = BODY_H + 0.03;
@@ -179,6 +183,7 @@ function createGiftScene(container: HTMLElement, onExited: () => void): GiftScen
   const ls2 = mark(new THREE.Mesh(new THREE.BoxGeometry(LID_W + 0.1, LID_H + 0.08, STRAP_W + 0.1), ribbonMat));
   lid.add(ls1, ls2);
 
+  // bow
   const bow = new THREE.Group();
   const BOW_Y = LID_H / 2 + 0.06;
   bow.position.y = BOW_Y;
@@ -207,6 +212,7 @@ function createGiftScene(container: HTMLElement, onExited: () => void): GiftScen
     bow.add(tail);
   }
 
+  // sparkles + glow
   const glowTex = makeGlowTexture();
   const N = 260;
   const pPos = new Float32Array(N * 3);
@@ -215,18 +221,19 @@ function createGiftScene(container: HTMLElement, onExited: () => void): GiftScen
   pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
   const pMat = new THREE.PointsMaterial({
     size: 0.9, map: glowTex, transparent: true, depthWrite: false,
-    blending: THREE.AdditiveBlending, color: 0x7dffd0, opacity: 0,
+    blending: THREE.AdditiveBlending, color: 0xffd27a, opacity: 0,
   });
   const points = new THREE.Points(pGeo, pMat);
   points.frustumCulled = false;
   scene.add(points);
 
   const glow = new THREE.Sprite(new THREE.SpriteMaterial({
-    map: glowTex, color: 0x34ffb0, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, opacity: 0,
+    map: glowTex, color: 0xffb347, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, opacity: 0,
   }));
   glow.position.set(0, 9, 0);
   scene.add(glow);
 
+  // camera
   let baseDist = 34;
   let dolly = 0;
   const frameCamera = () => {
@@ -239,6 +246,7 @@ function createGiftScene(container: HTMLElement, onExited: () => void): GiftScen
   };
   frameCamera();
 
+  // physics
   const G = 48;
   let hop = 0, hopV = 0;
   let tiltX = 0, tiltXV = 0, tiltZ = 0, tiltZV = 0;
@@ -419,340 +427,4 @@ function createGiftScene(container: HTMLElement, onExited: () => void): GiftScen
       if (renderer.domElement.parentNode === container) container.removeChild(renderer.domElement);
     },
   };
-}
-
-/* ───────────── WORD ENGINE ───────────── */
-type Word = {
-  el: HTMLSpanElement;
-  w: number; h: number;
-  tx: number; ty: number;
-  sx: number; sy: number;
-  arc: number; sr: number; curve: number; swirl: number; ph: number;
-  d1: number; d2: number; d3: number;
-  v0: number; v1: number; v2: number;
-  done: boolean;
-};
-
-// Words jo animation me dikhenge (tumhare site ke hisaab se)
-const ANIM_WORDS = [
-  "ASTROID", "GAMING", "CLOUD", "STUDIO", "STREAM", "CLIP", "SQUAD",
-  "LFG", "CHAT", "LIVE", "NEURAL", "MATRIX", "SECURE", "E2EE",
-  "BROADCAST", "VAULT", "MATCH", "TEAM", "CREATE", "DOMINATE",
-  "ZERO", "LIMITS", "NEXT-GEN", "ECOSYSTEM", "OPERATOR", "ONLINE"
-];
-
-type Props = {
-  onComplete: () => void;
-};
-
-export default function GiftIntro({ onComplete }: Props) {
-  const canvasHostRef = useRef<HTMLDivElement>(null);
-  const wordLayerRef = useRef<HTMLDivElement>(null);
-  const coreRef = useRef<HTMLDivElement>(null);
-  const sceneRef = useRef<GiftScene | null>(null);
-  const timers = useRef<number[]>([]);
-  const wordRaf = useRef(0);
-  const clicksRef = useRef(0);
-
-  const [clicks, setClicks] = useState(0);
-  const [stage, setStage] = useState<'idle' | 'running' | 'done'>('idle');
-  const [boxGone, setBoxGone] = useState(false);
-  const [bgFaded, setBgFaded] = useState(false);
-
-  const later = (fn: () => void, ms: number) => {
-    timers.current.push(window.setTimeout(fn, ms));
-  };
-
-  useEffect(() => {
-    const host = canvasHostRef.current;
-    if (!host) return;
-
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      onComplete();
-      return;
-    }
-
-    let gs: GiftScene;
-    try {
-      gs = createGiftScene(host, () => setBoxGone(true));
-    } catch (err) {
-      console.error('WebGL init failed', err);
-      onComplete();
-      return;
-    }
-    sceneRef.current = gs;
-
-    const onResize = () => gs.resize();
-    window.addEventListener('resize', onResize);
-
-    return () => {
-      window.removeEventListener('resize', onResize);
-      gs.dispose();
-      sceneRef.current = null;
-      timers.current.forEach((t) => window.clearTimeout(t));
-      timers.current = [];
-      cancelAnimationFrame(wordRaf.current);
-      document.body.style.overflow = '';
-    };
-  }, [onComplete]);
-
-  /* ── STEPS 4-6: scatter → vortex globe → settle ── */
-  const startWords = () => {
-    const layer = wordLayerRef.current;
-    const core = coreRef.current;
-    if (!layer) return;
-
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-    const cx = vw / 2;
-    const cy = vh / 2;
-
-    const n = ANIM_WORDS.length;
-    const order = Array.from({ length: n }, (_, i) => i).sort(() => Math.random() - 0.5);
-
-    const words: Word[] = ANIM_WORDS.map((text, i) => {
-      const el = document.createElement('span');
-      el.textContent = text;
-      Object.assign(el.style, {
-        position: 'absolute',
-        left: '0px',
-        top: '0px',
-        fontFamily: 'monospace',
-        fontSize: 'clamp(14px, 2.5vw, 22px)',
-        fontWeight: '700',
-        color: '#10b981',
-        textShadow: '0 0 12px rgba(16,185,129,0.65)',
-        whiteSpace: 'nowrap',
-        willChange: 'transform, opacity',
-        opacity: '0',
-        pointerEvents: 'none',
-      } as Partial<CSSStyleDeclaration>);
-      layer.appendChild(el);
-
-      // measure
-      const rect = el.getBoundingClientRect();
-      const w = rect.width || 80;
-      const h = rect.height || 24;
-
-      const idx = order[i];
-      const y = 1 - (2 * (idx + 0.5)) / n;
-      const rr = Math.sqrt(Math.max(0, 1 - y * y));
-      const phi = idx * 2.399963229728653;
-
-      // final positions roughly around center (nice grid-ish)
-      const finalX = cx + (Math.random() - 0.5) * vw * 0.7;
-      const finalY = cy + (Math.random() - 0.5) * vh * 0.55;
-
-      return {
-        el, w, h,
-        tx: finalX, ty: finalY,
-        sx: vw * (0.05 + 0.9 * Math.random()),
-        sy: vh * (0.08 + 0.84 * Math.random()),
-        arc: 80 + Math.random() * 180,
-        sr: (Math.random() - 0.5) * 120,
-        curve: (Math.random() - 0.5) * 160,
-        swirl: Math.PI * 2 * (1 + Math.random() * 0.4),
-        ph: Math.random() * 6.28,
-        d1: Math.random() * 550,
-        d2: Math.random() * 650,
-        d3: Math.random() * 950,
-        v0: Math.cos(phi) * rr,
-        v1: y,
-        v2: Math.sin(phi) * rr,
-        done: false,
-      };
-    });
-
-    const GATHER = 2000;
-    const SETTLE = 6800;
-    const R = Math.min(vw, vh) * 0.36;
-    const F = R * 3.4;
-    const t0 = performance.now();
-    let boxExited = false;
-
-    const finish = () => {
-      layer.innerHTML = '';
-      if (core) core.style.opacity = '0';
-      document.body.style.overflow = '';
-      setStage('done');
-      onComplete();
-    };
-
-    const step = (now: number) => {
-      const t = now - t0;
-
-      if (!boxExited && t > 900) {
-        boxExited = true;
-        sceneRef.current?.exit();
-      }
-
-      const u = Math.max(0, (t - GATHER) / 1000);
-      const yaw = 0.35 * u + 0.18 * u * u;
-      const pitch = 0.42 + 0.22 * Math.sin(u * 0.8);
-      const cyaw = Math.cos(yaw), syaw = Math.sin(yaw);
-      const cp = Math.cos(pitch), sp = Math.sin(pitch);
-
-      let alive = 0;
-      for (const wd of words) {
-        if (wd.done) continue;
-
-        const x1 = wd.v0 * cyaw + wd.v2 * syaw;
-        const z1 = -wd.v0 * syaw + wd.v2 * cyaw;
-        const y1 = wd.v1 * cp - z1 * sp;
-        const z2 = wd.v1 * sp + z1 * cp;
-        const persp = F / (F - z2 * R);
-        const ox = cx + x1 * R * persp;
-        const oy = cy + y1 * R * persp;
-        const os = persp * 0.85;
-        const oo = 0.3 + 0.7 * ((z2 + 1) / 2);
-
-        // phase A: seeds flung
-        const p1 = clamp01((t - wd.d1) / 1100);
-        const e1 = easeOutCubic(p1);
-        let x = lerp(cx, wd.sx, e1);
-        let y = lerp(cy, wd.sy, e1) - Math.sin(Math.PI * e1) * wd.arc;
-        if (p1 >= 1) {
-          x += Math.sin(t * 0.0013 + wd.ph) * 4;
-          y += Math.cos(t * 0.0011 + wd.ph) * 4;
-        }
-        let rot = wd.sr * e1;
-        let sc = 0.15 + 0.85 * e1;
-        let op = clamp01(p1 * 5);
-        let z = 0;
-
-        // phase B: spiral into globe
-        const p2 = clamp01((t - GATHER - wd.d2) / 1500);
-        if (p2 > 0) {
-          const e2 = easeInOutCubic(p2);
-          const ang = e2 * wd.swirl;
-          const rx = x - cx, ry = y - cy;
-          const ca = Math.cos(ang), sa = Math.sin(ang);
-          x = cx + lerp(rx * ca - ry * sa, ox - cx, e2);
-          y = cy + lerp(rx * sa + ry * ca, oy - cy, e2);
-          rot = lerp(rot, 0, e2);
-          sc = lerp(sc, os, e2);
-          op = lerp(op, oo, e2);
-          z = Math.round((z2 + 1) * 100) * e2;
-        }
-
-        // phase C: leave globe → final spot
-        const p3 = clamp01((t - SETTLE - wd.d3) / 1400);
-        if (p3 > 0) {
-          const e3 = easeInOutCubic(p3);
-          const dx = wd.tx - ox, dy = wd.ty - oy;
-          const len = Math.hypot(dx, dy) || 1;
-          const bend = Math.sin(Math.PI * e3) * wd.curve;
-          x = lerp(ox, wd.tx, e3) + (-dy / len) * bend;
-          y = lerp(oy, wd.ty, e3) + (dx / len) * bend;
-          sc = lerp(os, 1, e3);
-          op = lerp(oo, 1, e3);
-          rot = 0;
-        }
-
-        wd.el.style.transform = `translate3d(${x - wd.w / 2}px, ${y - wd.h / 2}px, 0) rotate(${rot}deg) scale(${sc})`;
-        wd.el.style.opacity = String(op);
-        wd.el.style.zIndex = String(z);
-
-        if (p3 >= 1) {
-          wd.done = true;
-          wd.el.remove();
-        } else {
-          alive++;
-        }
-      }
-
-      if (core) {
-        const c = clamp01((t - GATHER) / 1500) * (1 - clamp01((t - (SETTLE + 300)) / 1200));
-        core.style.opacity = String(c * 0.9);
-        core.style.transform = `translate(-50%, -50%) scale(${0.6 + 1.2 * c})`;
-      }
-
-      if (alive > 0) wordRaf.current = requestAnimationFrame(step);
-      else finish();
-    };
-    wordRaf.current = requestAnimationFrame(step);
-  };
-
-  const runSequence = () => {
-    const gs = sceneRef.current;
-    if (!gs) return;
-    document.body.style.overflow = 'hidden';
-    window.scrollTo(0, 0);
-    setStage('running');
-    later(() => { gs.open(); setBgFaded(true); }, 1000);
-    later(startWords, 1000 + 1500 + 800); // words start after lid opens
-  };
-
-  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    const gs = sceneRef.current;
-    if (!gs || clicksRef.current >= 3) return;
-    if (!gs.pick(e.clientX, e.clientY)) return;
-    clicksRef.current += 1;
-    const n = clicksRef.current;
-    setClicks(n);
-    gs.kick(n);
-    if (n === 3) runSequence();
-  };
-
-  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    const gs = sceneRef.current;
-    if (!gs) return;
-    e.currentTarget.style.cursor = clicksRef.current < 3 && gs.pick(e.clientX, e.clientY) ? 'pointer' : 'default';
-  };
-
-  const hintText = clicks === 0
-    ? 'TAP THE GIFT BOX 3 TIMES TO OPEN IT'
-    : clicks === 1
-    ? 'IT MOVED! KEEP GOING...'
-    : 'ONE MORE TAP...';
-
-  return (
-    <div className="fixed inset-0 z-[100] bg-[#050203]">
-      <div
-        className={`fixed inset-0 z-[15] pointer-events-none transition-opacity duration-[2200ms] ${bgFaded ? 'opacity-0' : 'opacity-100'}`}
-        style={{ background: 'radial-gradient(circle at 50% 58%, #0d3b2e 0%, #07130f 40%, #050203 75%)' }}
-      />
-
-      <div
-        ref={canvasHostRef}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        className={`fixed inset-0 z-20 ${stage !== 'idle' ? 'pointer-events-none' : ''} ${boxGone ? 'hidden' : ''}`}
-      />
-
-      {/* vortex core glow */}
-      <div
-        ref={coreRef}
-        className="fixed left-1/2 top-1/2 z-[35] w-[420px] h-[420px] rounded-full pointer-events-none opacity-0"
-        style={{
-          background: 'radial-gradient(circle, rgba(52,255,176,0.45) 0%, rgba(6,182,212,0.18) 35%, rgba(0,0,0,0) 70%)',
-          transform: 'translate(-50%, -50%)',
-        }}
-      />
-
-      {/* flying words layer */}
-      <div ref={wordLayerRef} className="fixed inset-0 z-40 pointer-events-none overflow-hidden" />
-
-      {stage === 'idle' && !boxGone && (
-        <div className="fixed z-30 bottom-16 left-1/2 -translate-x-1/2 flex flex-col items-center space-y-3 pointer-events-none select-none">
-          <div className="px-6 py-3 rounded-xl bg-black/85 border border-emerald-500/80 backdrop-blur-xl shadow-[0_0_50px_rgba(16,185,129,0.6)] flex items-center space-x-3">
-            <Gift className="w-6 h-6 text-emerald-400 animate-pulse" />
-            <span className="font-mono text-emerald-300 text-xs sm:text-sm font-bold uppercase tracking-widest">
-              {hintText}
-            </span>
-          </div>
-          <div className="flex space-x-2">
-            {[1, 2, 3].map((i) => (
-              <span
-                key={i}
-                className={`w-3 h-3 rounded-full border border-emerald-400 transition-all duration-300 ${
-                  clicks >= i ? 'bg-emerald-400 shadow-[0_0_14px_rgba(16,185,129,0.9)] scale-110' : 'bg-transparent'
-                }`}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
 }
