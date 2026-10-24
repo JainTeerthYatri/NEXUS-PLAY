@@ -761,14 +761,14 @@ export default function LandingPage() {
               </p>
               <div className="relative flex flex-wrap items-center justify-center gap-4 pt-2">
                 <Link
-                  href="/signup"
+                  href="/auth/signup"
                   className="group inline-flex items-center gap-2 px-8 py-4 rounded-md bg-gradient-to-r from-orange-600 to-orange-500 text-white font-bold shadow-[0_0_30px_rgba(249,115,22,0.55)] hover:scale-105 transition-all active:scale-95"
                 >
                   <Zap className="w-4 h-4" /> Enter the Cloud
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </Link>
                 <Link
-                  href="/login"
+                  href="/auth/login"
                   className="inline-flex items-center gap-2 px-8 py-4 rounded-md border border-amber-300/50 text-amber-300 font-bold hover:bg-amber-300/10 hover:scale-105 transition-all active:scale-95"
                 >
                   Log in
