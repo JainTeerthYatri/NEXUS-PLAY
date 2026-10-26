@@ -194,6 +194,31 @@ function snapshot(root: HTMLElement, W: number, H: number, scrollY: number): { n
   };
 }
 
+/** crane colours taken from the page itself (most common saturated colour), unless the page passes its own */
+function deriveColors(root: HTMLElement, fallback: [string, string, string, string]): [string, string, string, string] {
+  const votes = new Map<number, number>();
+  const els = root.querySelectorAll<HTMLElement>("*");
+  const n = Math.min(els.length, 500);
+  const parse = (c: string) => { const m = c.match(/rgba?\(([^)]+)\)/); if (!m) return null; const p = m[1].split(/[ ,\/]+/).filter(Boolean).map(Number); return p.length >= 3 && (p[3] === undefined || p[3] > 0.2) ? p : null; };
+  for (let i = 0; i < n; i++) {
+    const cs = getComputedStyle(els[i]);
+    for (const c of [cs.backgroundColor, cs.borderTopColor, cs.color]) {
+      const p = parse(c); if (!p) continue;
+      const [r, g, b] = p.map((v) => v / 255);
+      const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+      if (mx < 0.25 || mx - mn < 0.25) continue;                 // skip greys / near-black
+      const d = mx - mn;
+      let h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+      h = Math.round(((h * 60 + 360) % 360) / 10) * 10;
+      votes.set(h, (votes.get(h) || 0) + 1);
+    }
+  }
+  let best = -1, bn = 0;
+  votes.forEach((v, h) => { if (v > bn) { bn = v; best = h; } });
+  if (best < 0) return fallback;
+  return [`hsl(${best} 85% 28%)`, `hsl(${best} 85% 45%)`, `hsl(${best} 90% 66%)`, `hsl(${(best + 150) % 360} 85% 55%)`];
+}
+
 /** background colour of the page itself (so the "desk" behind the paper matches each page) */
 function detectBg(root: HTMLElement, fallback: string): string {
   let el: Element | null = root.firstElementChild;
@@ -240,6 +265,7 @@ function buildFold(stage: HTMLElement, crane: Crane, ctx: Ctx): Fold {
     BR: `inset(${H / 2 - o}px 0px 0px ${W / 2 - o}px)`,
   };
   const back = `linear-gradient(135deg, ${paper} 0%, #ecd9b4 55%, ${paper} 100%)`;
+  const pageBg = detectBg(root, "#000");
 
   const piece = (parent: Element, inset: string, cx: number) => {
     const p = mk("og-abs og-3d", {}, parent);
@@ -248,7 +274,13 @@ function buildFold(stage: HTMLElement, crane: Crane, ctx: Ctx): Fold {
     front.appendChild(snap.node);
     snap.after();
     const shade = mk("og-abs", { background: "linear-gradient(90deg, rgba(0,0,0,0), rgba(0,0,0,.8))", opacity: "0", "pointer-events": "none" }, front);
-    mk("og-face", { width: `${W}px`, height: `${H}px`, "clip-path": inset, transform: "rotateY(180deg)", "transform-origin": `${cx}px 50%`, background: back }, p);
+    // back of the sheet = the page itself (printed through the paper), slightly dimmed + paper tint
+    const bk = mk("og-face", { width: `${W}px`, height: `${H}px`, "clip-path": inset, transform: "rotateY(180deg)", "transform-origin": `${cx}px 50%`, background: pageBg }, p);
+    const snap2 = snapshot(root, W, H, scrollY);
+    bk.appendChild(snap2.node);
+    snap2.after();
+    mk("og-abs", { background: back, opacity: "0.10", "pointer-events": "none" }, bk);
+    mk("og-abs", { background: "rgba(0,0,0,.28)", "pointer-events": "none" }, bk);
     return { p, shade };
   };
   const rightFold = (parent: Element) => {
@@ -329,8 +361,9 @@ let prevOverflow = "";
 export function createOrigami(opts: OrigamiOptions): OrigamiEngine {
   const bg = opts.bg ?? "#0b0610";
   const paper = opts.paper ?? "#f6e7c8";
-  const colors: [string, string, string, string] = opts.colors ?? ["#c2410c", "#f97316", "#fbbf24", "#e11d48"];
-  const k = 1 / (opts.speed ?? 1.3);
+  const defColors: [string, string, string, string] = ["#c2410c", "#f97316", "#fbbf24", "#e11d48"];
+  const pickColors = (root: HTMLElement | null) => opts.colors ?? (root ? deriveColors(root, defColors) : defColors);
+  const k = 1 / (opts.speed ?? 0.85);
 
   const size = () => ({ W: document.documentElement.clientWidth, H: window.innerHeight });
   const lock = () => { prevOverflow = document.documentElement.style.overflow; document.documentElement.style.overflow = "hidden"; };
@@ -353,7 +386,7 @@ export function createOrigami(opts: OrigamiOptions): OrigamiEngine {
   const fly = async (c: Crane, W: number, H: number, mode: "out" | "in") => {
     c.outer.getAnimations().forEach((a) => a.cancel());
     const a = c.outer.animate(flightKeyframes(W, H, mode), {
-      duration: 1000 * k,
+      duration: 1700 * k,
       easing: mode === "out" ? "cubic-bezier(.5,0,.9,.6)" : "cubic-bezier(.15,.55,.3,1)",
       fill: "forwards",
     });
@@ -383,7 +416,7 @@ export function createOrigami(opts: OrigamiOptions): OrigamiEngine {
     busy = true;
     stage = mk("og-stage", { background: detectBg(root, bg), transition: "background-color 450ms ease, opacity 400ms ease" });
     document.body.appendChild(stage);
-    crane = makeCrane(stage, W, H, colors);
+    crane = makeCrane(stage, W, H, pickColors(root));
   };
 
   const engine: OrigamiEngine = {
@@ -401,7 +434,7 @@ export function createOrigami(opts: OrigamiOptions): OrigamiEngine {
       root.querySelectorAll("video").forEach((v) => (v as HTMLVideoElement).pause());
       stage = mk("og-stage", { background: detectBg(root, bg), transition: "background-color 450ms ease, opacity 400ms ease" });
       document.body.appendChild(stage);
-      crane = makeCrane(stage, W, H, colors);
+      crane = makeCrane(stage, W, H, pickColors(root));
       const c = crane;
       const fold = buildFold(stage, c, { root, W, H, scrollY, paper, k });
       fold.setT(0);
@@ -411,6 +444,7 @@ export function createOrigami(opts: OrigamiOptions): OrigamiEngine {
         await drive(fold, 0, fold.TF);
         fold.disposePaper();
         onNavigate();
+        await sleep(350);                                   // crane hovers a moment before leaving
         await fly(c, W, H, "out");
         // if the next page has no transition of its own, don't leave the screen covered
         guardTimer = window.setTimeout(() => { if (stage && !entering) engine.abort(); }, 1500);
@@ -428,7 +462,7 @@ export function createOrigami(opts: OrigamiOptions): OrigamiEngine {
       if (!stage || !crane) { cleanup(); return; }
       const { W, H } = size();
       await fly(crane, W, H, "in");                          // crane lands in the middle
-      await sleep(150);
+      await sleep(450);
       try { await (document as any).fonts?.ready; } catch { /* ignore */ }
       if (!stage || !crane) return;
       crane.outer.getAnimations().forEach((a) => a.cancel()); // rest at the centre
@@ -458,7 +492,7 @@ export function createOrigami(opts: OrigamiOptions): OrigamiEngine {
         const { W, H } = size();
         stage = mk("og-stage", { background: detectBg(root, bg) });
         document.body.appendChild(stage);
-        crane = makeCrane(stage, W, H, colors);
+        crane = makeCrane(stage, W, H, pickColors(root));
         dbg = { fold: buildFold(stage, crane, { root, W, H, scrollY: window.scrollY, paper, k }) };
       }
       dbg.fold.setT(t * k);
