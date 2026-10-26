@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
+import OrigamiPage from "@/components/OrigamiPage";
 import { createClient } from "@/lib/supabase/client";
 import { Trophy, ThumbsUp, Plus, Flame, Trash2, ShieldAlert } from "lucide-react";
 
@@ -136,6 +137,7 @@ export default function ShortsFeedPage() {
   }
 
   return (
+    <OrigamiPage bg="#060b14" colors={["#0e7490", "#06b6d4", "#67e8f9", "#f43f5e"]}>
     <div className="h-[100dvh] bg-[#060b14] text-slate-100 flex flex-col overflow-hidden">
       <Navbar />
 
@@ -268,5 +270,6 @@ export default function ShortsFeedPage() {
 
       </main>
     </div>
+    </OrigamiPage>
   );
 }
