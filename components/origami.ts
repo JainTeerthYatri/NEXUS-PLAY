@@ -25,9 +25,13 @@ export type OrigamiOptions = {
 
 export type OrigamiEngine = {
   readonly busy: boolean;
-  /** a stage from the previous page is waiting to be continued */
+  /** a transition stage is on screen */
   readonly staged: boolean;
+  /** LEAVE: this page folds into a crane OVER the next page (which is already live underneath) */
   exit(onNavigate: () => void): Promise<void>;
+  /** remember how this page looks, so the next page can unfold on top of it (no navigation change) */
+  capture(): void;
+  /** ARRIVE: a crane flies in and this page unfolds over the previous page (or the page colour) */
   enter(): Promise<void>;
   abort(): void;
   destroy(): void;
@@ -352,11 +356,10 @@ function flightKeyframes(W: number, H: number, mode: "out" | "in"): Keyframe[] {
 let stage: HTMLDivElement | null = null;
 let crane: Crane | null = null;
 let busy = false;
-let entering = false;
-let exitPromise: Promise<void> | null = null;
-let guardTimer: number | null = null;
-let dbg: { fold: Fold } | null = null;
+let locked = false;
 let prevOverflow = "";
+let dbg: { fold: Fold } | null = null;
+let handoff: { node: HTMLElement; after: () => void; bg: string; t: number } | null = null;
 
 export function createOrigami(opts: OrigamiOptions): OrigamiEngine {
   const bg = opts.bg ?? "#0b0610";
@@ -366,8 +369,8 @@ export function createOrigami(opts: OrigamiOptions): OrigamiEngine {
   const k = 1 / (opts.speed ?? 0.85);
 
   const size = () => ({ W: document.documentElement.clientWidth, H: window.innerHeight });
-  const lock = () => { prevOverflow = document.documentElement.style.overflow; document.documentElement.style.overflow = "hidden"; };
-  const unlock = () => { document.documentElement.style.overflow = prevOverflow; };
+  const lock = () => { if (locked) return; locked = true; prevOverflow = document.documentElement.style.overflow; document.documentElement.style.overflow = "hidden"; };
+  const unlock = () => { if (!locked) return; locked = false; document.documentElement.style.overflow = prevOverflow; };
 
   const drive = (fold: Fold, from: number, to: number) =>
     new Promise<void>((resolve) => {
@@ -395,33 +398,25 @@ export function createOrigami(opts: OrigamiOptions): OrigamiEngine {
 
   const cleanup = () => {
     dbg = null;
-    if (guardTimer) { window.clearTimeout(guardTimer); guardTimer = null; }
     stage?.remove();
     stage = null;
     crane = null;
-    exitPromise = null;
-    entering = false;
-    if (busy || prevOverflow !== undefined) unlock();
     busy = false;
-  };
-
-  /** cover the page right now (sync) when we arrive without an exit stage from a previous page */
-  const cover = () => {
-    if (stage) return;
-    const root = opts.getRoot();
-    if (!root) return;
-    ensureStyle();
-    const { W, H } = size();
-    lock();
-    busy = true;
-    stage = mk("og-stage", { background: detectBg(root, bg), transition: "background-color 450ms ease, opacity 400ms ease" });
-    document.body.appendChild(stage);
-    crane = makeCrane(stage, W, H, pickColors(root));
+    unlock();
   };
 
   const engine: OrigamiEngine = {
     get busy() { return busy; },
     get staged() { return !!stage; },
+
+    capture() {
+      const root = opts.getRoot();
+      if (!root || busy) return;
+      const { W, H } = size();
+      const snap = snapshot(root, W, H, window.scrollY);
+      root.querySelectorAll("video").forEach((v) => (v as HTMLVideoElement).pause());
+      handoff = { node: snap.node, after: snap.after, bg: detectBg(root, bg), t: performance.now() };
+    },
 
     exit(onNavigate) {
       const root = opts.getRoot();
@@ -432,45 +427,53 @@ export function createOrigami(opts: OrigamiOptions): OrigamiEngine {
       const scrollY = window.scrollY;
       lock();
       root.querySelectorAll("video").forEach((v) => (v as HTMLVideoElement).pause());
-      stage = mk("og-stage", { background: detectBg(root, bg), transition: "background-color 450ms ease, opacity 400ms ease" });
+      // transparent stage: the NEXT page shows through wherever the paper has folded away
+      stage = mk("og-stage", { transition: "opacity 400ms ease" });
       document.body.appendChild(stage);
-      crane = makeCrane(stage, W, H, pickColors(root));
-      const c = crane;
+      const c = makeCrane(stage, W, H, pickColors(root));
+      crane = c;
       const fold = buildFold(stage, c, { root, W, H, scrollY, paper, k });
-      fold.setT(0);
+      fold.setT(0);                                       // identical to the live page: no visible jump
 
-      exitPromise = (async () => {
+      return (async () => {
         await raf();
+        onNavigate();
+        // wait until the old page has left the DOM and the next one is painted
+        const t0 = performance.now();
+        while (root.isConnected && performance.now() - t0 < 2500) await sleep(30);
+        await sleep(200);
         await drive(fold, 0, fold.TF);
         fold.disposePaper();
-        onNavigate();
-        await sleep(350);                                   // crane hovers a moment before leaving
+        await sleep(350);                                 // crane hovers over the new page
         await fly(c, W, H, "out");
-        // if the next page has no transition of its own, don't leave the screen covered
-        guardTimer = window.setTimeout(() => { if (stage && !entering) engine.abort(); }, 1500);
+        cleanup();
       })();
-      return exitPromise;
     },
 
     async enter() {
       const root = opts.getRoot();
-      if (!root || entering) return;
-      entering = true;
-      if (guardTimer) { window.clearTimeout(guardTimer); guardTimer = null; }
-      if (!stage) cover();                                   // came from a page without this effect
-      if (exitPromise) await exitPromise;                    // let the old crane finish leaving
-      if (!stage || !crane) { cleanup(); return; }
+      if (!root || busy) return;
+      busy = true;
+      ensureStyle();
       const { W, H } = size();
-      await fly(crane, W, H, "in");                          // crane lands in the middle
+      lock();
+      const h = handoff && performance.now() - handoff.t < 5000 ? handoff : null;
+      handoff = null;
+      stage = mk("og-stage", { background: h ? h.bg : detectBg(root, bg), transition: "opacity 400ms ease" });
+      if (h) { stage.appendChild(h.node); h.after(); }    // the previous page stays visible underneath
+      document.body.appendChild(stage);
+      const c = makeCrane(stage, W, H, pickColors(root));
+      crane = c;
+      const flight = fly(c, W, H, "in");                  // starts in the same tick: no flash
+      await flight;
       await sleep(450);
       try { await (document as any).fonts?.ready; } catch { /* ignore */ }
-      if (!stage || !crane) return;
-      crane.outer.getAnimations().forEach((a) => a.cancel()); // rest at the centre
-      stage.style.backgroundColor = detectBg(root, bg);
-      const fold = buildFold(stage, crane, { root, W, H, scrollY: window.scrollY, paper, k });
+      if (!stage || crane !== c) return;
+      c.outer.getAnimations().forEach((a) => a.cancel()); // rest at the centre
+      const fold = buildFold(stage, c, { root, W, H, scrollY: window.scrollY, paper, k });
       fold.setT(fold.TF);
       await raf();
-      await drive(fold, fold.TF, 0);
+      await drive(fold, fold.TF, 0);                      // unfold, quarter by quarter
       fold.disposePaper();
       cleanup();
     },

@@ -137,7 +137,7 @@ export default function ShortsFeedPage() {
   }
 
   return (
-    <OrigamiPage bg="#060b14" colors={["#0e7490", "#06b6d4", "#67e8f9", "#f43f5e"]}>
+    <OrigamiPage enter="auto" exit="fold" bg="#060b14" colors={["#0e7490", "#06b6d4", "#67e8f9", "#f43f5e"]}>
     <div className="h-[100dvh] bg-[#060b14] text-slate-100 flex flex-col overflow-hidden">
       <Navbar />
 

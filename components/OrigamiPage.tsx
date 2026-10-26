@@ -9,24 +9,18 @@ import type { OrigamiEngine, OrigamiOptions } from "./origami";
 /**
  * components/OrigamiPage.tsx  -- PER-PAGE origami transition (nothing goes in layout.tsx)
  *
- *   export default function ClipsPage() {
- *     ...
- *     return (
- *       <OrigamiPage bg="#060b14" colors={["#0e7490", "#06b6d4", "#67e8f9", "#f43f5e"]}>
- *         ...your page...
- *       </OrigamiPage>
- *     );
- *   }
+ *   <OrigamiPage bg="#060b14" enter="auto" exit="fold" colors={[...]}>...page...</OrigamiPage>
  *
- * - leaving this page through an internal <Link>/<a>: page folds -> crane flies out
- * - arriving on this page from another <OrigamiPage>: crane flies in -> unfolds into the page
- * - every page picks its own colours / speed (or later its own transition)
- *
- * enter:
- *   "auto"   (default) play only when arriving from another OrigamiPage or by an in-app navigation
- *   "always" also play on a hard load / refresh
- *   "never"  no enter animation (exit only)
- * exit: false = this page never plays the leaving animation
+ * exit (what happens when the user leaves THIS page through an internal link):
+ *   "fold"    (default) this page folds into a crane; the NEXT page is already visible underneath
+ *             and the crane flies away over it
+ *   "capture" no animation, but a picture of this page is kept so the next page can unfold on top of it
+ *   false     nothing
+ * enter (what happens when the user arrives on THIS page):
+ *   "never"   (default)
+ *   "auto"    a crane flies in over the previous page (if it was an OrigamiPage with exit "fold"/"capture")
+ *             and this page unfolds piece by piece. Skipped on a hard load / refresh.
+ *   "always"  same, also on hard load
  * opt out for one link: <Link data-no-origami ...>
  */
 
@@ -36,13 +30,13 @@ type Props = {
   paper?: string;
   colors?: OrigamiOptions["colors"];
   speed?: number;
-  enter?: "auto" | "always" | "never";
-  exit?: boolean;
+  enter?: "never" | "auto" | "always";
+  exit?: "fold" | "capture" | false;
 };
 
 const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
-export default function OrigamiPage({ children, bg, paper, colors, speed, enter = "auto", exit = true }: Props) {
+export default function OrigamiPage({ children, bg, paper, colors, speed, enter = "never", exit = "fold" }: Props) {
   const router = useRouter();
   const rootRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<OrigamiEngine | null>(null);
@@ -53,15 +47,8 @@ export default function OrigamiPage({ children, bg, paper, colors, speed, enter 
     engineRef.current = engine;
 
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduced) {
-      if (engine.staged) engine.abort();
-    } else if (enter !== "never") {
-      const softNav = performance.now() > 4000; // not a fresh page load -> came here by in-app navigation
-      if (engine.staged || enter === "always" || (enter === "auto" && softNav)) {
-        void engine.enter();
-      }
-    } else if (engine.staged) {
-      engine.abort();
+    if (!reduced && (enter === "always" || (enter === "auto" && performance.now() > 4000))) {
+      void engine.enter();
     }
 
     return () => {
@@ -89,9 +76,10 @@ export default function OrigamiPage({ children, bg, paper, colors, speed, enter 
 
       const engine = engineRef.current;
       if (!engine) return;
+      if (engine.busy) { e.preventDefault(); e.stopPropagation(); return; }
+      if (exit === "capture") { engine.capture(); return; }  // normal navigation continues
       e.preventDefault();
       e.stopPropagation();
-      if (engine.busy) return;
       const href = url.pathname + url.search + url.hash;
       void engine.exit(() => router.push(href));
     };
