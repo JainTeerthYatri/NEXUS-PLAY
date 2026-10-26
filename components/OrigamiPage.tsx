@@ -11,6 +11,8 @@ import type { OrigamiEngine, OrigamiOptions } from "./origami";
  *
  *   <OrigamiPage bg="#060b14" enter="auto" exit="fold" colors={[...]}>...page...</OrigamiPage>
  *
+ * enterStyle: "unfold" | "hold"      exitStyle: "fold" | "crush"   (per-page look of the transition)
+ *
  * exit (what happens when the user leaves THIS page through an internal link):
  *   "fold"    (default) this page folds into a crane; the NEXT page is already visible underneath
  *             and the crane flies away over it
@@ -32,18 +34,22 @@ type Props = {
   speed?: number;
   enter?: "never" | "auto" | "always";
   exit?: "fold" | "capture" | false;
+  /** how this page arrives: "unfold" (crane lands) or "hold" (held steady by two hands) */
+  enterStyle?: "unfold" | "hold";
+  /** how this page leaves (when exit="fold"): "fold" (paper crane) or "crush" (balled up and smacked away with a bat) */
+  exitStyle?: "fold" | "crush";
 };
 
 const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
-export default function OrigamiPage({ children, bg, paper, colors, speed, enter = "never", exit = "fold" }: Props) {
+export default function OrigamiPage({ children, bg, paper, colors, speed, enter = "never", exit = "fold", enterStyle = "unfold", exitStyle = "fold" }: Props) {
   const router = useRouter();
   const rootRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<OrigamiEngine | null>(null);
 
   // build the engine + play the "enter" part (layout effect = covers before the first paint)
   useIsoLayoutEffect(() => {
-    const engine = createOrigami({ getRoot: () => rootRef.current, bg, paper, colors, speed });
+    const engine = createOrigami({ getRoot: () => rootRef.current, bg, paper, colors, speed, enterStyle, exitStyle });
     engineRef.current = engine;
 
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;

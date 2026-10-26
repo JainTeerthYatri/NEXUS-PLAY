@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import Navbar from "@/components/Navbar";
+import OrigamiPage from "@/components/OrigamiPage";
 import { createClient } from "@/lib/supabase/client";
 import { Radio, Plus, Globe, MessageSquare, Filter, Trash2, Users, Send, Search, Eye, Crown, Bot, LogOut, UserX } from "lucide-react";
 
@@ -555,6 +556,7 @@ export default function LfgBoardPage() {
   });
 
   return (
+    <OrigamiPage enter="auto" enterStyle="hold" exit="fold" exitStyle="crush" bg="#0a0a0c">
     <div className="min-h-[100dvh] bg-[#0a0a0c] text-slate-100 flex flex-col selection:bg-violet-500 selection:text-white">
       <Navbar />
 
@@ -1018,5 +1020,6 @@ export default function LfgBoardPage() {
 
       </main>
     </div>
+    </OrigamiPage>
   );
 }
