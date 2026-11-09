@@ -568,10 +568,6 @@ export default function LandingPage() {
   const isLive = !!profile?.is_live;
   const greet = greetingFor(new Date().getHours());
 
-  if (!authReady) {
-    return <div className="fixed inset-0 bg-[#0b0610]" />;
-  }
-
   return (
     <div
       ref={rootRef}
