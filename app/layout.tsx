@@ -1,4 +1,3 @@
-
 import type { Metadata } from "next";
 import "./globals.css";
 import CodeRain from "../components/CodeRain";
@@ -13,24 +12,21 @@ export const metadata: Metadata = {
     template: "%s | Asteroid Gaming Cloud",
   },
   description:
-    "Discover Asteroid Gaming Cloud: gaming community, AI thumbnail and logo tools, global gaming chat, LFG matchmaking and gaming highlights.",
+    "Explore Asteroid Gaming Cloud for AI thumbnail and logo creation, gaming chat, squad matchmaking, gaming highlights and community tools.",
   applicationName: "Asteroid Gaming Cloud",
-  alternates: {
-    canonical: "/",
-  },
   openGraph: {
     type: "website",
     url: siteUrl,
     siteName: "Asteroid Gaming Cloud",
     title: "Asteroid Gaming Cloud | Gaming Tools & Community",
     description:
-      "Explore gaming tools, global chat, squad matchmaking and gaming highlights.",
+      "Discover AI gaming tools, global gaming chat, squad matchmaking and gaming highlights.",
   },
   twitter: {
     card: "summary",
     title: "Asteroid Gaming Cloud",
     description:
-      "Gaming tools, global community, matchmaking and highlights.",
+      "AI gaming tools, global community, matchmaking and gaming highlights.",
   },
   robots: {
     index: true,
