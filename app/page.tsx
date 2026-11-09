@@ -750,7 +750,10 @@ export default function LandingPage() {
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 via-amber-400 to-yellow-200">GAMING CLOUD</span>
               </h1>
               <p className="relative text-slate-300 max-w-2xl mx-auto leading-relaxed">
-                Stream, chat, clip and squad up — six modules, one cloud. Log in to open your personal control center.
+                Asteroid Gaming Cloud is your all-in-one gaming community platform.
+                Stream live from your browser, create AI gaming thumbnails and logos,
+                chat with players worldwide, find teammates through LFG matchmaking,
+                and share your best gaming highlights.
               </p>
               <p className="relative text-sm text-slate-400" style={{ fontFamily: HI_FONT }}>
                 आपका स्वागत है — लॉग इन करें और अपना काम शुरू करें।
