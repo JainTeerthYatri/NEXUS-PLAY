@@ -784,8 +784,11 @@ export default function LandingPage() {
               </p>
               <h2 className="text-2xl sm:text-3xl font-black tracking-tight">Welcome to Asteroid Gaming Cloud</h2>
               <p className="text-slate-300 max-w-3xl leading-relaxed">
-                One home for everything a gamer-creator needs: stream live from your browser, find a squad, share your best highlights and chat with the community.
-              </p>
+  Discover gaming tools and community features in one place.
+  Asteroid Gaming Cloud brings together browser-based live streaming,
+  AI thumbnail and logo creation, global gaming chat, squad matchmaking,
+  and gaming highlights to help gamers and creators connect and grow.
+</p>
               <p className="text-sm text-slate-400" style={{ fontFamily: HI_FONT }}>
                 यहाँ आप लाइव स्ट्रीम कर सकते हैं, टोली बना सकते हैं, अपनी झलकियाँ साझा कर सकते हैं और समुदाय से बात कर सकते हैं।
               </p>
