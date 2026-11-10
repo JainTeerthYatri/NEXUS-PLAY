@@ -150,7 +150,9 @@ export default function ShortsFeedPage() {
 
       {/* Main Reels Container with Scroll Snap - Fully Responsive Across Mobile, Tablet, Laptop, and PC */}
       <main className="flex-1 h-[calc(100dvh-65px)] overflow-y-scroll snap-y snap-mandatory scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] relative">
-        
+        <h1 className="sr-only">
+          Gaming Clips and Highlights | Asteroid Gaming Cloud
+          </h1>
         {loading ? (
           <div className="flex items-center justify-center h-full text-cyan-400 font-mono text-sm animate-pulse">
             LOADING_SHORTS_STREAM...
